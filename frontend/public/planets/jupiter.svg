@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140">
+  <defs>
+    <radialGradient id="jupiterGradient" cx="30%" cy="25%" r="80%">
+      <stop offset="0%" stop-color="#f4d8af"/>
+      <stop offset="35%" stop-color="#d8b378"/>
+      <stop offset="60%" stop-color="#ba7e4c"/>
+      <stop offset="100%" stop-color="#5d3f2a"/>
+    </radialGradient>
+  </defs>
+  <circle cx="70" cy="70" r="60" fill="url(#jupiterGradient)"/>
+  <path d="M28 54 C46 35, 90 35, 112 54" stroke="rgba(255,255,255,0.2)" stroke-width="10" fill="none"/>
+  <path d="M25 82 C48 95, 92 98, 116 80" stroke="rgba(255,255,255,0.18)" stroke-width="10" fill="none"/>
+  <path d="M36 37 L32 95" stroke="rgba(120,80,45,0.3)" stroke-width="6" fill="none"/>
+  <path d="M63 28 L58 112" stroke="rgba(120,80,45,0.3)" stroke-width="6" fill="none"/>
+  <path d="M92 34 L86 108" stroke="rgba(120,80,45,0.3)" stroke-width="6" fill="none"/>
+</svg>

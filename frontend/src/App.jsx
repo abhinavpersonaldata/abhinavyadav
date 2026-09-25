@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -14,8 +14,21 @@ import {
 } from 'lucide-react'
 
 const motionSettings = {
-  hidden: { opacity: 0, y: 26 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 32, scale: 0.98 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+}
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12, delayChildren: 0.08 },
+  },
+}
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.56, ease: [0.22, 1, 0.36, 1] } },
 }
 
 const ADMIN_CREDENTIALS = {
@@ -23,6 +36,16 @@ const ADMIN_CREDENTIALS = {
   password: import.meta.env.VITE_ADMIN_PASSWORD || '12345678',
 }
 const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-auth-v2'
+const SOLAR_SYSTEM_BODIES = [
+  { name: 'Mercury', short: 'mercury', size: 13, orbit: 128, radius: 64, duration: 10, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Venus', short: 'venus', size: 17, orbit: 176, radius: 88, duration: 14, delay: -1.4, angle: 120, image: '/planets/venus.svg', distanceFromSun: '121 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Earth', short: 'earth', size: 18, orbit: 224, radius: 112, duration: 19, delay: -2.8, angle: 210, image: '/planets/earth.svg', distanceFromSun: '149.6 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Mars', short: 'mars', size: 15, orbit: 272, radius: 136, duration: 24, delay: -4.2, angle: 300, image: '/planets/mars.svg', distanceFromSun: '1.5 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Jupiter', short: 'jupiter', size: 27, orbit: 320, radius: 160, duration: 36, delay: -6.5, angle: 70, image: '/planets/jupiter.svg', distanceFromSun: '5.2 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Saturn', short: 'saturn', size: 25, orbit: 364, radius: 182, duration: 52, delay: -9.2, angle: 170, image: '/planets/saturn.svg', distanceFromSun: '7.4 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Uranus', short: 'uranus', size: 20, orbit: 404, radius: 202, duration: 68, delay: -12.5, angle: 330, image: '/planets/uranus.svg', distanceFromSun: '2.9 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Neptune', short: 'neptune', size: 19, orbit: 438, radius: 219, duration: 88, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '3.2 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+]
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const apiUrl = (path) => `${API_BASE_URL}${path}`
@@ -69,6 +92,9 @@ function App() {
     galleryItems: [],
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
+  const [activePlanetShort, setActivePlanetShort] = useState(null)
+  const [isPlanetDetailOpen, setIsPlanetDetailOpen] = useState(false)
+  const planetDetailRef = useRef(null)
   const [formState, setFormState] = useState({ name: '', email: '', subject: '', message: '' })
   const [formStatus, setFormStatus] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
@@ -151,6 +177,45 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!isPlanetDetailOpen) {
+        return
+      }
+
+      const clickedInsidePanel = planetDetailRef.current?.contains(event.target)
+      const clickedPlanetButton = event.target.closest('.orbit-planet')
+
+      if (!clickedInsidePanel && !clickedPlanetButton) {
+        setIsPlanetDetailOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+    }
+  }, [isPlanetDetailOpen])
+
+  useEffect(() => {
+    if (!isPlanetDetailOpen) {
+      return undefined
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsPlanetDetailOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isPlanetDetailOpen])
+
+  useEffect(() => {
     const loadPortfolio = async () => {
       try {
         const response = await apiFetch('/api/portfolio')
@@ -190,6 +255,11 @@ function App() {
   const selectedProject = useMemo(
     () => portfolio.projects.find((project) => project.id === selectedProjectId) ?? portfolio.projects[0],
     [portfolio.projects, selectedProjectId],
+  )
+
+  const selectedPlanet = useMemo(
+    () => SOLAR_SYSTEM_BODIES.find((planet) => planet.short === activePlanetShort) ?? null,
+    [activePlanetShort],
   )
 
   const adminStats = useMemo(
@@ -605,12 +675,86 @@ function App() {
             </div>
 
             <div className="hero-visual" aria-hidden="true">
-              <div className="visual-core">
-                <div className="signal-ring signal-ring-one" />
-                <div className="signal-ring signal-ring-two" />
-                <div className="signal-ring signal-ring-three" />
-                <div className="monogram-block">AY</div>
+              <div className="visual-core solar-scene">
+                <div className="solar-system">
+                  <div className="orbit orbit-outer" />
+                  <div className="orbit orbit-mid" />
+                  <div className="orbit orbit-inner" />
+                  {SOLAR_SYSTEM_BODIES.map((planet) => (
+                    <button
+                      key={planet.short}
+                      type="button"
+                      className={`orbit orbit-planet ${activePlanetShort === planet.short ? 'is-selected' : ''}`}
+                      style={{
+                        '--orbit-size': `${planet.orbit}px`,
+                        '--planet-radius': `${planet.radius}px`,
+                        '--planet-size': `${planet.size}px`,
+                        '--orbit-duration': `${planet.duration}s`,
+                        '--orbit-delay': `${planet.delay}s`,
+                        '--planet-angle': `${planet.angle}deg`,
+                        '--planet-tilt': `${planet.angle}deg`,
+                      }}
+                      onClick={() => {
+                        setActivePlanetShort(planet.short)
+                        setIsPlanetDetailOpen(true)
+                      }}
+                      aria-label={`View details for ${planet.name}`}
+                    >
+                      <span className="planet-marker">
+                        <img src={planet.image} alt={planet.name} className="planet-image" />
+                      </span>
+                    </button>
+                  ))}
+                  <div className="solar-sun">
+                    <span>AY</span>
+                  </div>
+                </div>
               </div>
+
+              <AnimatePresence mode="wait">
+                {isPlanetDetailOpen && selectedPlanet && (
+                  <motion.div
+                    ref={planetDetailRef}
+                    key={selectedPlanet.short}
+                    initial={{ opacity: 0, y: 18, scale: 0.92, rotateX: -8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.94, rotateX: -6 }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    className="planet-details-panel"
+                  >
+                    <button
+                      type="button"
+                      className="planet-close-btn"
+                      onClick={() => setIsPlanetDetailOpen(false)}
+                      aria-label={`Close details for ${selectedPlanet.name}`}
+                    >
+                      ×
+                    </button>
+
+                    <div className="planet-details-header">
+                      <img src={selectedPlanet.image} alt={selectedPlanet.name} className="planet-details-image" />
+                      <div>
+                        <span className="planet-details-label">Selected Planet</span>
+                        <h3>{selectedPlanet.name}</h3>
+                      </div>
+                    </div>
+
+                    <div className="planet-detail-row">
+                      <span className="planet-detail-key">Distance from Sun</span>
+                      <strong>{selectedPlanet.distanceFromSun}</strong>
+                    </div>
+
+                    <div className="planet-detail-row">
+                      <span className="planet-detail-key">Position in order</span>
+                      <strong>{SOLAR_SYSTEM_BODIES.findIndex((planet) => planet.short === selectedPlanet.short) + 1}</strong>
+                    </div>
+
+                    <a href={selectedPlanet.sourceUrl} target="_blank" rel="noreferrer" className="planet-source-link">
+                      Learn more
+                    </a>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="visual-list">
                 <span>STUDIO</span>
                 <span>BUILD</span>
@@ -650,18 +794,20 @@ function App() {
             </label>
           </div>
 
-          <div className="project-stack">
+          <motion.div className="project-stack" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
             {visibleProjects.length ? visibleProjects.map((project, index) => (
-              <article key={project.title} className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`}>
+              <motion.article key={project.title} className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`} variants={fadeInUp}>
                 <div className={`project-media media-${project.accent}`}>
                   {project.video ? (
                     <video
                       className="project-video"
                       src={project.video}
+                      poster={project.image || undefined}
                       autoPlay
                       muted
                       loop
                       playsInline
+                      preload="metadata"
                     />
                   ) : project.image ? (
                     <img className="project-image" src={project.image} alt={project.title} />
@@ -694,11 +840,11 @@ function App() {
                     <ArrowUpRight size={14} />
                   </button>
                 </div>
-              </article>
+              </motion.article>
             )) : (
-              <div className="empty-state">No projects match your current search or filter.</div>
+              <motion.div className="empty-state" variants={fadeInUp}>No projects match your current search or filter.</motion.div>
             )}
-          </div>
+          </motion.div>
         </motion.section>
 
         <motion.section id="about" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -1032,7 +1178,19 @@ function App() {
       </header>
 
       <section className="project-hero-media">
-        {selectedProject.video ? <video className="project-hero-video" src={selectedProject.video} autoPlay muted loop controls playsInline /> : null}
+        {selectedProject.video ? (
+          <video
+            className="project-hero-video"
+            src={selectedProject.video}
+            poster={selectedProject.image || undefined}
+            autoPlay
+            muted
+            loop
+            controls
+            playsInline
+            preload="metadata"
+          />
+        ) : null}
         {selectedProject.image ? <img className="project-hero-image" src={selectedProject.image} alt={`${selectedProject.title} cover`} /> : null}
         {!selectedProject.video && !selectedProject.image ? (
           <div className="project-hero-visual media-lime">
@@ -1258,7 +1416,17 @@ function App() {
                 <span>Project video</span>
                 <input type="file" accept="video/*" onChange={(event) => handleProjectMediaUpload(event, 'video')} />
                 {projectDraft.video ? (
-                  <video className="upload-preview" src={projectDraft.video} controls muted autoPlay loop playsInline />
+                  <video
+                    className="upload-preview"
+                    src={projectDraft.video}
+                    poster={projectDraft.image || undefined}
+                    controls
+                    muted
+                    autoPlay
+                    loop
+                    playsInline
+                    preload="metadata"
+                  />
                 ) : (
                   <span className="upload-hint">Upload a promo video</span>
                 )}
