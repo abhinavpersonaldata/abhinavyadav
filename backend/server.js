@@ -11,13 +11,31 @@ dotenv.config()
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
-const allowedOrigins = (process.env.CLIENT_URL || '')
+const configuredOrigins = (process.env.CLIENT_URL || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true
+
+  return configuredOrigins.includes(origin)
+    || /localhost:(5173|3000|4173)/.test(origin)
+    || /\.vercel\.app$/i.test(origin)
+    || /\.onrender\.com$/i.test(origin)
+    || /\.render\.com$/i.test(origin)
+}
+
 app.use(cors({
-  origin: allowedOrigins.length ? allowedOrigins : true,
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true)
+      return
+    }
+
+    callback(null, false)
+  },
+  credentials: true,
 }))
 app.use(express.json())
 
