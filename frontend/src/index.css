@@ -57,6 +57,15 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes float {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -12px, 0); }
@@ -3527,6 +3536,34 @@ a {
 }
 
 @media (max-width: 720px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body::before,
+  body::after,
+  .topbar,
+  .hero-panel,
+  .content-section,
+  .project-panel,
+  .orbit,
+  .solar-system,
+  .planet-details-panel,
+  .project-preview,
+  .contact-graphic,
+  .site-footer {
+    animation: none !important;
+  }
+
+  .topbar,
+  .planet-details-panel,
+  .project-preview,
+  .contact-graphic,
+  .site-footer {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
   .site-shell {
     width: min(var(--container-width), calc(100% - 1rem));
   }
