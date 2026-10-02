@@ -176,6 +176,16 @@ const DEFAULT_VISUAL_SETTINGS = {
   visualIntensity: 72,
   visualScope: 'all',
 }
+const SECTION_MOTION_DEFAULTS = {
+  hero: true,
+  work: true,
+  about: true,
+  gallery: true,
+  journey: true,
+  toolkit: true,
+  contact: true,
+}
+const CUSTOM_MOTION_THEMES_KEY = 'portfolio-custom-motion-themes-v1'
 const createExperienceDraft = () => ({
   company: '', role: '', type: '', dates: '', location: '', description: '',
   achievements: '', image: '', images: '', links: '',
@@ -352,6 +362,16 @@ function App() {
   const [gallerySaveStatus, setGallerySaveStatus] = useState('')
   const [contactLinksDraft, setContactLinksDraft] = useState(DEFAULT_CONTACT_LINKS)
   const [contactSaveStatus, setContactSaveStatus] = useState('')
+  const [customThemeName, setCustomThemeName] = useState('')
+  const [customThemes, setCustomThemes] = useState(() => {
+    try {
+      const rawValue = localStorage.getItem(CUSTOM_MOTION_THEMES_KEY)
+      return rawValue ? JSON.parse(rawValue) : []
+    } catch {
+      return []
+    }
+  })
+  const [sectionMotion, setSectionMotion] = useState(SECTION_MOTION_DEFAULTS)
   const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
   const [messages, setMessages] = useState([
     {
@@ -511,7 +531,11 @@ function App() {
     document.documentElement.dataset.effect = portfolio.visualEffect || 'aurora'
     document.documentElement.dataset.scope = portfolio.visualScope || 'all'
     document.documentElement.style.setProperty('--motion-strength', String((Number(portfolio.visualIntensity) || 72) / 100))
-  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity])
+    Object.entries(SECTION_MOTION_DEFAULTS).forEach(([key]) => {
+      const enabled = Boolean(sectionMotion[key])
+      document.documentElement.dataset[`motion${key.charAt(0).toUpperCase()}${key.slice(1)}`] = String(enabled)
+    })
+  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, sectionMotion])
 
   const selectedProject = useMemo(
     () => portfolio.projects.find((project) => project.id === selectedProjectId) ?? portfolio.projects[0],
@@ -574,6 +598,7 @@ function App() {
       savePortfolioToStorage(nextPortfolio)
       return nextPortfolio
     })
+    setSectionMotion(SECTION_MOTION_DEFAULTS)
   }
 
   const applyMotionPreset = (preset) => {
@@ -589,6 +614,63 @@ function App() {
       savePortfolioToStorage(nextPortfolio)
       return nextPortfolio
     })
+  }
+
+  const saveCustomMotionTheme = () => {
+    const name = customThemeName.trim()
+    if (!name) return
+
+    const nextTheme = {
+      id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+      name,
+      effect: portfolio.visualEffect || 'aurora',
+      intensity: Number(portfolio.visualIntensity) || 72,
+      scope: portfolio.visualScope || 'all',
+      sections: { ...sectionMotion },
+    }
+
+    const nextThemes = [nextTheme, ...customThemes.filter((theme) => theme.name !== name)].slice(0, 8)
+    setCustomThemes(nextThemes)
+    setCustomThemeName('')
+    try {
+      localStorage.setItem(CUSTOM_MOTION_THEMES_KEY, JSON.stringify(nextThemes))
+    } catch {
+      // noop
+    }
+  }
+
+  const applySavedMotionTheme = (theme) => {
+    if (!theme) return
+
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        visualEffect: theme.effect || 'aurora',
+        visualIntensity: Number(theme.intensity) || 72,
+        visualScope: theme.scope || 'all',
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+
+    setSectionMotion({ ...SECTION_MOTION_DEFAULTS, ...(theme.sections || {}) })
+  }
+
+  const removeSavedMotionTheme = (themeId) => {
+    const nextThemes = customThemes.filter((theme) => theme.id !== themeId)
+    setCustomThemes(nextThemes)
+    try {
+      localStorage.setItem(CUSTOM_MOTION_THEMES_KEY, JSON.stringify(nextThemes))
+    } catch {
+      // noop
+    }
+  }
+
+  const handleSectionMotionToggle = (sectionKey) => {
+    setSectionMotion((current) => ({
+      ...current,
+      [sectionKey]: !current[sectionKey],
+    }))
   }
 
   const handleFormChange = (event) => {
@@ -2688,6 +2770,53 @@ function App() {
                 </button>
               ))}
             </div>
+
+            <div className="theme-save-panel">
+              <div className="theme-save-header">
+                <span>Save custom theme</span>
+              </div>
+              <div className="theme-save-controls">
+                <input
+                  type="text"
+                  value={customThemeName}
+                  onChange={(event) => setCustomThemeName(event.target.value)}
+                  placeholder="My premium theme"
+                  aria-label="Custom motion theme name"
+                />
+                <button type="button" className="primary-btn" onClick={saveCustomMotionTheme}>Save theme</button>
+              </div>
+            </div>
+
+            <div className="section-toggle-grid">
+              {Object.entries(SECTION_MOTION_DEFAULTS).map(([sectionKey, isEnabled]) => (
+                <button
+                  key={sectionKey}
+                  type="button"
+                  className={`section-toggle ${sectionMotion[sectionKey] ? 'enabled' : 'disabled'}`}
+                  onClick={() => handleSectionMotionToggle(sectionKey)}
+                >
+                  <span>{sectionKey}</span>
+                  <strong>{isEnabled ? 'On' : 'Off'}</strong>
+                </button>
+              ))}
+            </div>
+
+            {customThemes.length ? (
+              <div className="custom-theme-list">
+                {customThemes.map((theme) => (
+                  <div key={theme.id} className="custom-theme-item">
+                    <div>
+                      <strong>{theme.name}</strong>
+                      <span>{theme.effect} • {theme.scope}</span>
+                    </div>
+                    <div className="custom-theme-actions">
+                      <button type="button" className="secondary-btn" onClick={() => applySavedMotionTheme(theme)}>Apply</button>
+                      <button type="button" className="danger-btn" onClick={() => removeSavedMotionTheme(theme.id)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             <div className="effect-grid">
               {EFFECT_OPTIONS.map((effect) => (
