@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import heroGraphic from './assets/hero.png'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -36,6 +37,7 @@ const ADMIN_CREDENTIALS = {
   password: import.meta.env.VITE_ADMIN_PASSWORD || '12345678',
 }
 const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-auth-v2'
+const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
 const SOLAR_SYSTEM_BODIES = [
   { name: 'Mercury', short: 'mercury', size: 13, orbit: 128, radius: 64, duration: 10, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
   { name: 'Venus', short: 'venus', size: 17, orbit: 176, radius: 88, duration: 14, delay: -1.4, angle: 120, image: '/planets/venus.svg', distanceFromSun: '121 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
@@ -46,6 +48,42 @@ const SOLAR_SYSTEM_BODIES = [
   { name: 'Uranus', short: 'uranus', size: 20, orbit: 404, radius: 202, duration: 68, delay: -12.5, angle: 330, image: '/planets/uranus.svg', distanceFromSun: '2.9 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
   { name: 'Neptune', short: 'neptune', size: 19, orbit: 438, radius: 219, duration: 88, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '3.2 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
 ]
+const DEFAULT_ABOUT = {
+  heading: 'Still learning. Already building.',
+  biography: 'I am a diploma student in Computer Science & Engineering exploring the web as a creative and technical medium. My focus is learning by building, turning ideas into interfaces, prototypes, and useful digital products.',
+  photo: '',
+  facts: [
+    { label: 'CURRENTLY STUDYING', value: 'Diploma in Computer Science & Engineering' },
+    { label: 'YEAR', value: '2nd Year' },
+    { label: 'FOCUS', value: 'Web Development' },
+    { label: 'LOCATION', value: 'India' },
+  ],
+  colleges: [],
+  webinars: [],
+  certificates: [],
+  images: [],
+  links: [],
+}
+const ABOUT_COLLECTIONS = [
+  { key: 'facts', title: 'Quick details', fields: [{ key: 'label', label: 'Label' }, { key: 'value', label: 'Detail' }] },
+  { key: 'colleges', title: 'Colleges & education', fields: [{ key: 'title', label: 'College / institution' }, { key: 'program', label: 'Course / program' }, { key: 'dates', label: 'Dates' }, { key: 'location', label: 'Location' }, { key: 'description', label: 'Additional detail', multiline: true }, { key: 'image', label: 'College image URL', type: 'url', upload: true }, { key: 'url', label: 'College link', type: 'url' }] },
+  { key: 'webinars', title: 'Webinars & events', fields: [{ key: 'title', label: 'Webinar / event title' }, { key: 'organizer', label: 'Organizer' }, { key: 'date', label: 'Date' }, { key: 'description', label: 'Details', multiline: true }, { key: 'image', label: 'Event image URL', type: 'url', upload: true }, { key: 'url', label: 'Recording / event link', type: 'url' }] },
+  { key: 'certificates', title: 'Certificates', fields: [{ key: 'title', label: 'Certificate title' }, { key: 'issuer', label: 'Issuer' }, { key: 'date', label: 'Date' }, { key: 'credential', label: 'Credential ID' }, { key: 'image', label: 'Certificate image URL', type: 'url', upload: true }, { key: 'url', label: 'Verification link', type: 'url' }] },
+  { key: 'images', title: 'About gallery images', fields: [{ key: 'label', label: 'Image caption' }, { key: 'url', label: 'Image URL', type: 'url', upload: true }] },
+  { key: 'links', title: 'Additional links', fields: [{ key: 'label', label: 'Link label' }, { key: 'url', label: 'URL', type: 'url' }] },
+]
+const DEFAULT_CONTACT_LINKS = [
+  { label: 'Email', type: 'email', value: 'abhinavyadav.contact@gmail.com' },
+  { label: 'GitHub', type: 'github', value: 'https://github.com' },
+  { label: 'LinkedIn', type: 'linkedin', value: 'https://linkedin.com' },
+]
+const createExperienceDraft = () => ({
+  company: '', role: '', type: '', dates: '', location: '', description: '',
+  achievements: '', image: '', images: '', links: '',
+})
+const createAchievementDraft = () => ({
+  title: '', organization: '', date: '', description: '', image: '', images: '', links: '',
+})
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const apiUrl = (path) => `${API_BASE_URL}${path}`
@@ -81,6 +119,8 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [portfolio, setPortfolio] = useState({
     profile: { name: 'Abhinav Yadav', title: 'Computer Science & Engineering Diploma Student', location: 'India', email: 'abhinavyadav.contact@gmail.com', github: 'https://github.com', linkedin: 'https://linkedin.com' },
+    contactLinks: DEFAULT_CONTACT_LINKS,
+    about: DEFAULT_ABOUT,
     navItems: ['WORK', 'ABOUT', 'JOURNEY', 'TOOLKIT', 'CONTACT'],
     projects: [],
     toolkitGroups: [],
@@ -123,13 +163,37 @@ function App() {
     results: '',
     gallery: ['', '', '', '', '', ''],
   })
+  const [showSkillForm, setShowSkillForm] = useState(false)
+  const [editingSkillIndex, setEditingSkillIndex] = useState(null)
+  const [skillDraft, setSkillDraft] = useState({ label: '', skills: '' })
   const [showJourneyForm, setShowJourneyForm] = useState(false)
   const [editingJourneyId, setEditingJourneyId] = useState(null)
   const [journeyDraft, setJourneyDraft] = useState({
     year: '',
     title: '',
     description: '',
+    location: '',
+    detail: '',
+    image: '',
+    images: '',
+    links: '',
   })
+  const [aboutDraft, setAboutDraft] = useState(DEFAULT_ABOUT)
+  const [aboutSaveStatus, setAboutSaveStatus] = useState('')
+  const [showExperienceForm, setShowExperienceForm] = useState(false)
+  const [editingExperienceIndex, setEditingExperienceIndex] = useState(null)
+  const [experienceDraft, setExperienceDraft] = useState(createExperienceDraft)
+  const [experienceSaveStatus, setExperienceSaveStatus] = useState('')
+  const [showAchievementForm, setShowAchievementForm] = useState(false)
+  const [editingAchievementIndex, setEditingAchievementIndex] = useState(null)
+  const [achievementDraft, setAchievementDraft] = useState(createAchievementDraft)
+  const [achievementSaveStatus, setAchievementSaveStatus] = useState('')
+  const [showGalleryForm, setShowGalleryForm] = useState(false)
+  const [editingGalleryIndex, setEditingGalleryIndex] = useState(null)
+  const [galleryDraft, setGalleryDraft] = useState({ label: '', url: '', tone: 'normal' })
+  const [gallerySaveStatus, setGallerySaveStatus] = useState('')
+  const [contactLinksDraft, setContactLinksDraft] = useState(DEFAULT_CONTACT_LINKS)
+  const [contactSaveStatus, setContactSaveStatus] = useState('')
   const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
   const [messages, setMessages] = useState([
     {
@@ -215,14 +279,35 @@ function App() {
     }
   }, [isPlanetDetailOpen])
 
+  const savePortfolioToStorage = (nextPortfolio) => {
+    try {
+      localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(nextPortfolio))
+    } catch {
+      // noop
+    }
+  }
+
   useEffect(() => {
     const loadPortfolio = async () => {
       try {
         const response = await apiFetch('/api/portfolio')
         const data = await response.json()
-        setPortfolio(data)
-        if (data.projects?.length) {
-          setSelectedProjectId(data.projects[0].id)
+        const savedPortfolio = (() => {
+          try {
+            const raw = localStorage.getItem(PORTFOLIO_STORAGE_KEY)
+            return raw ? JSON.parse(raw) : null
+          } catch {
+            return null
+          }
+        })()
+
+        const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
+          ? { ...data, ...savedPortfolio, about: savedPortfolio.about || data.about || DEFAULT_ABOUT }
+          : data
+        setPortfolio(hydrated)
+        savePortfolioToStorage(hydrated)
+        if (hydrated.projects?.length) {
+          setSelectedProjectId(hydrated.projects[0].id)
         }
       } catch (error) {
         console.error('Failed to load portfolio data:', error)
@@ -539,14 +624,106 @@ function App() {
     setAdminSection('projects')
   }
 
+  const handleSkillDraftChange = (event) => {
+    const { name, value } = event.target
+    setSkillDraft((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetSkillDraft = () => {
+    setSkillDraft({ label: '', skills: '' })
+    setEditingSkillIndex(null)
+  }
+
+  const handleAddSkillGroup = (event) => {
+    event.preventDefault()
+
+    const label = skillDraft.label.trim()
+    const parsedSkills = skillDraft.skills
+      .split(/[,\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    if (!label || !parsedSkills.length) {
+      return
+    }
+
+    const skillGroup = { label, skills: parsedSkills }
+
+    setPortfolio((current) => {
+      const nextGroups = editingSkillIndex !== null
+        ? current.toolkitGroups.map((group, index) => (index === editingSkillIndex ? skillGroup : group))
+        : [skillGroup, ...current.toolkitGroups]
+
+      const nextPortfolio = { ...current, toolkitGroups: nextGroups }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+
+    resetSkillDraft()
+    setShowSkillForm(false)
+    setAdminSection('skills')
+  }
+
+  const handleDeleteSkillGroup = (index) => {
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        toolkitGroups: current.toolkitGroups.filter((_, itemIndex) => itemIndex !== index),
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+  }
+
+  const beginEditSkillGroup = (group, index) => {
+    setEditingSkillIndex(index)
+    setSkillDraft({ label: group.label, skills: group.skills.join(', ') })
+    setShowSkillForm(true)
+    setAdminSection('skills')
+  }
+
   const handleJourneyDraftChange = (event) => {
     const { name, value } = event.target
     setJourneyDraft((current) => ({ ...current, [name]: value }))
   }
 
   const resetJourneyDraft = () => {
-    setJourneyDraft({ year: '', title: '', description: '' })
+    setJourneyDraft({ year: '', title: '', description: '', location: '', detail: '', image: '', images: '', links: '' })
     setEditingJourneyId(null)
+  }
+
+  const parseJourneyLinks = (value) => {
+    if (!value) {
+      return []
+    }
+
+    return value
+      .split(/\n|,/)
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const [label, ...rest] = entry.split('|')
+        const result = rest.join('|').trim()
+        const url = result || entry
+
+        return {
+          label: label.trim() && label.trim() !== url ? label.trim() : 'Link',
+          url,
+        }
+      })
+      .filter((link) => /^https?:\/\//i.test(link.url))
+  }
+
+  const parseJourneyImages = (value) => {
+    if (!value) {
+      return []
+    }
+
+    return value
+      .split(/\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => /^https?:\/\//i.test(item) || item.startsWith('/'))
   }
 
   const handleAddJourney = (event) => {
@@ -560,14 +737,23 @@ function App() {
       year: journeyDraft.year,
       title: journeyDraft.title,
       description: journeyDraft.description,
+      location: journeyDraft.location.trim(),
+      detail: journeyDraft.detail.trim(),
+      image: journeyDraft.image.trim(),
+      images: parseJourneyImages(journeyDraft.images),
+      links: parseJourneyLinks(journeyDraft.links),
     }
 
-    setPortfolio((current) => ({
-      ...current,
-      journeyEvents: editingJourneyId
-        ? current.journeyEvents.map((entry, index) => (index === editingJourneyId ? journeyEntry : entry))
-        : [journeyEntry, ...current.journeyEvents],
-    }))
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        journeyEvents: editingJourneyId !== null
+          ? current.journeyEvents.map((entry, index) => (index === editingJourneyId ? journeyEntry : entry))
+          : [journeyEntry, ...current.journeyEvents],
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
 
     resetJourneyDraft()
     setShowJourneyForm(false)
@@ -575,21 +761,445 @@ function App() {
   }
 
   const handleDeleteJourney = (index) => {
-    setPortfolio((current) => ({
-      ...current,
-      journeyEvents: current.journeyEvents.filter((_, itemIndex) => itemIndex !== index),
-    }))
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        journeyEvents: current.journeyEvents.filter((_, itemIndex) => itemIndex !== index),
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
   }
 
   const beginEditJourney = (entry, index) => {
     setEditingJourneyId(index)
     setJourneyDraft({
-      year: entry.year,
-      title: entry.title,
-      description: entry.description,
+      year: entry.year || '',
+      title: entry.title || '',
+      description: entry.description || '',
+      location: entry.location || '',
+      detail: entry.detail || '',
+      image: entry.image || '',
+      images: Array.isArray(entry.images) ? entry.images.join(', ') : '',
+      links: Array.isArray(entry.links) ? entry.links.map((link) => `${link.label || 'Link'}|${link.url}`).join('\n') : '',
     })
     setShowJourneyForm(true)
     setAdminSection('journey')
+  }
+
+  const beginEditAbout = () => {
+    const about = portfolio.about || DEFAULT_ABOUT
+    setAboutDraft({
+      ...DEFAULT_ABOUT,
+      ...about,
+      facts: Array.isArray(about.facts) ? about.facts.map((record) => ({ ...record })) : [],
+      colleges: Array.isArray(about.colleges) ? about.colleges.map((record) => ({ ...record })) : [],
+      webinars: Array.isArray(about.webinars) ? about.webinars.map((record) => ({ ...record })) : [],
+      certificates: Array.isArray(about.certificates) ? about.certificates.map((record) => ({ ...record })) : [],
+      images: Array.isArray(about.images) ? about.images.map((record) => ({ ...record })) : [],
+      links: Array.isArray(about.links) ? about.links.map((record) => ({ ...record })) : [],
+    })
+    setAboutSaveStatus('')
+    setAdminSection('about')
+  }
+
+  const handleAboutDraftChange = (event) => {
+    const { name, value } = event.target
+    setAboutDraft((current) => ({ ...current, [name]: value }))
+  }
+
+  const updateAboutRecord = (collection, index, field, value) => {
+    setAboutDraft((current) => {
+      const records = [...current[collection]]
+      records[index] = { ...records[index], [field]: value }
+      return { ...current, [collection]: records }
+    })
+  }
+
+  const addAboutRecord = (collection) => {
+    const definition = ABOUT_COLLECTIONS.find((item) => item.key === collection)
+    if (!definition) return
+
+    const emptyRecord = Object.fromEntries(definition.fields.map((field) => [field.key, '']))
+    setAboutDraft((current) => ({ ...current, [collection]: [...current[collection], emptyRecord] }))
+  }
+
+  const removeAboutRecord = (collection, index) => {
+    setAboutDraft((current) => ({
+      ...current,
+      [collection]: current[collection].filter((_, recordIndex) => recordIndex !== index),
+    }))
+  }
+
+  const handleAboutImageUpload = async (event, collection, index) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setAboutSaveStatus('Please select a valid image file.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      setAboutSaveStatus('Images must be 20MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    setAboutSaveStatus('Uploading image...')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
+      const result = await response.json()
+
+      if (!response.ok) throw new Error(result.message || 'Image upload failed.')
+
+      if (collection === 'photo') {
+        setAboutDraft((current) => ({ ...current, photo: result.url }))
+      } else {
+        updateAboutRecord(collection, index, collection === 'images' ? 'url' : 'image', result.url)
+      }
+      setAboutSaveStatus('Image uploaded. Save the About section to publish it.')
+    } catch (error) {
+      setAboutSaveStatus(error.message || 'Image upload failed.')
+      event.target.value = ''
+    }
+  }
+
+  const handleSaveAbout = async (event) => {
+    event.preventDefault()
+    const trimRecords = (records) => records
+      .filter((record) => Object.values(record).some((value) => String(value || '').trim()))
+      .map((record) => Object.fromEntries(Object.entries(record).map(([key, value]) => [key, String(value || '').trim()])))
+    const about = {
+      heading: aboutDraft.heading.trim(),
+      biography: aboutDraft.biography.trim(),
+      photo: aboutDraft.photo.trim(),
+      facts: trimRecords(aboutDraft.facts),
+      colleges: trimRecords(aboutDraft.colleges),
+      webinars: trimRecords(aboutDraft.webinars),
+      certificates: trimRecords(aboutDraft.certificates),
+      images: trimRecords(aboutDraft.images),
+      links: trimRecords(aboutDraft.links),
+    }
+
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, about }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+    setAboutSaveStatus('Saving About content...')
+
+    try {
+      const response = await apiFetch('/api/portfolio/about', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(about),
+      })
+      const result = await response.json()
+
+      if (!response.ok) throw new Error(result.message || 'About content could not be saved.')
+
+      const savedAbout = result.about || about
+      setPortfolio((current) => {
+        const nextPortfolio = { ...current, about: savedAbout }
+        savePortfolioToStorage(nextPortfolio)
+        return nextPortfolio
+      })
+      setAboutDraft(savedAbout)
+      setAboutSaveStatus('About section saved.')
+    } catch (error) {
+      setAboutSaveStatus(`${error.message || 'About content could not be saved.'} Changes remain saved in this browser.`)
+    }
+  }
+
+  const savePortfolioCollection = async (key, entries, setStatus) => {
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, [key]: entries }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+    setStatus('Saving changes...')
+
+    try {
+      const response = await apiFetch(`/api/portfolio/content/${key}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries }),
+      })
+      const result = await response.json()
+
+      if (!response.ok) throw new Error(result.message || 'Changes could not be saved.')
+
+      const savedEntries = result.entries || entries
+      setPortfolio((current) => {
+        const nextPortfolio = { ...current, [key]: savedEntries }
+        savePortfolioToStorage(nextPortfolio)
+        return nextPortfolio
+      })
+      setStatus('Changes saved.')
+    } catch (error) {
+      setStatus(`${error.message || 'Changes could not be saved.'} Changes remain saved in this browser.`)
+    }
+  }
+
+  const handleEntryImageUpload = async (event, editor) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setExperienceSaveStatus(editor === 'experience' ? 'Please select an image file.' : experienceSaveStatus)
+      setAchievementSaveStatus(editor === 'achievement' ? 'Please select an image file.' : achievementSaveStatus)
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      const message = 'Images must be 20MB or smaller.'
+      if (editor === 'experience') setExperienceSaveStatus(message)
+      else setAchievementSaveStatus(message)
+      event.target.value = ''
+      return
+    }
+
+    const setStatus = editor === 'experience' ? setExperienceSaveStatus : setAchievementSaveStatus
+    setStatus('Uploading image...')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Image upload failed.')
+
+      if (editor === 'experience') setExperienceDraft((current) => ({ ...current, image: result.url }))
+      else setAchievementDraft((current) => ({ ...current, image: result.url }))
+      setStatus('Image uploaded. Save this entry to publish it.')
+    } catch (error) {
+      setStatus(error.message || 'Image upload failed.')
+      event.target.value = ''
+    }
+  }
+
+  const handleExperienceDraftChange = (event) => {
+    const { name, value } = event.target
+    setExperienceDraft((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetExperienceDraft = () => {
+    setExperienceDraft(createExperienceDraft())
+    setEditingExperienceIndex(null)
+  }
+
+  const handleSaveExperience = async (event) => {
+    event.preventDefault()
+    const { company, role, description } = experienceDraft
+    if (!company.trim() || !role.trim() || !description.trim()) return
+
+    const experience = {
+      company: company.trim(),
+      role: role.trim(),
+      type: experienceDraft.type.trim(),
+      dates: experienceDraft.dates.trim(),
+      location: experienceDraft.location.trim(),
+      description: description.trim(),
+      achievements: experienceDraft.achievements.split(/[\n,]/).map((item) => item.trim()).filter(Boolean),
+      image: experienceDraft.image.trim(),
+      images: parseJourneyImages(experienceDraft.images),
+      links: parseJourneyLinks(experienceDraft.links),
+    }
+    const entries = editingExperienceIndex === null
+      ? [experience, ...portfolio.experienceEntries]
+      : portfolio.experienceEntries.map((item, index) => index === editingExperienceIndex ? experience : item)
+
+    await savePortfolioCollection('experienceEntries', entries, setExperienceSaveStatus)
+    setShowExperienceForm(false)
+    resetExperienceDraft()
+  }
+
+  const beginEditExperience = (entry, index) => {
+    setEditingExperienceIndex(index)
+    setExperienceDraft({
+      company: entry.company || '',
+      role: entry.role || '',
+      type: entry.type || '',
+      dates: entry.dates || '',
+      location: entry.location || '',
+      description: entry.description || '',
+      achievements: Array.isArray(entry.achievements) ? entry.achievements.join('\n') : '',
+      image: entry.image || '',
+      images: Array.isArray(entry.images) ? entry.images.join('\n') : '',
+      links: Array.isArray(entry.links) ? entry.links.map((link) => `${link.label || 'Link'}|${link.url}`).join('\n') : '',
+    })
+    setExperienceSaveStatus('')
+    setShowExperienceForm(true)
+    setAdminSection('experience')
+  }
+
+  const handleDeleteExperience = async (index) => {
+    const entries = portfolio.experienceEntries.filter((_, itemIndex) => itemIndex !== index)
+    await savePortfolioCollection('experienceEntries', entries, setExperienceSaveStatus)
+  }
+
+  const handleAchievementDraftChange = (event) => {
+    const { name, value } = event.target
+    setAchievementDraft((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetAchievementDraft = () => {
+    setAchievementDraft(createAchievementDraft())
+    setEditingAchievementIndex(null)
+  }
+
+  const handleSaveAchievement = async (event) => {
+    event.preventDefault()
+    const { title, description } = achievementDraft
+    if (!title.trim() || !description.trim()) return
+
+    const achievement = {
+      title: title.trim(),
+      organization: achievementDraft.organization.trim(),
+      date: achievementDraft.date.trim(),
+      description: description.trim(),
+      image: achievementDraft.image.trim(),
+      images: parseJourneyImages(achievementDraft.images),
+      links: parseJourneyLinks(achievementDraft.links),
+    }
+    const entries = editingAchievementIndex === null
+      ? [achievement, ...portfolio.achievements]
+      : portfolio.achievements.map((item, index) => index === editingAchievementIndex ? achievement : item)
+
+    await savePortfolioCollection('achievements', entries, setAchievementSaveStatus)
+    setShowAchievementForm(false)
+    resetAchievementDraft()
+  }
+
+  const beginEditAchievement = (entry, index) => {
+    setEditingAchievementIndex(index)
+    setAchievementDraft({
+      title: entry.title || '',
+      organization: entry.organization || '',
+      date: entry.date || '',
+      description: entry.description || '',
+      image: entry.image || '',
+      images: Array.isArray(entry.images) ? entry.images.join('\n') : '',
+      links: Array.isArray(entry.links) ? entry.links.map((link) => `${link.label || 'Link'}|${link.url}`).join('\n') : '',
+    })
+    setAchievementSaveStatus('')
+    setShowAchievementForm(true)
+    setAdminSection('achievements')
+  }
+
+  const handleDeleteAchievement = async (index) => {
+    const entries = portfolio.achievements.filter((_, itemIndex) => itemIndex !== index)
+    await savePortfolioCollection('achievements', entries, setAchievementSaveStatus)
+  }
+
+  const handleGalleryDraftChange = (event) => {
+    const { name, value } = event.target
+    setGalleryDraft((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetGalleryDraft = () => {
+    setGalleryDraft({ label: '', url: '', tone: 'normal' })
+    setEditingGalleryIndex(null)
+  }
+
+  const handleGalleryImageUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setGallerySaveStatus('Please select an image file.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      setGallerySaveStatus('Images must be 20MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    setGallerySaveStatus('Uploading image...')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Image upload failed.')
+
+      setGalleryDraft((current) => ({ ...current, url: result.url }))
+      setGallerySaveStatus('Image uploaded. Save this gallery item to publish it.')
+    } catch (error) {
+      setGallerySaveStatus(error.message || 'Image upload failed.')
+      event.target.value = ''
+    }
+  }
+
+  const handleSaveGalleryItem = async (event) => {
+    event.preventDefault()
+    const url = galleryDraft.url.trim()
+    if (!url) {
+      setGallerySaveStatus('Upload an image or enter an image URL.')
+      return
+    }
+
+    const galleryItem = {
+      label: galleryDraft.label.trim() || 'GALLERY IMAGE',
+      url,
+      tone: galleryDraft.tone,
+    }
+    const entries = editingGalleryIndex === null
+      ? [galleryItem, ...portfolio.galleryItems]
+      : portfolio.galleryItems.map((item, index) => index === editingGalleryIndex ? galleryItem : item)
+
+    await savePortfolioCollection('galleryItems', entries, setGallerySaveStatus)
+    setShowGalleryForm(false)
+    resetGalleryDraft()
+  }
+
+  const beginEditGalleryItem = (item, index) => {
+    setEditingGalleryIndex(index)
+    setGalleryDraft({ label: item.label || '', url: item.url || item.image || '', tone: item.tone || 'normal' })
+    setGallerySaveStatus('')
+    setShowGalleryForm(true)
+    setAdminSection('gallery')
+  }
+
+  const handleDeleteGalleryItem = async (index) => {
+    const entries = portfolio.galleryItems.filter((_, itemIndex) => itemIndex !== index)
+    await savePortfolioCollection('galleryItems', entries, setGallerySaveStatus)
+  }
+
+  const beginEditContactLinks = () => {
+    setContactLinksDraft((portfolio.contactLinks || DEFAULT_CONTACT_LINKS).map((item) => ({ ...item })))
+    setContactSaveStatus('')
+    setAdminSection('contact')
+  }
+
+  const updateContactLink = (index, field, value) => {
+    setContactLinksDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item))
+  }
+
+  const addContactLink = () => {
+    setContactLinksDraft((current) => [...current, { label: '', type: 'website', value: '' }])
+  }
+
+  const removeContactLink = (index) => {
+    setContactLinksDraft((current) => current.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  const handleSaveContactLinks = async () => {
+    const entries = contactLinksDraft
+      .filter((item) => item.label.trim() && item.value.trim())
+      .map((item) => ({ label: item.label.trim(), type: item.type, value: item.value.trim() }))
+
+    await savePortfolioCollection('contactLinks', entries, setContactSaveStatus)
   }
 
   const visibleProjects = useMemo(() => {
@@ -603,7 +1213,7 @@ function App() {
 
   const renderHome = () => (
     <>
-      <header className="topbar">
+      <header id="top" className="topbar">
         <button type="button" className="brand-mark" aria-label="Abhinav Yadav logo" onClick={() => setView('home')}>
           AY
         </button>
@@ -651,9 +1261,17 @@ function App() {
                 <span>YADAV</span>
               </h1>
               <p className="lede">
-                I build digital products, web experiences, and learning-driven experiments
-                for the browser.
+                I design and build responsive web products, from polished React interfaces to Node.js APIs and data-backed workflows.
               </p>
+
+              <div className="hero-stackline" aria-label="Core technology stack">
+                <span className="hero-stackline-label">CORE STACK</span>
+                <div>
+                  {portfolio.toolkitGroups.flatMap((group) => group.skills).slice(0, 5).map((skill, index) => (
+                    <span key={`${skill}-${index}`}>{skill}</span>
+                  ))}
+                </div>
+              </div>
 
               <div className="info-strip" aria-label="Profile summary">
                 <span>BASED IN INDIA</span>
@@ -796,23 +1414,51 @@ function App() {
 
           <motion.div className="project-stack" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
             {visibleProjects.length ? visibleProjects.map((project, index) => (
-              <motion.article key={project.title} className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`} variants={fadeInUp}>
+              <motion.article
+                key={project.title}
+                className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`}
+                variants={fadeInUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.12 }}
+              >
                 <div className={`project-media media-${project.accent}`}>
                   {project.video ? (
                     <video
                       className="project-video"
                       src={project.video}
                       poster={project.image || undefined}
-                      autoPlay
                       muted
-                      loop
                       playsInline
-                      preload="metadata"
+                      preload="none"
                     />
                   ) : project.image ? (
-                    <img className="project-image" src={project.image} alt={project.title} />
+                    <img
+                      className="project-image"
+                      src={project.image}
+                      alt={project.title}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
-                    <div className="media-surface" />
+                    <div className={`project-preview project-preview-${project.accent || 'neutral'}`}>
+                      <div className="preview-toolbar">
+                        <div className="preview-dots" aria-hidden="true"><i /><i /><i /></div>
+                        <span>ABHINAV / SELECTED WORK</span>
+                        <small>{project.category}</small>
+                      </div>
+                      <div className="project-preview-main">
+                        <span className="preview-window-label">BUILD / {project.number}</span>
+                        <h4>{project.title}</h4>
+                        <p>{project.description}</p>
+                        <ul className="preview-tech-list">
+                          {(project.tech || []).slice(0, 4).map((technology, technologyIndex) => (
+                            <li key={`${technology}-${technologyIndex}`}><span>0{technologyIndex + 1}</span>{technology}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="preview-foot"><span>DESIGN / DEVELOP / SHIP</span><span>{project.date || 'WEB'}</span></div>
+                    </div>
                   )}
                 </div>
 
@@ -850,39 +1496,84 @@ function App() {
         <motion.section id="about" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header narrow-header">
             <span className="section-tag">02 — ABOUT</span>
-            <h2>Still learning. Already building.</h2>
+            <h2>{portfolio.about?.heading || DEFAULT_ABOUT.heading}</h2>
           </div>
 
-          <div className="about-layout">
+            <div className={`about-layout ${portfolio.about?.photo ? 'about-layout-with-photo' : ''}`}>
             <div className="about-index">02</div>
 
-            <div className="about-copy">
-              <p>
-                I am a diploma student in Computer Science & Engineering exploring the web
-                as a creative and technical medium. My focus is learning by building—turning
-                ideas into interfaces, prototypes, and product thinking that feels useful.
-              </p>
+              <div className={`about-copy ${portfolio.about?.photo ? 'about-copy-with-photo' : ''}`}>
+                {portfolio.about?.photo ? <img className="about-photo" src={portfolio.about.photo} alt={`${portfolio.profile.name} portrait`} loading="lazy" decoding="async" /> : null}
+                <p>{portfolio.about?.biography || DEFAULT_ABOUT.biography}</p>
             </div>
 
             <div className="about-meta">
-              <div>
-                <span>CURRENTLY STUDYING</span>
-                <strong>Diploma in Computer Science & Engineering</strong>
-              </div>
-              <div>
-                <span>YEAR</span>
-                <strong>2nd Year</strong>
-              </div>
-              <div>
-                <span>FOCUS</span>
-                <strong>Web Development</strong>
-              </div>
-              <div>
-                <span>LOCATION</span>
-                <strong>India</strong>
-              </div>
+                {(portfolio.about?.facts || DEFAULT_ABOUT.facts).map((fact, index) => (
+                  <div key={`${fact.label}-${index}`}>
+                    <span>{fact.label}</span>
+                    <strong>{fact.value}</strong>
+                  </div>
+                ))}
             </div>
           </div>
+
+            {portfolio.about?.colleges?.length ? (
+              <div className="about-collection">
+                <h3 className="section-tag">EDUCATION & COLLEGES</h3>
+                <div className="about-record-grid">
+                  {portfolio.about.colleges.map((item, index) => (
+                    <article className="about-record-card" key={`${item.title}-${index}`}>
+                      {item.image ? <img className="about-record-image" src={item.image} alt={item.title || 'College'} loading="lazy" decoding="async" /> : null}
+                      <h4>{item.title}</h4>
+                      {item.program ? <strong>{item.program}</strong> : null}
+                      {(item.dates || item.location) ? <span className="about-record-meta">{[item.dates, item.location].filter(Boolean).join(' / ')}</span> : null}
+                      {item.description ? <p>{item.description}</p> : null}
+                      {item.url ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">COLLEGE DETAILS <ArrowUpRight size={14} /></a> : null}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {portfolio.about?.webinars?.length ? (
+              <div className="about-collection">
+                <h3 className="section-tag">WEBINARS & EVENTS</h3>
+                <div className="about-record-grid">
+                  {portfolio.about.webinars.map((item, index) => (
+                    <article className="about-record-card" key={`${item.title}-${index}`}>
+                      {item.image ? <img className="about-record-image" src={item.image} alt={item.title || 'Webinar'} loading="lazy" decoding="async" /> : null}
+                      <h4>{item.title}</h4>
+                      {item.organizer ? <strong>{item.organizer}</strong> : null}
+                      {item.date ? <span className="about-record-meta">{item.date}</span> : null}
+                      {item.description ? <p>{item.description}</p> : null}
+                      {item.url ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">OPEN EVENT <ArrowUpRight size={14} /></a> : null}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {portfolio.about?.images?.length ? (
+              <div className="about-collection">
+                <h3 className="section-tag">ABOUT GALLERY</h3>
+                <div className="about-image-grid">
+                  {portfolio.about.images.map((image, index) => (
+                    <figure className="about-gallery-item" key={`${image.url}-${index}`}>
+                      <img src={image.url} alt={image.label || 'About gallery'} loading="lazy" decoding="async" />
+                      {image.label ? <figcaption>{image.label}</figcaption> : null}
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {portfolio.about?.links?.length ? (
+              <div className="about-links">
+                {portfolio.about.links.filter((link) => /^https?:\/\//i.test(link.url || '')).map((link, index) => (
+                  <a key={`${link.url}-${index}`} href={link.url} target="_blank" rel="noreferrer">{link.label || link.url}<ArrowUpRight size={14} /></a>
+                ))}
+              </div>
+            ) : null}
         </motion.section>
 
         <motion.section id="toolkit" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -912,13 +1603,34 @@ function App() {
           </div>
 
           <div className="timeline">
-            {portfolio.journeyEvents.map((event) => (
-              <div key={event.year} className="timeline-item">
+            {portfolio.journeyEvents.map((event, index) => (
+              <div key={`${event.year}-${event.title}-${index}`} className="timeline-item">
                 <div className="timeline-year">{event.year}</div>
                 <div className="timeline-line" aria-hidden="true" />
                 <div className="timeline-copy">
                   <h3>{event.title}</h3>
+                  {event.location ? <span className="journey-location">{event.location}</span> : null}
                   <p>{event.description}</p>
+                  {event.detail ? <p className="journey-detail">{event.detail}</p> : null}
+                  {event.image ? (
+                    <img className="journey-image" src={event.image} alt={event.title} loading="lazy" decoding="async" />
+                  ) : null}
+                  {event.images?.length ? (
+                    <div className="journey-gallery">
+                      {event.images.map((image, imageIndex) => (
+                        <img key={`${image}-${imageIndex}`} src={image} alt={`${event.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />
+                      ))}
+                    </div>
+                  ) : null}
+                  {event.links?.length ? (
+                    <div className="journey-links">
+                      {event.links.map((link, linkIndex) => (
+                        <a key={`${link.url}-${linkIndex}`} href={link.url} target="_blank" rel="noreferrer">
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -932,16 +1644,29 @@ function App() {
           </div>
 
           <div className="list-archive">
-            {portfolio.educationEntries.map((item) => (
-              <article key={item.title} className="archive-row">
+            {[
+              ...portfolio.educationEntries,
+              ...(portfolio.about?.colleges || []).map((item) => ({
+                title: item.program || item.title,
+                institution: item.title,
+                dates: item.dates || '',
+                location: item.location || '',
+                description: item.description || '',
+                image: item.image || '',
+                url: item.url || '',
+              })),
+            ].map((item, index) => (
+              <article key={`${item.title}-${item.institution}-${index}`} className="archive-row">
                 <div className="archive-meta">
                   <span>{item.dates}</span>
                   <span>{item.location}</span>
                 </div>
                 <div className="archive-content">
+                  {item.image ? <img className="education-image" src={item.image} alt={item.institution || item.title} loading="lazy" decoding="async" /> : null}
                   <h3>{item.title}</h3>
                   <p className="archive-institution">{item.institution}</p>
                   <p>{item.description}</p>
+                  {item.url ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">COLLEGE DETAILS <ArrowUpRight size={14} /></a> : null}
                 </div>
               </article>
             ))}
@@ -955,8 +1680,9 @@ function App() {
           </div>
 
           <div className="experience-grid">
-            {portfolio.experienceEntries.map((item) => (
-              <article key={`${item.company}-${item.role}`} className="experience-card">
+            {portfolio.experienceEntries.map((item, index) => (
+              <article key={`${item.company}-${item.role}-${index}`} className="experience-card">
+                {item.image ? <img className="experience-image" src={item.image} alt={`${item.company} experience`} loading="lazy" decoding="async" /> : null}
                 <div className="experience-header">
                   <span>{item.company}</span>
                   <strong>{item.role}</strong>
@@ -966,12 +1692,18 @@ function App() {
                   <span>{item.location}</span>
                   <span>{item.dates}</span>
                 </div>
-                <p>{item.description}</p>
-                <ul>
-                  {item.achievements.map((achievement) => (
-                    <li key={achievement}>{achievement}</li>
+                {item.description ? <p>{item.description}</p> : null}
+                {item.achievements?.length ? <ul>
+                  {item.achievements.map((achievement, achievementIndex) => (
+                    <li key={`${achievement}-${achievementIndex}`}>{achievement}</li>
                   ))}
-                </ul>
+                </ul> : null}
+                {item.images?.length ? <div className="entry-image-gallery">
+                  {item.images.map((image, imageIndex) => <img key={`${image}-${imageIndex}`} src={image} alt={`${item.company} ${imageIndex + 1}`} loading="lazy" decoding="async" />)}
+                </div> : null}
+                {item.links?.length ? <div className="entry-links">
+                  {item.links.map((link, linkIndex) => <a key={`${link.url}-${linkIndex}`} href={link.url} target="_blank" rel="noreferrer">{link.label || 'View details'} <ArrowUpRight size={14} /></a>)}
+                </div> : null}
               </article>
             ))}
           </div>
@@ -984,11 +1716,15 @@ function App() {
           </div>
 
           <div className="certificate-list">
-            {portfolio.certificateEntries.map((item) => (
-              <article key={item.title} className="certificate-row">
+            {[
+              ...portfolio.certificateEntries,
+              ...(portfolio.about?.certificates || []),
+            ].map((item, index) => (
+              <article key={`${item.title}-${item.issuer}-${index}`} className="certificate-row">
                 <div>
                   <span className="certificate-label">Certificate</span>
                   <h3>{item.title}</h3>
+                  {item.image ? <img className="certificate-image" src={item.image} alt={item.title || 'Certificate'} loading="lazy" decoding="async" /> : null}
                 </div>
                 <div>
                   <span className="certificate-label">Issuer</span>
@@ -1002,10 +1738,9 @@ function App() {
                   <span className="certificate-label">Credential</span>
                   <p>{item.credential}</p>
                 </div>
-                <a href="#" className="inline-link">
-                  VIEW
-                  <ArrowUpRight size={14} />
-                </a>
+                {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-link">
+                  VIEW <ArrowUpRight size={14} />
+                </a> : null}
               </article>
             ))}
           </div>
@@ -1019,7 +1754,7 @@ function App() {
 
           <div className="achievement-list">
             {portfolio.achievements.map((item, index) => (
-              <article key={item.title} className="achievement-row">
+              <article key={`${item.title}-${index}`} className="achievement-row">
                 <div className="achievement-index">{String(index + 1).padStart(2, '0')}</div>
                 <div className="achievement-copy">
                   <h3>{item.title}</h3>
@@ -1028,6 +1763,13 @@ function App() {
                     <span>{item.date}</span>
                   </div>
                   <p>{item.description}</p>
+                  {item.image ? <img className="achievement-image" src={item.image} alt={item.title} loading="lazy" decoding="async" /> : null}
+                  {item.images?.length ? <div className="entry-image-gallery">
+                    {item.images.map((image, imageIndex) => <img key={`${image}-${imageIndex}`} src={image} alt={`${item.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />)}
+                  </div> : null}
+                  {item.links?.length ? <div className="entry-links">
+                    {item.links.map((link, linkIndex) => <a key={`${link.url}-${linkIndex}`} href={link.url} target="_blank" rel="noreferrer">{link.label || 'View details'} <ArrowUpRight size={14} /></a>)}
+                  </div> : null}
                 </div>
               </article>
             ))}
@@ -1041,8 +1783,9 @@ function App() {
           </div>
 
           <div className="gallery-grid">
-            {portfolio.galleryItems.map((item) => (
-              <div key={item.label} className={`gallery-item ${item.tone}`}>
+            {portfolio.galleryItems.map((item, index) => (
+              <div key={`${item.label}-${index}`} className={`gallery-item ${item.tone || 'normal'}`}>
+                {(item.url || item.image) ? <img src={item.url || item.image} alt={item.label || 'Portfolio gallery image'} loading="lazy" decoding="async" /> : null}
                 <span>{item.label}</span>
               </div>
             ))}
@@ -1073,10 +1816,15 @@ function App() {
         </motion.section>
 
         <motion.section id="contact" className="content-section contact-panel" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
-          <div className="contact-graphic" aria-hidden="true">
-            <span>LET&apos;S MAKE</span>
-            <span>SOMETHING</span>
-            <span>USEFUL.</span>
+          <div className="contact-graphic">
+            <div className="contact-art-overline"><span>CONTACT / 11</span><span>BUILT WITH INTENTION</span></div>
+            <h2 className="contact-graphic-title">
+              <span>LET&apos;S MAKE</span>
+              <span>SOMETHING</span>
+              <span>USEFUL.</span>
+            </h2>
+            <img className="contact-visual" src={heroGraphic} alt="" aria-hidden="true" />
+            <div className="contact-art-footer"><span>IDEA</span><i aria-hidden="true" /> <span>INTERFACE</span><i aria-hidden="true" /> <span>IMPACT</span></div>
           </div>
 
           <div className="contact-details">
@@ -1087,18 +1835,17 @@ function App() {
             </p>
 
             <div className="contact-meta">
-              <a href={`mailto:${portfolio.profile.email}`}>
-                <Mail size={16} />
-                {portfolio.profile.email}
-              </a>
-              <a href={portfolio.profile.github} target="_blank" rel="noreferrer">
-                <GitBranch size={16} />
-                GitHub
-              </a>
-              <a href={portfolio.profile.linkedin} target="_blank" rel="noreferrer">
-                <Globe size={16} />
-                LinkedIn
-              </a>
+              {(portfolio.contactLinks || DEFAULT_CONTACT_LINKS).filter((item) => item.value).map((item, index) => (
+                <a
+                  key={`${item.type}-${item.value}-${index}`}
+                  href={item.type === 'email' ? `mailto:${item.value}` : item.value}
+                  target={item.type === 'email' ? undefined : '_blank'}
+                  rel={item.type === 'email' ? undefined : 'noreferrer'}
+                >
+                  {item.type === 'email' ? <Mail size={16} /> : item.type === 'github' ? <GitBranch size={16} /> : <Globe size={16} />}
+                  {item.type === 'email' ? item.value : item.label}
+                </a>
+              ))}
             </div>
 
             <form className="contact-form" onSubmit={handleSubmit}>
@@ -1152,6 +1899,12 @@ function App() {
           <a href="mailto:abhinavyadav.contact@gmail.com">Email</a>
           <span>© 2026</span>
         </div>
+
+        <div className="footer-live">
+          <span className="footer-live-status"><i aria-hidden="true" /> BUILDING FOR THE WEB</span>
+          <span className="footer-live-detail">DESIGN / CODE / SHIP</span>
+          <a href="#page-top">BACK TO TOP <ArrowUpRight size={14} /></a>
+        </div>
       </footer>
     </>
   )
@@ -1183,7 +1936,6 @@ function App() {
             className="project-hero-video"
             src={selectedProject.video}
             poster={selectedProject.image || undefined}
-            autoPlay
             muted
             loop
             controls
@@ -1191,7 +1943,15 @@ function App() {
             preload="metadata"
           />
         ) : null}
-        {selectedProject.image ? <img className="project-hero-image" src={selectedProject.image} alt={`${selectedProject.title} cover`} /> : null}
+        {selectedProject.image ? (
+          <img
+            className="project-hero-image"
+            src={selectedProject.image}
+            alt={`${selectedProject.title} cover`}
+            loading="eager"
+            decoding="async"
+          />
+        ) : null}
         {!selectedProject.video && !selectedProject.image ? (
           <div className="project-hero-visual media-lime">
             <div className="media-surface" />
@@ -1343,6 +2103,11 @@ function App() {
           <span className="nav-group-label">Dashboard</span>
           <button type="button" className={`nav-button ${adminSection === 'overview' ? 'active' : ''}`} onClick={() => handleAdminAction('overview')}>Overview</button>
           <button type="button" className={`nav-button ${adminSection === 'projects' ? 'active' : ''}`} onClick={() => handleAdminAction('projects')}>Projects</button>
+          <button type="button" className={`nav-button ${adminSection === 'about' ? 'active' : ''}`} onClick={beginEditAbout}>About</button>
+          <button type="button" className={`nav-button ${adminSection === 'experience' ? 'active' : ''}`} onClick={() => handleAdminAction('experience')}>Experience</button>
+          <button type="button" className={`nav-button ${adminSection === 'achievements' ? 'active' : ''}`} onClick={() => handleAdminAction('achievements')}>Achievements</button>
+          <button type="button" className={`nav-button ${adminSection === 'gallery' ? 'active' : ''}`} onClick={() => handleAdminAction('gallery')}>Gallery Images</button>
+          <button type="button" className={`nav-button ${adminSection === 'contact' ? 'active' : ''}`} onClick={beginEditContactLinks}>Contact</button>
           <button type="button" className={`nav-button ${adminSection === 'skills' ? 'active' : ''}`} onClick={() => handleAdminAction('skills')}>Skills</button>
           <button type="button" className={`nav-button ${adminSection === 'journey' ? 'active' : ''}`} onClick={() => handleAdminAction('journey')}>Journey</button>
           <button type="button" className={`nav-button ${adminSection === 'messages' ? 'active' : ''}`} onClick={() => handleAdminAction('messages')}>Messages</button>
@@ -1372,6 +2137,294 @@ function App() {
             </div>
           ))}
         </section>
+
+        {adminSection === 'about' ? (
+          <form className="panel-card admin-form about-admin-form" onSubmit={handleSaveAbout}>
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">PUBLIC PROFILE</span>
+                <h2>Edit About section</h2>
+              </div>
+              <button type="button" className="text-link" onClick={() => handleAdminAction('overview')}>Close</button>
+            </div>
+
+            <div className="field-grid admin-field-grid">
+              <label>
+                <span>Section heading</span>
+                <input type="text" name="heading" value={aboutDraft.heading} onChange={handleAboutDraftChange} placeholder="About heading" />
+              </label>
+              <label>
+                <span>Professional photo URL</span>
+                <input type="url" name="photo" value={aboutDraft.photo} onChange={handleAboutDraftChange} placeholder="https://..." />
+              </label>
+            </div>
+            <label>
+              <span>Upload professional photo</span>
+              <input type="file" accept="image/*" onChange={(event) => handleAboutImageUpload(event, 'photo', 0)} />
+              {aboutDraft.photo ? <img className="about-upload-preview" src={aboutDraft.photo} alt="Professional photo preview" /> : <span className="upload-hint">Choose a portrait image</span>}
+            </label>
+            <label>
+              <span>About biography</span>
+              <textarea name="biography" value={aboutDraft.biography} onChange={handleAboutDraftChange} rows="5" placeholder="Write your professional introduction..." />
+            </label>
+
+            {ABOUT_COLLECTIONS.map((collection) => (
+              <section className="about-editor-collection" key={collection.key}>
+                <div className="panel-header">
+                  <h3>{collection.title}</h3>
+                  <button type="button" className="secondary-btn small-btn" onClick={() => addAboutRecord(collection.key)}>Add item</button>
+                </div>
+                {(aboutDraft[collection.key] || []).map((record, index) => (
+                  <div className="about-editor-record" key={`${collection.key}-${index}`}>
+                    <div className="panel-header">
+                      <strong>Item {String(index + 1).padStart(2, '0')}</strong>
+                      <button type="button" className="danger-btn" onClick={() => removeAboutRecord(collection.key, index)}>Remove</button>
+                    </div>
+                    <div className="field-grid admin-field-grid">
+                      {collection.fields.map((field) => (
+                        <label key={field.key}>
+                          <span>{field.label}</span>
+                          {field.multiline ? (
+                            <textarea rows="3" value={record[field.key] || ''} onChange={(event) => updateAboutRecord(collection.key, index, field.key, event.target.value)} />
+                          ) : (
+                            <input type={field.type || 'text'} value={record[field.key] || ''} onChange={(event) => updateAboutRecord(collection.key, index, field.key, event.target.value)} />
+                          )}
+                          {field.upload ? <input type="file" accept="image/*" onChange={(event) => handleAboutImageUpload(event, collection.key, index)} /> : null}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            ))}
+
+            {aboutSaveStatus ? <p className="form-status" role="status">{aboutSaveStatus}</p> : null}
+            <div className="form-actions">
+              <button type="submit" className="primary-btn">Save About section</button>
+              <button type="button" className="secondary-btn" onClick={() => handleAdminAction('overview')}>Cancel</button>
+            </div>
+          </form>
+        ) : null}
+
+        {showExperienceForm ? (
+          <form className="panel-card admin-form" onSubmit={handleSaveExperience}>
+            <div className="panel-header">
+              <h2>{editingExperienceIndex === null ? 'Add experience' : 'Edit experience'}</h2>
+              <button type="button" className="text-link" onClick={() => { setShowExperienceForm(false); resetExperienceDraft() }}>Close</button>
+            </div>
+            <div className="field-grid admin-field-grid">
+              <label><span>Company / organization</span><input name="company" value={experienceDraft.company} onChange={handleExperienceDraftChange} required /></label>
+              <label><span>Role / position</span><input name="role" value={experienceDraft.role} onChange={handleExperienceDraftChange} required /></label>
+              <label><span>Employment type</span><input name="type" value={experienceDraft.type} onChange={handleExperienceDraftChange} placeholder="Internship, freelance, volunteer..." /></label>
+              <label><span>Dates</span><input name="dates" value={experienceDraft.dates} onChange={handleExperienceDraftChange} placeholder="Jan 2025 - Present" /></label>
+              <label><span>Location</span><input name="location" value={experienceDraft.location} onChange={handleExperienceDraftChange} placeholder="City / Remote" /></label>
+              <label><span>Featured image URL</span><input type="url" name="image" value={experienceDraft.image} onChange={handleExperienceDraftChange} placeholder="https://..." /></label>
+            </div>
+            <label>
+              <span>Upload featured image</span>
+              <input type="file" accept="image/*" onChange={(event) => handleEntryImageUpload(event, 'experience')} />
+              {experienceDraft.image ? <img className="entry-upload-preview" src={experienceDraft.image} alt="Experience preview" /> : null}
+            </label>
+            <label><span>Role and experience details</span><textarea name="description" value={experienceDraft.description} onChange={handleExperienceDraftChange} rows="4" required /></label>
+            <label><span>Key work / highlights (one per line)</span><textarea name="achievements" value={experienceDraft.achievements} onChange={handleExperienceDraftChange} rows="4" placeholder="Project or responsibility one&#10;Project or responsibility two" /></label>
+            <label><span>Additional image URLs (one per line)</span><textarea name="images" value={experienceDraft.images} onChange={handleExperienceDraftChange} rows="3" placeholder="https://..." /></label>
+            <label><span>Links (Label|https://... one per line)</span><textarea name="links" value={experienceDraft.links} onChange={handleExperienceDraftChange} rows="3" placeholder="Company|https://example.com" /></label>
+            {experienceSaveStatus ? <p className="form-status" role="status">{experienceSaveStatus}</p> : null}
+            <div className="form-actions">
+              <button type="submit" className="primary-btn">{editingExperienceIndex === null ? 'Save experience' : 'Update experience'}</button>
+              <button type="button" className="secondary-btn" onClick={() => { setShowExperienceForm(false); resetExperienceDraft() }}>Cancel</button>
+            </div>
+          </form>
+        ) : null}
+
+        {adminSection === 'experience' ? (
+          <section className="panel-card admin-list-panel">
+            <div className="panel-header">
+              <h2>Experience</h2>
+              <button type="button" className="primary-btn small-btn" onClick={() => { resetExperienceDraft(); setExperienceSaveStatus(''); setShowExperienceForm(true) }}>Add experience</button>
+            </div>
+            {!showExperienceForm && experienceSaveStatus ? <p className="form-status" role="status">{experienceSaveStatus}</p> : null}
+            <div className="list-stack">
+              {portfolio.experienceEntries.length ? portfolio.experienceEntries.map((item, index) => (
+                <div className="mini-list-row" key={`${item.company}-${item.role}-${index}`}>
+                  <div className="timeline-copy">
+                    <strong>{item.role}</strong>
+                    <span className="journey-location">{[item.company, item.type, item.dates].filter(Boolean).join(' / ')}</span>
+                    <p>{item.description}</p>
+                  </div>
+                  <div className="mini-list-actions compact-actions">
+                    <button type="button" className="ghost-btn" onClick={() => beginEditExperience(item, index)}>Edit</button>
+                    <button type="button" className="danger-btn" onClick={() => handleDeleteExperience(index)}>Delete</button>
+                  </div>
+                </div>
+              )) : <p className="empty-state">No experience entries yet.</p>}
+            </div>
+          </section>
+        ) : null}
+
+        {adminSection === 'achievements' ? (
+          <>
+            {showAchievementForm ? (
+              <form className="panel-card admin-form" onSubmit={handleSaveAchievement}>
+                <div className="panel-header">
+                  <h2>{editingAchievementIndex === null ? 'Add achievement' : 'Edit achievement'}</h2>
+                  <button type="button" className="text-link" onClick={() => { setShowAchievementForm(false); resetAchievementDraft() }}>Close</button>
+                </div>
+                <div className="field-grid admin-field-grid">
+                  <label><span>Achievement title</span><input name="title" value={achievementDraft.title} onChange={handleAchievementDraftChange} required /></label>
+                  <label><span>Organization</span><input name="organization" value={achievementDraft.organization} onChange={handleAchievementDraftChange} /></label>
+                  <label><span>Date</span><input name="date" value={achievementDraft.date} onChange={handleAchievementDraftChange} placeholder="2026" /></label>
+                  <label><span>Featured image URL</span><input type="url" name="image" value={achievementDraft.image} onChange={handleAchievementDraftChange} placeholder="https://..." /></label>
+                </div>
+                <label>
+                  <span>Upload featured image</span>
+                  <input type="file" accept="image/*" onChange={(event) => handleEntryImageUpload(event, 'achievement')} />
+                  {achievementDraft.image ? <img className="entry-upload-preview" src={achievementDraft.image} alt="Achievement preview" /> : null}
+                </label>
+                <label><span>Achievement details</span><textarea name="description" value={achievementDraft.description} onChange={handleAchievementDraftChange} rows="4" required /></label>
+                <label><span>Additional image URLs (one per line)</span><textarea name="images" value={achievementDraft.images} onChange={handleAchievementDraftChange} rows="3" placeholder="https://..." /></label>
+                <label><span>Links (Label|https://... one per line)</span><textarea name="links" value={achievementDraft.links} onChange={handleAchievementDraftChange} rows="3" placeholder="View award|https://example.com" /></label>
+                {achievementSaveStatus ? <p className="form-status" role="status">{achievementSaveStatus}</p> : null}
+                <div className="form-actions">
+                  <button type="submit" className="primary-btn">{editingAchievementIndex === null ? 'Save achievement' : 'Update achievement'}</button>
+                  <button type="button" className="secondary-btn" onClick={() => { setShowAchievementForm(false); resetAchievementDraft() }}>Cancel</button>
+                </div>
+              </form>
+            ) : null}
+
+            <section className="panel-card admin-list-panel">
+              <div className="panel-header">
+                <h2>Achievements</h2>
+                <button type="button" className="primary-btn small-btn" onClick={() => { resetAchievementDraft(); setAchievementSaveStatus(''); setShowAchievementForm(true) }}>Add achievement</button>
+              </div>
+              {!showAchievementForm && achievementSaveStatus ? <p className="form-status" role="status">{achievementSaveStatus}</p> : null}
+              <div className="list-stack">
+                {portfolio.achievements.length ? portfolio.achievements.map((item, index) => (
+                  <div className="mini-list-row" key={`${item.title}-${index}`}>
+                    <div className="timeline-copy">
+                      <strong>{item.title}</strong>
+                      <span className="journey-location">{[item.organization, item.date].filter(Boolean).join(' / ')}</span>
+                      <p>{item.description}</p>
+                    </div>
+                    <div className="mini-list-actions compact-actions">
+                      <button type="button" className="ghost-btn" onClick={() => beginEditAchievement(item, index)}>Edit</button>
+                      <button type="button" className="danger-btn" onClick={() => handleDeleteAchievement(index)}>Delete</button>
+                    </div>
+                  </div>
+                )) : <p className="empty-state">No achievements yet.</p>}
+              </div>
+            </section>
+          </>
+        ) : null}
+
+        {showGalleryForm ? (
+          <form className="panel-card admin-form" onSubmit={handleSaveGalleryItem}>
+            <div className="panel-header">
+              <h2>{editingGalleryIndex === null ? 'Add gallery image' : 'Edit gallery image'}</h2>
+              <button type="button" className="text-link" onClick={() => { setShowGalleryForm(false); resetGalleryDraft() }}>Close</button>
+            </div>
+            <div className="field-grid admin-field-grid">
+              <label>
+                <span>Image caption</span>
+                <input name="label" value={galleryDraft.label} onChange={handleGalleryDraftChange} placeholder="Studio project" />
+              </label>
+              <label>
+                <span>Image URL</span>
+                <input type="url" name="url" value={galleryDraft.url} onChange={handleGalleryDraftChange} placeholder="https://..." />
+              </label>
+              <label>
+                <span>Tile layout</span>
+                <select name="tone" value={galleryDraft.tone} onChange={handleGalleryDraftChange}>
+                  <option value="normal">Standard</option>
+                  <option value="tall">Tall</option>
+                  <option value="wide">Wide</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              <span>Upload image</span>
+              <input type="file" accept="image/*" onChange={handleGalleryImageUpload} />
+            </label>
+            {galleryDraft.url ? <img className="gallery-upload-preview" src={galleryDraft.url} alt={galleryDraft.label || 'Gallery image preview'} /> : null}
+            {gallerySaveStatus ? <p className="form-status" role="status">{gallerySaveStatus}</p> : null}
+            <div className="form-actions">
+              <button type="submit" className="primary-btn">{editingGalleryIndex === null ? 'Save gallery image' : 'Update gallery image'}</button>
+              <button type="button" className="secondary-btn" onClick={() => { setShowGalleryForm(false); resetGalleryDraft() }}>Cancel</button>
+            </div>
+          </form>
+        ) : null}
+
+        {adminSection === 'gallery' ? (
+          <section className="panel-card admin-list-panel">
+            <div className="panel-header">
+              <h2>Gallery Images</h2>
+              <button type="button" className="primary-btn small-btn" onClick={() => { resetGalleryDraft(); setGallerySaveStatus(''); setShowGalleryForm(true) }}>Add image</button>
+            </div>
+            {!showGalleryForm && gallerySaveStatus ? <p className="form-status" role="status">{gallerySaveStatus}</p> : null}
+            <div className="gallery-admin-list">
+              {portfolio.galleryItems.length ? portfolio.galleryItems.map((item, index) => (
+                <article className="gallery-admin-row" key={`${item.label}-${index}`}>
+                  {(item.url || item.image) ? <img src={item.url || item.image} alt={item.label || 'Gallery preview'} loading="lazy" decoding="async" /> : <div className="gallery-admin-placeholder" aria-hidden="true" />}
+                  <div className="gallery-admin-copy">
+                    <strong>{item.label || 'Gallery image'}</strong>
+                    <span>{item.tone || 'normal'} tile</span>
+                    {item.url || item.image ? <small>{item.url || item.image}</small> : <small>No image uploaded</small>}
+                  </div>
+                  <div className="mini-list-actions compact-actions">
+                    <button type="button" className="ghost-btn" onClick={() => beginEditGalleryItem(item, index)}>Edit</button>
+                    <button type="button" className="danger-btn" onClick={() => handleDeleteGalleryItem(index)}>Delete</button>
+                  </div>
+                </article>
+              )) : <p className="empty-state">No gallery images yet.</p>}
+            </div>
+          </section>
+        ) : null}
+
+        {adminSection === 'contact' ? (
+          <section className="panel-card admin-list-panel contact-editor-panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">PUBLIC CONTACTS</span>
+                <h2>Contact methods</h2>
+              </div>
+              <button type="button" className="primary-btn small-btn" onClick={addContactLink}>Add contact</button>
+            </div>
+            <div className="contact-editor-list">
+              {contactLinksDraft.map((item, index) => (
+                <div className="contact-editor-row" key={`${item.type}-${item.value}-${index}`}>
+                  <label>
+                    <span>Display label</span>
+                    <input value={item.label} onChange={(event) => updateContactLink(index, 'label', event.target.value)} placeholder="GitHub" />
+                  </label>
+                  <label>
+                    <span>Type</span>
+                    <select value={item.type} onChange={(event) => updateContactLink(index, 'type', event.target.value)}>
+                      <option value="email">Email</option>
+                      <option value="github">GitHub</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="website">Website / other</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{item.type === 'email' ? 'Email address' : 'Destination URL'}</span>
+                    <input
+                      type={item.type === 'email' ? 'email' : 'url'}
+                      value={item.value}
+                      onChange={(event) => updateContactLink(index, 'value', event.target.value)}
+                      placeholder={item.type === 'email' ? 'name@example.com' : 'https://...'}
+                    />
+                  </label>
+                  <button type="button" className="danger-btn" onClick={() => removeContactLink(index)}>Delete</button>
+                </div>
+              ))}
+              {!contactLinksDraft.length ? <p className="empty-state">No contact methods. Add one to show it publicly.</p> : null}
+            </div>
+            {contactSaveStatus ? <p className="form-status" role="status">{contactSaveStatus}</p> : null}
+            <div className="form-actions">
+              <button type="button" className="primary-btn" onClick={handleSaveContactLinks}>Save contact details</button>
+            </div>
+          </section>
+        ) : null}
 
         {showProjectForm ? (
           <form className="panel-card admin-form" onSubmit={handleAddProject}>
@@ -1576,17 +2629,45 @@ function App() {
           </section>
         ) : null}
 
+        {showSkillForm ? (
+          <form className="panel-card admin-form" onSubmit={handleAddSkillGroup}>
+            <div className="panel-header">
+              <h2>{editingSkillIndex !== null ? 'Edit skill group' : 'Add skill group'}</h2>
+              <button type="button" className="text-link" onClick={() => { setShowSkillForm(false); resetSkillDraft() }}>Close</button>
+            </div>
+            <label>
+              <span>Group label</span>
+              <input type="text" name="label" value={skillDraft.label} onChange={handleSkillDraftChange} placeholder="01 FRONTEND" required />
+            </label>
+            <label>
+              <span>Skills</span>
+              <textarea name="skills" value={skillDraft.skills} onChange={handleSkillDraftChange} rows="4" placeholder="React, Vite, Tailwind, Framer Motion" required />
+            </label>
+            <div className="form-actions">
+              <button type="submit" className="primary-btn">{editingSkillIndex !== null ? 'Update group' : 'Save group'}</button>
+              <button type="button" className="secondary-btn" onClick={() => { setShowSkillForm(false); resetSkillDraft() }}>Cancel</button>
+            </div>
+          </form>
+        ) : null}
+
         {adminSection === 'skills' ? (
           <section className="panel-card admin-list-panel">
             <div className="panel-header">
               <h2>Skill stack</h2>
+              <button type="button" className="primary-btn small-btn" onClick={() => { resetSkillDraft(); setShowSkillForm(true) }}>Add group</button>
             </div>
             <div className="list-stack">
-              {portfolio.toolkitGroups.map((group) => (
-                <div key={group.label} className="skill-block">
-                  <strong>{group.label}</strong>
+              {portfolio.toolkitGroups.map((group, index) => (
+                <div key={`${group.label}-${index}`} className="skill-block">
+                  <div className="skill-block-header">
+                    <strong>{group.label}</strong>
+                    <div className="mini-list-actions compact-actions">
+                      <button type="button" className="ghost-btn" onClick={() => beginEditSkillGroup(group, index)}>Edit</button>
+                      <button type="button" className="danger-btn" onClick={() => handleDeleteSkillGroup(index)}>Delete</button>
+                    </div>
+                  </div>
                   <div className="tag-list">
-                    {group.skills.map((skill) => <span key={skill}>{skill}</span>)}
+                    {group.skills.map((skill) => <span key={`${group.label}-${skill}`}>{skill}</span>)}
                   </div>
                 </div>
               ))}
@@ -1610,9 +2691,31 @@ function App() {
                 <input type="text" name="title" value={journeyDraft.title} onChange={handleJourneyDraftChange} placeholder="Learning foundations" required />
               </label>
             </div>
+            <div className="field-grid admin-field-grid">
+              <label>
+                <span>Location</span>
+                <input type="text" name="location" value={journeyDraft.location} onChange={handleJourneyDraftChange} placeholder="Remote / India" />
+              </label>
+              <label>
+                <span>Featured image</span>
+                <input type="url" name="image" value={journeyDraft.image} onChange={handleJourneyDraftChange} placeholder="https://..." />
+              </label>
+            </div>
             <label>
               <span>Description</span>
-              <textarea name="description" value={journeyDraft.description} onChange={handleJourneyDraftChange} rows="4" placeholder="Write the journey detail..." required />
+              <textarea name="description" value={journeyDraft.description} onChange={handleJourneyDraftChange} rows="4" placeholder="Short summary for the timeline..." required />
+            </label>
+            <label>
+              <span>Details</span>
+              <textarea name="detail" value={journeyDraft.detail} onChange={handleJourneyDraftChange} rows="4" placeholder="Add a richer story or notes for this phase..." />
+            </label>
+            <label>
+              <span>Additional images</span>
+              <textarea name="images" value={journeyDraft.images} onChange={handleJourneyDraftChange} rows="3" placeholder="Paste image URLs separated by commas or new lines" />
+            </label>
+            <label>
+              <span>Links</span>
+              <textarea name="links" value={journeyDraft.links} onChange={handleJourneyDraftChange} rows="3" placeholder="Project|https://example.com or https://example.com" />
             </label>
             <div className="form-actions">
               <button type="submit" className="primary-btn">{editingJourneyId !== null ? 'Update entry' : 'Save entry'}</button>
@@ -1629,11 +2732,13 @@ function App() {
             </div>
             <div className="list-stack">
               {portfolio.journeyEvents.map((event, index) => (
-                <div key={`${event.year}-${event.title}`} className="mini-list-row timeline-row">
+                <div key={`${event.year}-${event.title}-${index}`} className="mini-list-row timeline-row">
                   <div className="timeline-year-block">{event.year}</div>
                   <div className="timeline-copy">
                     <strong>{event.title}</strong>
+                    {event.location ? <span className="journey-location">{event.location}</span> : null}
                     <p>{event.description}</p>
+                    {event.detail ? <p className="journey-detail">{event.detail}</p> : null}
                   </div>
                   <div className="mini-list-actions compact-actions">
                     <button type="button" className="ghost-btn" onClick={() => beginEditJourney(event, index)}>Edit</button>
@@ -1682,7 +2787,7 @@ function App() {
     )
   }
 
-  return <div className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+  return <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
 }
 
 export default App

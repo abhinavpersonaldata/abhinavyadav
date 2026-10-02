@@ -20,7 +20,7 @@ const isAllowedOrigin = (origin) => {
   if (!origin) return true
 
   return configuredOrigins.includes(origin)
-    || /localhost:(5173|3000|4173)/.test(origin)
+    || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
     || /\.vercel\.app$/i.test(origin)
     || /\.onrender\.com$/i.test(origin)
     || /\.render\.com$/i.test(origin)
@@ -66,6 +66,11 @@ const projectSchema = new mongoose.Schema({
   data: { type: mongoose.Schema.Types.Mixed, required: true },
 }, { timestamps: true })
 const Project = mongoose.models.Project || mongoose.model('Project', projectSchema)
+const portfolioContentSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  data: { type: mongoose.Schema.Types.Mixed, required: true },
+}, { timestamps: true })
+const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('PortfolioContent', portfolioContentSchema)
 
 const portfolioData = {
   profile: {
@@ -76,9 +81,40 @@ const portfolioData = {
     github: 'https://github.com',
     linkedin: 'https://linkedin.com',
   },
+  contactLinks: [
+    { label: 'Email', type: 'email', value: 'abhinavyadav.contact@gmail.com' },
+    { label: 'GitHub', type: 'github', value: 'https://github.com' },
+    { label: 'LinkedIn', type: 'linkedin', value: 'https://linkedin.com' },
+  ],
+  about: {
+    heading: 'Still learning. Already building.',
+    biography: 'I am a diploma student in Computer Science & Engineering exploring the web as a creative and technical medium. My focus is learning by building, turning ideas into interfaces, prototypes, and useful digital products.',
+    photo: '',
+    facts: [
+      { label: 'CURRENTLY STUDYING', value: 'Diploma in Computer Science & Engineering' },
+      { label: 'YEAR', value: '2nd Year' },
+      { label: 'FOCUS', value: 'Web Development' },
+      { label: 'LOCATION', value: 'India' },
+    ],
+    colleges: [],
+    webinars: [],
+    certificates: [],
+    images: [],
+    links: [],
+  },
   projects: [
     {
-      id: 'studio-grid', number: '01', title: 'Studio Grid', category: 'Web Experience', status: 'Live concept', date: '2026',
+      id: 'abhinav-portfolio-cms', number: '01', title: 'Abhinav Yadav Portfolio', category: 'Web Experience', status: 'Personal project', date: '2026',
+      description: 'A responsive portfolio website with an admin workspace for managing projects, skills, and journey entries.', tech: ['React', 'Vite', 'Express', 'MongoDB', 'Cloudinary'], accent: 'lime',
+      problem: 'Presenting projects, learning progress, and technical skills in one place without relying on a generic portfolio template.',
+      approach: 'Built a responsive React experience with an Express API and a small admin workspace for portfolio content.',
+      features: ['Responsive portfolio sections', 'Project management API', 'Media upload support', 'Skill and journey editors'], role: 'Designer + Developer',
+      challenges: ['Keeping project media performant', 'Supporting desktop and mobile layouts', 'Connecting the frontend and API across local ports'],
+      solution: 'Added lazy-loaded project media, mobile-specific layouts, API-backed project storage, and local admin editing for skills and journey entries.',
+      results: ['Portfolio and admin experience in one app', 'Project data stored through MongoDB when configured', 'Image and video uploads through Cloudinary when configured'],
+    },
+    {
+      id: 'studio-grid', number: '02', title: 'Studio Grid', category: 'Web Experience', status: 'Live concept', date: '2026',
       description: 'A curated interface concept that turns personal work into a digital studio archive.', tech: ['React', 'Tailwind', 'Motion'], accent: 'lime',
       problem: 'The challenge was to make a personal portfolio feel like a premium studio archive instead of a generic card-based listing.',
       approach: 'I structured the experience around editorial rhythm, large typography, and intentional asymmetry so the work reads like a crafted collection.',
@@ -88,7 +124,7 @@ const portfolioData = {
       results: ['More polished presentation', 'Clearer narrative', 'Stronger visual identity'],
     },
     {
-      id: 'signal-engine', number: '02', title: 'Signal Engine', category: 'Product Design', status: 'Prototype', date: '2026',
+      id: 'signal-engine', number: '03', title: 'Signal Engine', category: 'Product Design', status: 'Prototype', date: '2026',
       description: 'A concept dashboard for learning projects, milestones, and rapid iteration loops.', tech: ['UI System', 'Components', 'UX'], accent: 'blue',
       problem: 'There was no clear way to visualize personal learning progress without creating a bloated, dull dashboard.',
       approach: 'I focused the system on summarizing momentum, milestones, and iteration rather than raw metrics alone.',
@@ -98,7 +134,7 @@ const portfolioData = {
       results: ['Better storytelling', 'Visual clarity', 'Future-ready structure'],
     },
     {
-      id: 'arc-archive', number: '03', title: 'Arc Archive', category: 'Creative Build', status: 'Concept', date: '2026',
+      id: 'arc-archive', number: '04', title: 'Arc Archive', category: 'Creative Build', status: 'Concept', date: '2026',
       description: 'An editorial portfolio concept focused on storytelling, composition, and code craft.', tech: ['CMS Ready', 'Motion', 'Responsive'], accent: 'neutral',
       problem: 'The main challenge was turning a portfolio into a digital archive rather than a static list of past work.',
       approach: 'I built the visual language around rhythm, sequencing, and editorial spacing to feel more like a personal archive.',
@@ -110,10 +146,10 @@ const portfolioData = {
   ],
   navItems: ['WORK', 'ABOUT', 'JOURNEY', 'TOOLKIT', 'CONTACT'],
   toolkitGroups: [
-    { label: '01 FRONTEND', skills: ['React', 'Vite', 'Tailwind', 'Framer Motion', 'Responsive UI'] },
-    { label: '02 BACKEND', skills: ['Node.js', 'Express', 'REST APIs', 'Authentication', 'Validation'] },
-    { label: '03 DATABASE', skills: ['MongoDB', 'Mongoose', 'Schemas', 'Indexes', 'Data Modeling'] },
-    { label: '04 TOOLS', skills: ['Git', 'GitHub', 'Figma', 'Cloudinary', 'Vercel'] },
+    { label: '01 FRONTEND', skills: ['React', 'Vite', 'Tailwind CSS', 'Framer Motion', 'Responsive UI'] },
+    { label: '02 BACKEND', skills: ['Node.js', 'Express', 'REST APIs', 'File uploads'] },
+    { label: '03 DATABASE', skills: ['MongoDB', 'Mongoose', 'Project CRUD'] },
+    { label: '04 TOOLS', skills: ['Git', 'GitHub', 'Cloudinary', 'Vercel'] },
   ],
   journeyEvents: [
     { year: '2024', title: 'Learning foundations', description: 'Started learning structure, logic, frontend basics, and product thinking.' },
@@ -149,6 +185,13 @@ app.get('/api/portfolio', async (req, res) => {
     const savedProjects = mongoose.connection.readyState === 1
       ? await Project.find().sort({ createdAt: 1 }).lean()
       : []
+    const savedAbout = mongoose.connection.readyState === 1
+      ? await PortfolioContent.findOne({ key: 'about' }).lean()
+      : null
+    const savedCollections = mongoose.connection.readyState === 1
+      ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks'] } }).lean()
+      : []
+    const savedCollectionData = new Map(savedCollections.map((collection) => [collection.key, collection.data]))
     const savedById = new Map(savedProjects.map((project) => [project.id, project.data]))
     const defaultProjects = portfolioData.projects.map((project) => savedById.get(project.id) || project)
     const defaultIds = new Set(portfolioData.projects.map((project) => project.id))
@@ -156,10 +199,70 @@ app.get('/api/portfolio', async (req, res) => {
       .filter((project) => !defaultIds.has(project.id))
       .map((project) => project.data)
     const projects = [...additionalProjects, ...defaultProjects]
-    res.json({ ...portfolioData, projects })
+    res.json({
+      ...portfolioData,
+      about: savedAbout?.data || portfolioData.about,
+      experienceEntries: savedCollectionData.get('experienceEntries') || portfolioData.experienceEntries,
+      achievements: savedCollectionData.get('achievements') || portfolioData.achievements,
+      galleryItems: savedCollectionData.get('galleryItems') || portfolioData.galleryItems,
+      contactLinks: savedCollectionData.get('contactLinks') || portfolioData.contactLinks,
+      projects,
+    })
   } catch (error) {
     console.error('Failed to load saved projects:', error)
     res.json(portfolioData)
+  }
+})
+
+app.put('/api/portfolio/about', async (req, res) => {
+  const about = req.body
+  const collectionKeys = ['facts', 'colleges', 'webinars', 'certificates', 'images', 'links']
+
+  if (typeof about?.biography !== 'string' || collectionKeys.some((key) => !Array.isArray(about[key]))) {
+    return res.status(400).json({ success: false, message: 'About content is incomplete or invalid.' })
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ success: false, message: 'MongoDB is not connected. About changes can only be saved in this browser.' })
+  }
+
+  try {
+    const savedAbout = await PortfolioContent.findOneAndUpdate(
+      { key: 'about' },
+      { key: 'about', data: about },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean()
+
+    return res.json({ success: true, about: savedAbout.data })
+  } catch (error) {
+    console.error('Failed to save About content:', error)
+    return res.status(503).json({ success: false, message: 'About content could not be saved.' })
+  }
+})
+
+app.put('/api/portfolio/content/:key', async (req, res) => {
+  const { key } = req.params
+  const allowedKeys = ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks']
+
+  if (!allowedKeys.includes(key) || !Array.isArray(req.body?.entries)) {
+    return res.status(400).json({ success: false, message: 'A valid portfolio collection is required.' })
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ success: false, message: 'MongoDB is not connected. Changes remain saved in this browser.' })
+  }
+
+  try {
+    const savedCollection = await PortfolioContent.findOneAndUpdate(
+      { key },
+      { key, data: req.body.entries },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean()
+
+    return res.json({ success: true, key, entries: savedCollection.data })
+  } catch (error) {
+    console.error(`Failed to save ${key}:`, error)
+    return res.status(503).json({ success: false, message: 'Portfolio entries could not be saved.' })
   }
 })
 
