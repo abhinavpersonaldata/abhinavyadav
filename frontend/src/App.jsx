@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import heroGraphic from './assets/hero.png'
 import {
   ArrowRight,
@@ -30,6 +29,56 @@ const staggerContainer = {
 const fadeInUp = {
   hidden: { opacity: 0, y: 22 },
   show: { opacity: 1, y: 0, transition: { duration: 0.56, ease: [0.22, 1, 0.36, 1] } },
+}
+
+const useMotionLibrary = () => {
+  const [motionLibrary, setMotionLibrary] = useState(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    import('framer-motion')
+      .then((module) => {
+        if (isMounted) setMotionLibrary(module)
+      })
+      .catch(() => {
+        if (isMounted) setMotionLibrary({ motion: null, AnimatePresence: ({ children }) => <>{children}</> })
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  return motionLibrary
+}
+
+const MotionSection = ({ children, ...props }) => {
+  const motionLibrary = useMotionLibrary()
+  const Component = motionLibrary?.motion?.section || 'section'
+
+  return <Component {...props}>{children}</Component>
+}
+
+const MotionDiv = ({ children, ...props }) => {
+  const motionLibrary = useMotionLibrary()
+  const Component = motionLibrary?.motion?.div || 'div'
+
+  return <Component {...props}>{children}</Component>
+}
+
+const MotionArticle = ({ children, ...props }) => {
+  const motionLibrary = useMotionLibrary()
+  const Component = motionLibrary?.motion?.article || 'article'
+
+  return <Component {...props}>{children}</Component>
+}
+
+const AnimatedPresence = ({ children, ...props }) => {
+  const motionLibrary = useMotionLibrary()
+  const Component = motionLibrary?.AnimatePresence || (({ children: presenceChildren }) => <>{presenceChildren}</>)
+
+  return <Component {...props}>{children}</Component>
 }
 
 const ADMIN_CREDENTIALS = {
@@ -1308,7 +1357,7 @@ function App() {
       </header>
 
       <main className="page-content">
-        <motion.section className="hero-panel" initial="hidden" animate="show" variants={motionSettings}>
+        <MotionSection className="hero-panel" initial="hidden" animate="show" variants={motionSettings}>
           <div className="status-line">AVAILABLE FOR LEARNING / BUILDING / INTERNSHIP</div>
 
           <div className="hero-grid">
@@ -1387,9 +1436,9 @@ function App() {
                 </div>
               </div>
 
-              <AnimatePresence mode="wait">
+              <AnimatedPresence mode="wait">
                 {isPlanetDetailOpen && selectedPlanet && (
-                  <motion.div
+                  <MotionDiv
                     ref={planetDetailRef}
                     key={selectedPlanet.short}
                     initial={{ opacity: 0, y: 18, scale: 0.92, rotateX: -8 }}
@@ -1428,9 +1477,9 @@ function App() {
                     <a href={selectedPlanet.sourceUrl} target="_blank" rel="noreferrer" className="planet-source-link">
                       Learn more
                     </a>
-                  </motion.div>
+                  </MotionDiv>
                 )}
-              </AnimatePresence>
+              </AnimatedPresence>
               <div className="visual-list">
                 <span>STUDIO</span>
                 <span>BUILD</span>
@@ -1438,9 +1487,9 @@ function App() {
               </div>
             </div>
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="work" className="content-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="work" className="content-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">01 — SELECTED WORK</span>
             <h2>Things I&apos;ve built while learning.</h2>
@@ -1470,9 +1519,9 @@ function App() {
             </label>
           </div>
 
-          <motion.div className="project-stack" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
+          <MotionDiv className="project-stack" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
             {visibleProjects.length ? visibleProjects.map((project, index) => (
-              <motion.article
+              <MotionArticle
                 key={project.title}
                 className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`}
                 variants={fadeInUp}
@@ -1537,14 +1586,14 @@ function App() {
                     <ArrowUpRight size={14} />
                   </button>
                 </div>
-              </motion.article>
+              </MotionArticle>
             )) : (
-              <motion.div className="empty-state" variants={fadeInUp}>No projects match your current search or filter.</motion.div>
+              <MotionDiv className="empty-state" variants={fadeInUp}>No projects match your current search or filter.</MotionDiv>
             )}
-          </motion.div>
-        </motion.section>
+          </MotionDiv>
+        </MotionSection>
 
-        <motion.section id="about" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="about" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header narrow-header">
             <span className="section-tag">02 — ABOUT</span>
             <h2>{portfolio.about?.heading || DEFAULT_ABOUT.heading}</h2>
@@ -1625,9 +1674,9 @@ function App() {
                 ))}
               </div>
             ) : null}
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="toolkit" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="toolkit" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">03 — TOOLKIT</span>
             <h2>The systems I keep learning and shipping with.</h2>
@@ -1645,9 +1694,9 @@ function App() {
               </div>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="journey" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="journey" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">04 — JOURNEY</span>
             <h2>Career archive and learning path.</h2>
@@ -1686,9 +1735,9 @@ function App() {
               </div>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="education" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="education" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">05 — EDUCATION</span>
             <h2>Academic record and learning focus.</h2>
@@ -1722,9 +1771,9 @@ function App() {
               </article>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="experience" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="experience" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">06 — EXPERIENCE</span>
             <h2>Professional context and working rhythm.</h2>
@@ -1758,9 +1807,9 @@ function App() {
               </article>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="certificates" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="certificates" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">07 — CERTIFICATES</span>
             <h2>Proof of learning and technical progress.</h2>
@@ -1795,9 +1844,9 @@ function App() {
               </article>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="achievements" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="achievements" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">08 — ACHIEVEMENTS</span>
             <h2>Milestones shaped by iteration and curiosity.</h2>
@@ -1825,9 +1874,9 @@ function App() {
               </article>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="gallery" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="gallery" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">09 — GALLERY</span>
             <h2>Visual notes from research, build, and process.</h2>
@@ -1841,9 +1890,9 @@ function App() {
               </div>
             ))}
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="resume" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="resume" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="resume-panel">
             <div>
               <span className="section-tag">10 — RESUME</span>
@@ -1864,9 +1913,9 @@ function App() {
               </a>
             </div>
           </div>
-        </motion.section>
+        </MotionSection>
 
-        <motion.section id="contact" className="content-section contact-panel" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="contact" className="content-section contact-panel" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="contact-graphic">
             <div className="contact-art-overline"><span>CONTACT / 11</span><span>BUILT WITH INTENTION</span></div>
             <h2 className="contact-graphic-title">
@@ -1925,7 +1974,7 @@ function App() {
               </button>
             </form>
           </div>
-        </motion.section>
+        </MotionSection>
       </main>
 
       <footer className="site-footer">
