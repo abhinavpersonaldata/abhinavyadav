@@ -103,20 +103,20 @@ const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('Por
 const portfolioData = {
   profile: {
     name: 'Abhinav Yadav',
-    title: 'Computer Science & Engineering Diploma Student',
+    title: 'Frontend Developer • UI Engineer • CSE Diploma Student',
     location: 'India',
     email: 'abhinavyadav.contact@gmail.com',
-    github: 'https://github.com',
-    linkedin: 'https://linkedin.com',
+    github: 'https://github.com/abhinavpersonaldata',
+    linkedin: 'https://www.linkedin.com',
   },
   contactLinks: [
     { label: 'Email', type: 'email', value: 'abhinavyadav.contact@gmail.com' },
-    { label: 'GitHub', type: 'github', value: 'https://github.com' },
-    { label: 'LinkedIn', type: 'linkedin', value: 'https://linkedin.com' },
+    { label: 'GitHub', type: 'github', value: 'https://github.com/abhinavpersonaldata' },
+    { label: 'LinkedIn', type: 'linkedin', value: 'https://www.linkedin.com' },
   ],
   about: {
-    heading: 'Still learning. Already building.',
-    biography: 'I am a diploma student in Computer Science & Engineering exploring the web as a creative and technical medium. My focus is learning by building, turning ideas into interfaces, prototypes, and useful digital products.',
+    heading: 'Building useful digital experiences with clarity and craft.',
+    biography: 'I am a Computer Science & Engineering diploma student focused on frontend development, product thinking, and building polished web experiences. I enjoy translating ideas into interfaces that are thoughtful, responsive, and genuinely useful.',
     photo: '',
     facts: [
       { label: 'CURRENTLY STUDYING', value: 'Diploma in Computer Science & Engineering' },

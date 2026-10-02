@@ -98,8 +98,8 @@ const SOLAR_SYSTEM_BODIES = [
   { name: 'Neptune', short: 'neptune', size: 19, orbit: 438, radius: 219, duration: 88, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '3.2 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
 ]
 const DEFAULT_ABOUT = {
-  heading: 'Still learning. Already building.',
-  biography: 'I am a diploma student in Computer Science & Engineering exploring the web as a creative and technical medium. My focus is learning by building, turning ideas into interfaces, prototypes, and useful digital products.',
+  heading: 'Building useful digital experiences with clarity and craft.',
+  biography: 'I am a Computer Science & Engineering diploma student focused on frontend development, product thinking, and building polished web experiences. I enjoy translating ideas into interfaces that are thoughtful, responsive, and genuinely useful.',
   photo: '',
   facts: [
     { label: 'CURRENTLY STUDYING', value: 'Diploma in Computer Science & Engineering' },
@@ -123,8 +123,8 @@ const ABOUT_COLLECTIONS = [
 ]
 const DEFAULT_CONTACT_LINKS = [
   { label: 'Email', type: 'email', value: 'abhinavyadav.contact@gmail.com' },
-  { label: 'GitHub', type: 'github', value: 'https://github.com' },
-  { label: 'LinkedIn', type: 'linkedin', value: 'https://linkedin.com' },
+  { label: 'GitHub', type: 'github', value: 'https://github.com/abhinavpersonaldata' },
+  { label: 'LinkedIn', type: 'linkedin', value: 'https://www.linkedin.com' },
 ]
 const createExperienceDraft = () => ({
   company: '', role: '', type: '', dates: '', location: '', description: '',
@@ -225,7 +225,7 @@ function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [portfolio, setPortfolio] = useState({
-    profile: { name: 'Abhinav Yadav', title: 'Computer Science & Engineering Diploma Student', location: 'India', email: 'abhinavyadav.contact@gmail.com', github: 'https://github.com', linkedin: 'https://linkedin.com' },
+    profile: { name: 'Abhinav Yadav', title: 'Frontend Developer • UI Engineer • CSE Diploma Student', location: 'India', email: 'abhinavyadav.contact@gmail.com', github: 'https://github.com/abhinavpersonaldata', linkedin: 'https://www.linkedin.com' },
     contactLinks: DEFAULT_CONTACT_LINKS,
     about: DEFAULT_ABOUT,
     navItems: ['WORK', 'ABOUT', 'JOURNEY', 'TOOLKIT', 'CONTACT'],
@@ -1358,17 +1358,17 @@ function App() {
 
       <main className="page-content">
         <MotionSection className="hero-panel" initial="hidden" animate="show" variants={motionSettings}>
-          <div className="status-line">AVAILABLE FOR LEARNING / BUILDING / INTERNSHIP</div>
+          <div className="status-line">AVAILABLE FOR FRONTEND / PRODUCT / INTERNSHIP</div>
 
           <div className="hero-grid">
             <div className="hero-copy">
-              <p className="eyebrow">Computer Science & Engineering diploma student</p>
+              <p className="eyebrow">Frontend developer & UI-focused learner</p>
               <h1>
                 ABHINAV
                 <span>YADAV</span>
               </h1>
               <p className="lede">
-                I design and build responsive web products, from polished React interfaces to Node.js APIs and data-backed workflows.
+                I design and build polished web experiences with React, clean interfaces, and product-minded thinking—from concept to launch-ready UI.
               </p>
 
               <div className="hero-stackline" aria-label="Core technology stack">
