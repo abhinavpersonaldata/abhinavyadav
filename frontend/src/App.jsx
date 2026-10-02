@@ -105,6 +105,64 @@ const apiFetch = async (path, options) => {
   throw lastError
 }
 
+function ProjectVideoPlayer({ src, poster, title, controls = false, detail = false }) {
+  const videoRef = useRef(null)
+  const [hasPlayableFrame, setHasPlayableFrame] = useState(false)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return undefined
+
+    setHasPlayableFrame(false)
+
+    if (!('IntersectionObserver' in window)) {
+      video.play().catch(() => {})
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {})
+      else video.pause()
+    }, { threshold: 0.2, rootMargin: '80px 0px' })
+
+    observer.observe(video)
+    return () => {
+      observer.disconnect()
+      video.pause()
+    }
+  }, [src])
+
+  return (
+    <div className={`project-video-frame${detail ? ' project-video-frame-detail' : ''}`}>
+      {poster ? (
+        <img
+          className={`project-video-poster${hasPlayableFrame ? ' is-hidden' : ''}`}
+          src={poster}
+          alt={`${title} preview`}
+          loading="lazy"
+          decoding="async"
+        />
+      ) : !hasPlayableFrame ? (
+        <div className="project-video-placeholder"><span>{title}</span></div>
+      ) : null}
+      <video
+        ref={videoRef}
+        className={`project-video-element${hasPlayableFrame ? ' is-ready' : ''}`}
+        src={src}
+        poster={poster || undefined}
+        muted
+        loop
+        autoPlay
+        playsInline
+        controls={controls}
+        preload="metadata"
+        onLoadedData={() => setHasPlayableFrame(true)}
+        onError={() => setHasPlayableFrame(false)}
+      />
+    </div>
+  )
+}
+
 function App() {
   const [theme, setTheme] = useState('dark')
   const [view, setView] = useState('home')
@@ -1424,14 +1482,7 @@ function App() {
               >
                 <div className={`project-media media-${project.accent}`}>
                   {project.video ? (
-                    <video
-                      className="project-video"
-                      src={project.video}
-                      poster={project.image || undefined}
-                      muted
-                      playsInline
-                      preload="none"
-                    />
+                    <ProjectVideoPlayer src={project.video} poster={project.image} title={project.title} />
                   ) : project.image ? (
                     <img
                       className="project-image"
@@ -1932,18 +1983,8 @@ function App() {
 
       <section className="project-hero-media">
         {selectedProject.video ? (
-          <video
-            className="project-hero-video"
-            src={selectedProject.video}
-            poster={selectedProject.image || undefined}
-            muted
-            loop
-            controls
-            playsInline
-            preload="metadata"
-          />
-        ) : null}
-        {selectedProject.image ? (
+          <ProjectVideoPlayer src={selectedProject.video} poster={selectedProject.image} title={selectedProject.title} controls detail />
+        ) : selectedProject.image ? (
           <img
             className="project-hero-image"
             src={selectedProject.image}
