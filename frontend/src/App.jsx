@@ -126,6 +126,49 @@ const DEFAULT_CONTACT_LINKS = [
   { label: 'GitHub', type: 'github', value: 'https://github.com/abhinavpersonaldata' },
   { label: 'LinkedIn', type: 'linkedin', value: 'https://www.linkedin.com' },
 ]
+const EFFECT_OPTIONS = [
+  {
+    id: 'aurora',
+    name: 'Aurora Drift',
+    description: 'Soft gradients and floating light trails.',
+    accent: 'cyan',
+  },
+  {
+    id: 'neon-glow',
+    name: 'Neon Pulse',
+    description: 'Bright glow, faster movement, and stronger focus.',
+    accent: 'purple',
+  },
+  {
+    id: 'glass',
+    name: 'Glass Flow',
+    description: 'Frosted panels with airy layered motion.',
+    accent: 'lime',
+  },
+  {
+    id: 'sunrise',
+    name: 'Sunrise Bloom',
+    description: 'Warm cinematic transitions with bloom highlights.',
+    accent: 'amber',
+  },
+  {
+    id: 'orbit',
+    name: 'Orbit Lines',
+    description: 'Orbital rings and spaced-out motion accents.',
+    accent: 'pink',
+  },
+]
+const MOTION_SCOPES = [
+  { id: 'all', name: 'Full site', description: 'Apply motion across the entire portfolio.' },
+  { id: 'hero', name: 'Hero only', description: 'Keep main hero energetic, reduce motion elsewhere.' },
+  { id: 'content', name: 'Content blocks', description: 'Focus animation on major content sections.' },
+  { id: 'cards', name: 'Cards & tiles', description: 'Give emphasis to project cards, gallery, and panels.' },
+]
+const DEFAULT_VISUAL_SETTINGS = {
+  visualEffect: 'aurora',
+  visualIntensity: 72,
+  visualScope: 'all',
+}
 const createExperienceDraft = () => ({
   company: '', role: '', type: '', dates: '', location: '', description: '',
   achievements: '', image: '', images: '', links: '',
@@ -237,6 +280,7 @@ function App() {
     certificateEntries: [],
     achievements: [],
     galleryItems: [],
+    ...DEFAULT_VISUAL_SETTINGS,
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
   const [activePlanetShort, setActivePlanetShort] = useState(null)
@@ -409,8 +453,20 @@ function App() {
         })()
 
         const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
-          ? { ...data, ...savedPortfolio, about: savedPortfolio.about || data.about || DEFAULT_ABOUT }
-          : data
+          ? {
+              ...data,
+              ...savedPortfolio,
+              about: savedPortfolio.about || data.about || DEFAULT_ABOUT,
+              visualEffect: savedPortfolio.visualEffect || data.visualEffect || 'aurora',
+              visualIntensity: Number(savedPortfolio.visualIntensity) || Number(data.visualIntensity) || 72,
+              visualScope: savedPortfolio.visualScope || data.visualScope || 'all',
+            }
+          : {
+              ...data,
+              visualEffect: data.visualEffect || 'aurora',
+              visualIntensity: Number(data.visualIntensity) || 72,
+              visualScope: data.visualScope || 'all',
+            }
         setPortfolio(hydrated)
         savePortfolioToStorage(hydrated)
         if (hydrated.projects?.length) {
@@ -444,6 +500,12 @@ function App() {
     return () => media.removeEventListener('change', syncTheme)
   }, [theme])
 
+  useEffect(() => {
+    document.documentElement.dataset.effect = portfolio.visualEffect || 'aurora'
+    document.documentElement.dataset.scope = portfolio.visualScope || 'all'
+    document.documentElement.style.setProperty('--motion-strength', String((Number(portfolio.visualIntensity) || 72) / 100))
+  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity])
+
   const selectedProject = useMemo(
     () => portfolio.projects.find((project) => project.id === selectedProjectId) ?? portfolio.projects[0],
     [portfolio.projects, selectedProjectId],
@@ -473,6 +535,38 @@ function App() {
   const openProject = (projectId) => {
     setSelectedProjectId(projectId)
     setView('project')
+  }
+
+  const handleEffectSelection = (effectId) => {
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, visualEffect: effectId }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+  }
+
+  const handleIntensitySelection = (value) => {
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, visualIntensity: value }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+  }
+
+  const handleScopeSelection = (scopeId) => {
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, visualScope: scopeId }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+  }
+
+  const resetMotionSettings = () => {
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, ...DEFAULT_VISUAL_SETTINGS }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
   }
 
   const handleFormChange = (event) => {
@@ -2198,6 +2292,7 @@ function App() {
           <button type="button" className={`nav-button ${adminSection === 'achievements' ? 'active' : ''}`} onClick={() => handleAdminAction('achievements')}>Achievements</button>
           <button type="button" className={`nav-button ${adminSection === 'gallery' ? 'active' : ''}`} onClick={() => handleAdminAction('gallery')}>Gallery Images</button>
           <button type="button" className={`nav-button ${adminSection === 'contact' ? 'active' : ''}`} onClick={beginEditContactLinks}>Contact</button>
+          <button type="button" className={`nav-button ${adminSection === 'effects' ? 'active' : ''}`} onClick={() => handleAdminAction('effects')}>Effects</button>
           <button type="button" className={`nav-button ${adminSection === 'skills' ? 'active' : ''}`} onClick={() => handleAdminAction('skills')}>Skills</button>
           <button type="button" className={`nav-button ${adminSection === 'journey' ? 'active' : ''}`} onClick={() => handleAdminAction('journey')}>Journey</button>
           <button type="button" className={`nav-button ${adminSection === 'messages' ? 'active' : ''}`} onClick={() => handleAdminAction('messages')}>Messages</button>
@@ -2512,6 +2607,87 @@ function App() {
             {contactSaveStatus ? <p className="form-status" role="status">{contactSaveStatus}</p> : null}
             <div className="form-actions">
               <button type="button" className="primary-btn" onClick={handleSaveContactLinks}>Save contact details</button>
+            </div>
+          </section>
+        ) : null}
+
+        {adminSection === 'effects' ? (
+          <section className="panel-card effect-admin-panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">SITE MOTION</span>
+                <h2>Choose a portfolio animation style</h2>
+              </div>
+            </div>
+
+            <div className="effect-control-block">
+              <div className="effect-control-header">
+                <span>Motion intensity</span>
+                <strong>{portfolio.visualIntensity || 72}%</strong>
+              </div>
+              <input
+                type="range"
+                min="25"
+                max="100"
+                step="1"
+                value={portfolio.visualIntensity || 72}
+                onChange={(event) => handleIntensitySelection(Number(event.target.value))}
+                aria-label="Motion intensity"
+              />
+            </div>
+
+            <div className="effect-scope-grid">
+              {MOTION_SCOPES.map((scope) => (
+                <button
+                  type="button"
+                  key={scope.id}
+                  className={`scope-option ${portfolio.visualScope === scope.id ? 'selected' : ''}`}
+                  onClick={() => handleScopeSelection(scope.id)}
+                >
+                  <strong>{scope.name}</strong>
+                  <span>{scope.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="effect-grid">
+              {EFFECT_OPTIONS.map((effect) => (
+                <button
+                  key={effect.id}
+                  type="button"
+                  className={`effect-option ${portfolio.visualEffect === effect.id ? 'selected' : ''}`}
+                  onClick={() => handleEffectSelection(effect.id)}
+                >
+                  <div className="effect-option-header">
+                    <span className={`effect-accent accent-${effect.accent}`} aria-hidden="true" />
+                    <strong>{effect.name}</strong>
+                  </div>
+                  <p>{effect.description}</p>
+                  <div className={`effect-preview effect-preview-${effect.id}`} aria-hidden="true">
+                    <span className="effect-orb orb-one" />
+                    <span className="effect-orb orb-two" />
+                    <span className="effect-orb orb-three" />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="effect-live-preview">
+              <div className={`effect-preview-scene effect-scene-${portfolio.visualEffect || 'aurora'}`}>
+                <div className="scene-panel">
+                  <span className="scene-tag">LIVE PREVIEW</span>
+                  <h3>Portfolio motion</h3>
+                  <div className="scene-content">
+                    <span className="scene-pill">UI</span>
+                    <span className="scene-pill">Build</span>
+                    <span className="scene-pill">Design</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button type="button" className="secondary-btn" onClick={resetMotionSettings}>Reset motion defaults</button>
             </div>
           </section>
         ) : null}
