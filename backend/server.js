@@ -39,6 +39,34 @@ app.use(cors({
 }))
 app.use(express.json())
 
+const renderKeepaliveUrl = process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/api/health` : null
+
+const keepAliveRender = async () => {
+  if (!renderKeepaliveUrl) {
+    return
+  }
+
+  try {
+    const response = await fetch(renderKeepaliveUrl, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } })
+    console.log(`[keepalive] Render ping OK: ${response.status}`)
+  } catch (error) {
+    console.warn('[keepalive] Render ping failed:', error.message)
+  }
+}
+
+const keepAliveMongo = async () => {
+  if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+    return
+  }
+
+  try {
+    await mongoose.connection.db.admin().ping()
+    console.log('[keepalive] MongoDB ping OK')
+  } catch (error) {
+    console.warn('[keepalive] MongoDB ping failed:', error.message)
+  }
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 },
@@ -385,9 +413,20 @@ app.use((error, req, res, next) => {
   return next(error)
 })
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Portfolio API running on http://localhost:${port}`)
 })
+
+server.keepAliveTimeout = 65000
+server.headersTimeout = 70000
+
+setInterval(() => {
+  void keepAliveRender()
+}, 5 * 60 * 1000)
+
+setInterval(() => {
+  void keepAliveMongo()
+}, 60 * 1000)
 
 const connectDatabase = async () => {
   if (process.env.MONGODB_URI) {
