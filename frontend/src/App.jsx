@@ -180,6 +180,19 @@ const DEFAULT_VISUAL_SETTINGS = {
   visualIntensity: 72,
   visualScope: 'all',
 }
+const DEFAULT_EDGE_ANIMATION_SETTINGS = {
+  style: 'spectrum',
+  speedSeconds: 8,
+  color: '#62d0ff',
+  scope: 'both',
+}
+const EDGE_ANIMATION_STYLES = [
+  { id: 'spectrum', name: 'Spectrum', description: 'A bright multicolor trail.' },
+  { id: 'single', name: 'Single colour', description: 'A clean trail in your chosen color.' },
+  { id: 'aurora', name: 'Aurora', description: 'A softer blended color trail.' },
+  { id: 'comet', name: 'Comet', description: 'A short, focused moving highlight.' },
+]
+const EDGE_COLOR_SWATCHES = ['#62d0ff', '#c8ff3d', '#ff8b67', '#af7bff']
 const SECTION_MOTION_DEFAULTS = {
   hero: true,
   work: true,
@@ -302,6 +315,7 @@ function App() {
     achievements: [],
     galleryItems: [],
     adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
+    edgeAnimationSettings: DEFAULT_EDGE_ANIMATION_SETTINGS,
     ...DEFAULT_VISUAL_SETTINGS,
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
@@ -380,6 +394,7 @@ function App() {
   const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
   const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
   const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
+  const [edgeAnimationSaveStatus, setEdgeAnimationSaveStatus] = useState('')
   const [adminUnlockStage, setAdminUnlockStage] = useState('hidden')
   const [unlockProgress, setUnlockProgress] = useState(0)
   const logoClickCountRef = useRef(0)
@@ -590,6 +605,60 @@ function App() {
     }
   }
 
+  const updateEdgeAnimationSetting = (field, value) => {
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        edgeAnimationSettings: { ...DEFAULT_EDGE_ANIMATION_SETTINGS, ...current.edgeAnimationSettings, [field]: value },
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+    setEdgeAnimationSaveStatus('')
+  }
+
+  const saveEdgeAnimationSettings = async () => {
+    const settings = {
+      ...DEFAULT_EDGE_ANIMATION_SETTINGS,
+      ...portfolio.edgeAnimationSettings,
+      speedSeconds: Math.min(20, Math.max(2, Number(portfolio.edgeAnimationSettings?.speedSeconds) || 8)),
+    }
+    const nextPortfolio = { ...portfolio, edgeAnimationSettings: settings }
+    setPortfolio(nextPortfolio)
+    savePortfolioToStorage(nextPortfolio)
+    setEdgeAnimationSaveStatus('Saving edge motion...')
+
+    try {
+      const response = await apiFetch('/api/portfolio/edge-animation', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      })
+      if (!response.ok) {
+        let result = {}
+        try {
+          result = await response.json()
+        } catch {
+          // The local API may still be running an older server build.
+        }
+        throw new Error(result.message || `Settings could not sync (HTTP ${response.status}).`)
+      }
+      const result = await response.json()
+      const savedPortfolio = {
+        ...nextPortfolio,
+        edgeAnimationSettings: result.settings || settings,
+        edgeAnimationSettingsStorage: result.storage || 'database',
+      }
+      setPortfolio(savedPortfolio)
+      savePortfolioToStorage(savedPortfolio)
+      setEdgeAnimationSaveStatus(result.storage === 'memory'
+        ? 'Saved for this running server only. Reconnect MongoDB for permanent storage.'
+        : 'Edge motion settings saved.')
+    } catch (error) {
+      setEdgeAnimationSaveStatus(`${error.message || 'Settings could not be saved.'} They remain saved in this browser.`)
+    }
+  }
+
   useEffect(() => {
     const loadPortfolio = async () => {
       try {
@@ -604,6 +673,7 @@ function App() {
           }
         })()
         const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
+        const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
 
         const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
           ? {
@@ -619,6 +689,12 @@ function App() {
                   ? data.adminAccessSettings || {}
                   : savedPortfolio.adminAccessSettings || data.adminAccessSettings || {}),
               },
+              edgeAnimationSettings: {
+                ...DEFAULT_EDGE_ANIMATION_SETTINGS,
+                ...(hasSavedServerEdgeSettings
+                  ? data.edgeAnimationSettings || {}
+                  : savedPortfolio.edgeAnimationSettings || data.edgeAnimationSettings || {}),
+              },
             }
           : {
               ...data,
@@ -628,6 +704,10 @@ function App() {
               adminAccessSettings: {
                 ...DEFAULT_ADMIN_ACCESS_SETTINGS,
                 ...(data.adminAccessSettings || {}),
+              },
+              edgeAnimationSettings: {
+                ...DEFAULT_EDGE_ANIMATION_SETTINGS,
+                ...(data.edgeAnimationSettings || {}),
               },
             }
         setPortfolio(hydrated)
@@ -668,11 +748,16 @@ function App() {
     document.documentElement.dataset.effect = portfolio.visualEffect || 'aurora'
     document.documentElement.dataset.scope = portfolio.visualScope || 'all'
     document.documentElement.style.setProperty('--motion-strength', String((Number(portfolio.visualIntensity) || 72) / 100))
+    const edgeSettings = { ...DEFAULT_EDGE_ANIMATION_SETTINGS, ...portfolio.edgeAnimationSettings }
+    document.documentElement.dataset.edgeStyle = edgeSettings.style
+    document.documentElement.dataset.edgeScope = edgeSettings.scope
+    document.documentElement.style.setProperty('--edge-speed', `${edgeSettings.speedSeconds}s`)
+    document.documentElement.style.setProperty('--edge-color', edgeSettings.color)
     Object.entries(SECTION_MOTION_DEFAULTS).forEach(([key]) => {
       const enabled = Boolean(sectionMotion[key])
       document.documentElement.dataset[`motion${key.charAt(0).toUpperCase()}${key.slice(1)}`] = String(enabled)
     })
-  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, sectionMotion])
+  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, portfolio.edgeAnimationSettings, sectionMotion])
 
   const selectedProject = useMemo(
     () => portfolio.projects.find((project) => project.id === selectedProjectId) ?? portfolio.projects[0],
@@ -2946,6 +3031,113 @@ function App() {
                 <h2>Choose a portfolio animation style</h2>
               </div>
             </div>
+
+            <section className="edge-motion-panel">
+              <div className="panel-header">
+                <div>
+                  <span className="section-tag">HEADER & FOOTER</span>
+                  <h3>Edge Motion</h3>
+                </div>
+              </div>
+
+              <div className="edge-style-grid">
+                {EDGE_ANIMATION_STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    type="button"
+                    className={`edge-style-option ${portfolio.edgeAnimationSettings?.style === style.id ? 'selected' : ''}`}
+                    onClick={() => updateEdgeAnimationSetting('style', style.id)}
+                  >
+                    <strong>{style.name}</strong>
+                    <span>{style.description}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="edge-motion-controls">
+                <div className="effect-control-block">
+                  <div className="effect-control-header">
+                    <label htmlFor="edge-motion-speed">Loop speed</label>
+                    <strong>{portfolio.edgeAnimationSettings?.speedSeconds || DEFAULT_EDGE_ANIMATION_SETTINGS.speedSeconds}s</strong>
+                  </div>
+                  <input
+                    id="edge-motion-speed"
+                    type="range"
+                    min="2"
+                    max="20"
+                    step="1"
+                    value={portfolio.edgeAnimationSettings?.speedSeconds || DEFAULT_EDGE_ANIMATION_SETTINGS.speedSeconds}
+                    onChange={(event) => updateEdgeAnimationSetting('speedSeconds', Number(event.target.value))}
+                  />
+                </div>
+
+                <div className="edge-color-control">
+                  <span>Accent color</span>
+                  <div className="edge-color-options">
+                    {EDGE_COLOR_SWATCHES.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`edge-color-swatch ${portfolio.edgeAnimationSettings?.color === color ? 'selected' : ''}`}
+                        style={{ '--swatch-color': color }}
+                        aria-label={`Use color ${color}`}
+                        aria-pressed={portfolio.edgeAnimationSettings?.color === color}
+                        onClick={() => updateEdgeAnimationSetting('color', color)}
+                      />
+                    ))}
+                    <label className="edge-custom-color">
+                      <span>Custom</span>
+                      <input
+                        type="color"
+                        value={portfolio.edgeAnimationSettings?.color || DEFAULT_EDGE_ANIMATION_SETTINGS.color}
+                        onChange={(event) => updateEdgeAnimationSetting('color', event.target.value)}
+                        aria-label="Choose custom edge color"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="edge-scope-control">
+                <span>Apply to</span>
+                <div className="edge-scope-options" role="group" aria-label="Edge animation scope">
+                  {[
+                    { id: 'header', name: 'Header only' },
+                    { id: 'footer', name: 'Footer only' },
+                    { id: 'both', name: 'Both' },
+                  ].map((scope) => (
+                    <button
+                      key={scope.id}
+                      type="button"
+                      className={`edge-scope-option ${portfolio.edgeAnimationSettings?.scope === scope.id ? 'selected' : ''}`}
+                      aria-pressed={portfolio.edgeAnimationSettings?.scope === scope.id}
+                      onClick={() => updateEdgeAnimationSetting('scope', scope.id)}
+                    >
+                      {scope.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className="edge-motion-preview"
+                data-edge-style={portfolio.edgeAnimationSettings?.style || DEFAULT_EDGE_ANIMATION_SETTINGS.style}
+                data-edge-scope={portfolio.edgeAnimationSettings?.scope || DEFAULT_EDGE_ANIMATION_SETTINGS.scope}
+                style={{
+                  '--edge-color': portfolio.edgeAnimationSettings?.color || DEFAULT_EDGE_ANIMATION_SETTINGS.color,
+                  '--edge-speed': `${portfolio.edgeAnimationSettings?.speedSeconds || DEFAULT_EDGE_ANIMATION_SETTINGS.speedSeconds}s`,
+                }}
+                aria-label="Live header and footer edge animation preview"
+              >
+                <div className="edge-preview-bar edge-preview-header">Header</div>
+                <div className="edge-preview-bar edge-preview-footer">Footer</div>
+              </div>
+
+              {edgeAnimationSaveStatus ? <p className="form-status" role="status">{edgeAnimationSaveStatus}</p> : null}
+              <div className="form-actions">
+                <button type="button" className="primary-btn" onClick={saveEdgeAnimationSettings}>Save edge motion</button>
+              </div>
+            </section>
 
             <div className="preset-grid">
               {MOTION_PRESETS.map((preset) => (

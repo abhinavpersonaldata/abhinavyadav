@@ -100,6 +100,7 @@ const portfolioContentSchema = new mongoose.Schema({
 }, { timestamps: true })
 const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('PortfolioContent', portfolioContentSchema)
 let adminAccessSettingsStorage = 'default'
+let edgeAnimationSettingsStorage = 'default'
 
 const portfolioData = {
   profile: {
@@ -179,6 +180,12 @@ const portfolioData = {
     logoClickWindowSeconds: 5,
     unlockPattern: [2, 6, 4],
   },
+  edgeAnimationSettings: {
+    style: 'spectrum',
+    speedSeconds: 8,
+    color: '#62d0ff',
+    scope: 'both',
+  },
   toolkitGroups: [
     { label: '01 FRONTEND', skills: ['React', 'Vite', 'Tailwind CSS', 'Framer Motion', 'Responsive UI'] },
     { label: '02 BACKEND', skills: ['Node.js', 'Express', 'REST APIs', 'File uploads'] },
@@ -225,6 +232,9 @@ app.get('/api/portfolio', async (req, res) => {
     const savedAdminAccess = mongoose.connection.readyState === 1
       ? await PortfolioContent.findOne({ key: 'adminAccessSettings' }).lean()
       : null
+    const savedEdgeAnimation = mongoose.connection.readyState === 1
+      ? await PortfolioContent.findOne({ key: 'edgeAnimationSettings' }).lean()
+      : null
     const savedCollections = mongoose.connection.readyState === 1
       ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks'] } }).lean()
       : []
@@ -241,6 +251,8 @@ app.get('/api/portfolio', async (req, res) => {
       about: savedAbout?.data || portfolioData.about,
       adminAccessSettings: savedAdminAccess?.data || portfolioData.adminAccessSettings,
       adminAccessSettingsStorage: savedAdminAccess ? 'database' : adminAccessSettingsStorage,
+      edgeAnimationSettings: savedEdgeAnimation?.data || portfolioData.edgeAnimationSettings,
+      edgeAnimationSettingsStorage: savedEdgeAnimation ? 'database' : edgeAnimationSettingsStorage,
       experienceEntries: savedCollectionData.get('experienceEntries') || portfolioData.experienceEntries,
       achievements: savedCollectionData.get('achievements') || portfolioData.achievements,
       galleryItems: savedCollectionData.get('galleryItems') || portfolioData.galleryItems,
@@ -291,6 +303,42 @@ app.put('/api/portfolio/admin-access', async (req, res) => {
     console.error('Failed to save admin access settings:', error)
     portfolioData.adminAccessSettings = settings
     adminAccessSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+})
+
+app.put('/api/portfolio/edge-animation', async (req, res) => {
+  const settings = req.body?.settings
+  const validSettings = ['spectrum', 'single', 'aurora', 'comet'].includes(settings?.style)
+    && Number.isInteger(settings?.speedSeconds)
+    && settings.speedSeconds >= 2
+    && settings.speedSeconds <= 20
+    && /^#[0-9a-f]{6}$/i.test(settings?.color || '')
+    && ['header', 'footer', 'both'].includes(settings?.scope)
+
+  if (!validSettings) {
+    return res.status(400).json({ success: false, message: 'Edge motion settings are invalid.' })
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    portfolioData.edgeAnimationSettings = settings
+    edgeAnimationSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+
+  try {
+    const savedSettings = await PortfolioContent.findOneAndUpdate(
+      { key: 'edgeAnimationSettings' },
+      { key: 'edgeAnimationSettings', data: settings },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean()
+
+    edgeAnimationSettingsStorage = 'database'
+    return res.json({ success: true, settings: savedSettings.data, storage: 'database' })
+  } catch (error) {
+    console.error('Failed to save edge animation settings:', error)
+    portfolioData.edgeAnimationSettings = settings
+    edgeAnimationSettingsStorage = 'memory'
     return res.json({ success: true, settings, storage: 'memory' })
   }
 })
