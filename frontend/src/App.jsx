@@ -2370,11 +2370,6 @@ function App() {
 
               {loginError ? <p className="login-error">{loginError}</p> : null}
 
-              <div className="login-meta">
-                <span>Local admin access</span>
-                <strong>Use your configured credentials</strong>
-              </div>
-
               <button type="submit" className="primary-btn full-width">Login to dashboard</button>
               <button type="button" className="secondary-btn full-width" onClick={() => setView('home')}>Back to public site</button>
             </form>
@@ -2805,9 +2800,12 @@ function App() {
               <div className="custom-theme-list">
                 {customThemes.map((theme) => (
                   <div key={theme.id} className="custom-theme-item">
-                    <div>
+                    <div className="custom-theme-preview" aria-hidden="true">
+                      <span className={`theme-swatch theme-swatch-${theme.effect || 'aurora'}`} />
+                    </div>
+                    <div className="custom-theme-copy">
                       <strong>{theme.name}</strong>
-                      <span>{theme.effect} • {theme.scope}</span>
+                      <span>{theme.effect} • {theme.scope} • {theme.intensity || 72}%</span>
                     </div>
                     <div className="custom-theme-actions">
                       <button type="button" className="secondary-btn" onClick={() => applySavedMotionTheme(theme)}>Apply</button>
