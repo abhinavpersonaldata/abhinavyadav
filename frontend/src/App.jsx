@@ -6,7 +6,6 @@ import {
   Download,
   GitBranch,
   Globe,
-  LayoutGrid,
   Mail,
   Menu,
   MoonStar,
@@ -86,6 +85,11 @@ const ADMIN_CREDENTIALS = {
   password: import.meta.env.VITE_ADMIN_PASSWORD || '12345678',
 }
 const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-auth-v2'
+const DEFAULT_ADMIN_ACCESS_SETTINGS = {
+  logoClickCount: 5,
+  logoClickWindowSeconds: 5,
+  unlockPattern: [2, 6, 4],
+}
 const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
 const SOLAR_SYSTEM_BODIES = [
   { name: 'Mercury', short: 'mercury', size: 13, orbit: 128, radius: 64, duration: 10, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
@@ -297,6 +301,7 @@ function App() {
     certificateEntries: [],
     achievements: [],
     galleryItems: [],
+    adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
     ...DEFAULT_VISUAL_SETTINGS,
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
@@ -373,6 +378,12 @@ function App() {
   })
   const [sectionMotion, setSectionMotion] = useState(SECTION_MOTION_DEFAULTS)
   const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
+  const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
+  const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
+  const [adminUnlockStage, setAdminUnlockStage] = useState('hidden')
+  const [unlockProgress, setUnlockProgress] = useState(0)
+  const logoClickCountRef = useRef(0)
+  const logoClickWindowTimerRef = useRef(null)
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -465,6 +476,120 @@ function App() {
     }
   }
 
+  const clearAdminLogoClickWindow = () => {
+    if (logoClickWindowTimerRef.current) {
+      clearTimeout(logoClickWindowTimerRef.current)
+      logoClickWindowTimerRef.current = null
+    }
+    logoClickCountRef.current = 0
+  }
+
+  const openAdminUnlockScreen = () => {
+    clearAdminLogoClickWindow()
+    setUnlockProgress(0)
+    setAdminUnlockStage('active')
+  }
+
+  const handleAdminLogoClick = () => {
+    logoClickCountRef.current += 1
+
+    if (logoClickCountRef.current === 1) {
+      logoClickWindowTimerRef.current = setTimeout(
+        clearAdminLogoClickWindow,
+        Number(portfolio.adminAccessSettings?.logoClickWindowSeconds || DEFAULT_ADMIN_ACCESS_SETTINGS.logoClickWindowSeconds) * 1000,
+      )
+    }
+
+    if (logoClickCountRef.current >= Number(portfolio.adminAccessSettings?.logoClickCount || DEFAULT_ADMIN_ACCESS_SETTINGS.logoClickCount)) {
+      openAdminUnlockScreen()
+    }
+  }
+
+  const handleAdminHotspotClick = (slotId) => {
+    if (adminUnlockStage !== 'active') {
+      return
+    }
+
+    const unlockPattern = portfolio.adminAccessSettings?.unlockPattern || DEFAULT_ADMIN_ACCESS_SETTINGS.unlockPattern
+    const nextProgress = slotId === unlockPattern[unlockProgress]
+      ? unlockProgress + 1
+      : slotId === unlockPattern[0] ? 1 : 0
+
+    setUnlockProgress(nextProgress)
+
+    if (nextProgress === unlockPattern.length) {
+      setUnlockProgress(0)
+      setAdminUnlockStage('hidden')
+      setView('admin-login')
+    }
+  }
+
+  const updateAdminAccessDraft = (field, value) => {
+    setAdminAccessDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  const addAdminUnlockPoint = (point) => {
+    setAdminAccessDraft((current) => current.unlockPattern.includes(point) || current.unlockPattern.length >= 9
+      ? current
+      : { ...current, unlockPattern: [...current.unlockPattern, point] })
+  }
+
+  const removeLastAdminUnlockPoint = () => {
+    setAdminAccessDraft((current) => ({ ...current, unlockPattern: current.unlockPattern.slice(0, -1) }))
+  }
+
+  const resetAdminUnlockPattern = () => {
+    setAdminAccessDraft((current) => ({ ...current, unlockPattern: [...DEFAULT_ADMIN_ACCESS_SETTINGS.unlockPattern] }))
+  }
+
+  const saveAdminAccessSettings = async () => {
+    if (adminAccessDraft.unlockPattern.length < 3) {
+      setAdminAccessSaveStatus('Choose at least three unlock points.')
+      return
+    }
+
+    const settings = {
+      logoClickCount: Math.min(20, Math.max(2, Number(adminAccessDraft.logoClickCount) || 5)),
+      logoClickWindowSeconds: Math.min(30, Math.max(2, Number(adminAccessDraft.logoClickWindowSeconds) || 5)),
+      unlockPattern: adminAccessDraft.unlockPattern,
+    }
+    const nextPortfolio = { ...portfolio, adminAccessSettings: settings }
+    setPortfolio(nextPortfolio)
+    setAdminAccessDraft(settings)
+    savePortfolioToStorage(nextPortfolio)
+    setAdminAccessSaveStatus('Saving settings...')
+
+    try {
+      const response = await apiFetch('/api/portfolio/admin-access', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      })
+      if (!response.ok) {
+        let result = {}
+        try {
+          result = await response.json()
+        } catch {
+          // The local API may still be running an older server build.
+        }
+        throw new Error(result.message || `Settings could not sync (HTTP ${response.status}).`)
+      }
+      const result = await response.json()
+      const savedPortfolio = {
+        ...nextPortfolio,
+        adminAccessSettings: result.settings || settings,
+        adminAccessSettingsStorage: result.storage || 'database',
+      }
+      setPortfolio(savedPortfolio)
+      savePortfolioToStorage(savedPortfolio)
+      setAdminAccessSaveStatus(result.storage === 'memory'
+        ? 'Saved for this running server only. Reconnect MongoDB for permanent storage.'
+        : 'Access settings saved.')
+    } catch (error) {
+      setAdminAccessSaveStatus(`${error.message || 'Settings could not be saved.'} They remain saved in this browser.`)
+    }
+  }
+
   useEffect(() => {
     const loadPortfolio = async () => {
       try {
@@ -478,6 +603,7 @@ function App() {
             return null
           }
         })()
+        const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
 
         const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
           ? {
@@ -487,14 +613,25 @@ function App() {
               visualEffect: savedPortfolio.visualEffect || data.visualEffect || 'aurora',
               visualIntensity: Number(savedPortfolio.visualIntensity) || Number(data.visualIntensity) || 72,
               visualScope: savedPortfolio.visualScope || data.visualScope || 'all',
+              adminAccessSettings: {
+                ...DEFAULT_ADMIN_ACCESS_SETTINGS,
+                ...(hasSavedServerAccessSettings
+                  ? data.adminAccessSettings || {}
+                  : savedPortfolio.adminAccessSettings || data.adminAccessSettings || {}),
+              },
             }
           : {
               ...data,
               visualEffect: data.visualEffect || 'aurora',
               visualIntensity: Number(data.visualIntensity) || 72,
               visualScope: data.visualScope || 'all',
+              adminAccessSettings: {
+                ...DEFAULT_ADMIN_ACCESS_SETTINGS,
+                ...(data.adminAccessSettings || {}),
+              },
             }
         setPortfolio(hydrated)
+        setAdminAccessDraft(hydrated.adminAccessSettings)
         savePortfolioToStorage(hydrated)
         if (hydrated.projects?.length) {
           setSelectedProjectId(hydrated.projects[0].id)
@@ -708,15 +845,6 @@ function App() {
     } catch (error) {
       setFormStatus(error.message || 'Something went wrong. Please try again.')
     }
-  }
-
-  const handleAdminAccess = () => {
-    if (isAdminAuthenticated) {
-      setView('admin')
-      return
-    }
-
-    setView('admin-login')
   }
 
   const handleLoginChange = (event) => {
@@ -1518,8 +1646,42 @@ function App() {
 
   const renderHome = () => (
     <>
+      {adminUnlockStage === 'active' ? (
+        <div className="admin-guard-overlay" role="dialog" aria-modal="true" aria-label="Admin unlock screen">
+          <div className="admin-guard-card">
+            <p className="section-tag">ADMIN UNLOCK</p>
+            <h2>Restricted access</h2>
+            <p>Select three points in the correct order to continue.</p>
+
+            <div className="admin-guard-grid" aria-label="Nine unlock points">
+              {Array.from({ length: 9 }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className="admin-hotspot"
+                  aria-label={`Unlock point ${index + 1}`}
+                  onClick={() => handleAdminHotspotClick(index)}
+                />
+              ))}
+            </div>
+
+            <div className="admin-guard-progress" aria-hidden="true">
+              <span style={{ width: `${(unlockProgress / 3) * 100}%` }} />
+            </div>
+            <button type="button" className="secondary-btn full-width admin-guard-cancel" onClick={() => setAdminUnlockStage('hidden')}>
+              Back to portfolio
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <header id="top" className="topbar">
-        <button type="button" className="brand-mark" aria-label="Abhinav Yadav logo" onClick={() => setView('home')}>
+        <button
+          type="button"
+          className="brand-mark"
+          aria-label="Abhinav Yadav logo"
+          onClick={handleAdminLogoClick}
+        >
           AY
         </button>
 
@@ -1539,10 +1701,6 @@ function App() {
             onClick={toggleTheme}
           >
             {theme === 'dark' ? <SunMedium size={16} /> : <MoonStar size={16} />}
-          </button>
-          <button type="button" className="primary-btn" onClick={handleAdminAccess}>
-            <span>{isAdminAuthenticated ? 'Dashboard' : 'Admin Login'}</span>
-            <LayoutGrid size={15} />
           </button>
           <a href="#contact" className="primary-btn">
             <span>Let&apos;s Talk</span>
@@ -2391,6 +2549,7 @@ function App() {
           <button type="button" className={`nav-button ${adminSection === 'achievements' ? 'active' : ''}`} onClick={() => handleAdminAction('achievements')}>Achievements</button>
           <button type="button" className={`nav-button ${adminSection === 'gallery' ? 'active' : ''}`} onClick={() => handleAdminAction('gallery')}>Gallery Images</button>
           <button type="button" className={`nav-button ${adminSection === 'contact' ? 'active' : ''}`} onClick={beginEditContactLinks}>Contact</button>
+          <button type="button" className={`nav-button ${adminSection === 'access' ? 'active' : ''}`} onClick={() => handleAdminAction('access')}>Access Gate</button>
           <button type="button" className={`nav-button ${adminSection === 'effects' ? 'active' : ''}`} onClick={() => handleAdminAction('effects')}>Effects</button>
           <button type="button" className={`nav-button ${adminSection === 'skills' ? 'active' : ''}`} onClick={() => handleAdminAction('skills')}>Skills</button>
           <button type="button" className={`nav-button ${adminSection === 'journey' ? 'active' : ''}`} onClick={() => handleAdminAction('journey')}>Journey</button>
@@ -2421,6 +2580,75 @@ function App() {
             </div>
           ))}
         </section>
+
+        {adminSection === 'access' ? (
+          <section className="panel-card admin-list-panel access-gate-panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">PRIVATE ENTRY</span>
+                <h2>Access gate</h2>
+              </div>
+            </div>
+
+            <div className="field-grid admin-field-grid">
+              <label>
+                <span>AY logo clicks</span>
+                <input
+                  type="number"
+                  min="2"
+                  max="20"
+                  value={adminAccessDraft.logoClickCount}
+                  onChange={(event) => updateAdminAccessDraft('logoClickCount', event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Time window (seconds)</span>
+                <input
+                  type="number"
+                  min="2"
+                  max="30"
+                  value={adminAccessDraft.logoClickWindowSeconds}
+                  onChange={(event) => updateAdminAccessDraft('logoClickWindowSeconds', event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="access-pattern-editor">
+              <div className="panel-header">
+                <div>
+                  <span className="section-tag">UNLOCK SEQUENCE</span>
+                  <h3>{adminAccessDraft.unlockPattern.length} points selected</h3>
+                </div>
+                <div className="mini-list-actions compact-actions">
+                  <button type="button" className="ghost-btn" onClick={removeLastAdminUnlockPoint}>Undo</button>
+                  <button type="button" className="ghost-btn" onClick={resetAdminUnlockPattern}>Reset</button>
+                </div>
+              </div>
+              <div className="access-pattern-grid" aria-label="Configure unlock point order">
+                {Array.from({ length: 9 }, (_, index) => {
+                  const sequenceNumber = adminAccessDraft.unlockPattern.indexOf(index)
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`access-pattern-point ${sequenceNumber >= 0 ? 'selected' : ''}`}
+                      aria-label={`Pattern point ${index + 1}${sequenceNumber >= 0 ? `, step ${sequenceNumber + 1}` : ''}`}
+                      aria-pressed={sequenceNumber >= 0}
+                      onClick={() => addAdminUnlockPoint(index)}
+                    >
+                      {sequenceNumber >= 0 ? sequenceNumber + 1 : ''}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {adminAccessSaveStatus ? <p className="form-status" role="status">{adminAccessSaveStatus}</p> : null}
+            <div className="form-actions">
+              <button type="button" className="primary-btn" onClick={saveAdminAccessSettings}>Save access settings</button>
+            </div>
+          </section>
+        ) : null}
 
         {adminSection === 'about' ? (
           <form className="panel-card admin-form about-admin-form" onSubmit={handleSaveAbout}>

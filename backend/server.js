@@ -99,6 +99,7 @@ const portfolioContentSchema = new mongoose.Schema({
   data: { type: mongoose.Schema.Types.Mixed, required: true },
 }, { timestamps: true })
 const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('PortfolioContent', portfolioContentSchema)
+let adminAccessSettingsStorage = 'default'
 
 const portfolioData = {
   profile: {
@@ -173,6 +174,11 @@ const portfolioData = {
     },
   ],
   navItems: ['WORK', 'ABOUT', 'JOURNEY', 'TOOLKIT', 'CONTACT'],
+  adminAccessSettings: {
+    logoClickCount: 5,
+    logoClickWindowSeconds: 5,
+    unlockPattern: [2, 6, 4],
+  },
   toolkitGroups: [
     { label: '01 FRONTEND', skills: ['React', 'Vite', 'Tailwind CSS', 'Framer Motion', 'Responsive UI'] },
     { label: '02 BACKEND', skills: ['Node.js', 'Express', 'REST APIs', 'File uploads'] },
@@ -216,6 +222,9 @@ app.get('/api/portfolio', async (req, res) => {
     const savedAbout = mongoose.connection.readyState === 1
       ? await PortfolioContent.findOne({ key: 'about' }).lean()
       : null
+    const savedAdminAccess = mongoose.connection.readyState === 1
+      ? await PortfolioContent.findOne({ key: 'adminAccessSettings' }).lean()
+      : null
     const savedCollections = mongoose.connection.readyState === 1
       ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks'] } }).lean()
       : []
@@ -230,6 +239,8 @@ app.get('/api/portfolio', async (req, res) => {
     res.json({
       ...portfolioData,
       about: savedAbout?.data || portfolioData.about,
+      adminAccessSettings: savedAdminAccess?.data || portfolioData.adminAccessSettings,
+      adminAccessSettingsStorage: savedAdminAccess ? 'database' : adminAccessSettingsStorage,
       experienceEntries: savedCollectionData.get('experienceEntries') || portfolioData.experienceEntries,
       achievements: savedCollectionData.get('achievements') || portfolioData.achievements,
       galleryItems: savedCollectionData.get('galleryItems') || portfolioData.galleryItems,
@@ -239,6 +250,48 @@ app.get('/api/portfolio', async (req, res) => {
   } catch (error) {
     console.error('Failed to load saved projects:', error)
     res.json(portfolioData)
+  }
+})
+
+app.put('/api/portfolio/admin-access', async (req, res) => {
+  const settings = req.body?.settings
+  const pattern = settings?.unlockPattern
+  const validSettings = Number.isInteger(settings?.logoClickCount)
+    && settings.logoClickCount >= 2
+    && settings.logoClickCount <= 20
+    && Number.isInteger(settings?.logoClickWindowSeconds)
+    && settings.logoClickWindowSeconds >= 2
+    && settings.logoClickWindowSeconds <= 30
+    && Array.isArray(pattern)
+    && pattern.length >= 3
+    && pattern.length <= 9
+    && pattern.every((point) => Number.isInteger(point) && point >= 0 && point <= 8)
+    && new Set(pattern).size === pattern.length
+
+  if (!validSettings) {
+    return res.status(400).json({ success: false, message: 'Access settings are invalid.' })
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    portfolioData.adminAccessSettings = settings
+    adminAccessSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+
+  try {
+    const savedSettings = await PortfolioContent.findOneAndUpdate(
+      { key: 'adminAccessSettings' },
+      { key: 'adminAccessSettings', data: settings },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean()
+
+    adminAccessSettingsStorage = 'database'
+    return res.json({ success: true, settings: savedSettings.data, storage: 'database' })
+  } catch (error) {
+    console.error('Failed to save admin access settings:', error)
+    portfolioData.adminAccessSettings = settings
+    adminAccessSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
   }
 })
 
