@@ -14,4 +14,23 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    target: 'es2020',
+    reportCompressedSize: false,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('framer-motion')) return 'motion'
+            if (id.includes('lucide-react')) return 'icons'
+            if (id.includes('react') || id.includes('react-dom')) return 'react'
+            if (id.includes('tailwindcss')) return 'styles'
+          }
+          return undefined
+        },
+      },
+    },
+  },
 })
