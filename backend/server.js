@@ -185,17 +185,17 @@ const portfolioData = {
     { year: '2026', title: 'Deepening craft', description: 'Focused on web technology, modular systems, and more complete portfolio storytelling.' },
   ],
   educationEntries: [
-    { title: 'Diploma in Computer Science & Engineering', institution: 'EDITABLE PLACEHOLDER INSTITUTION', dates: '2024 — 2027', location: 'India', description: 'Core curriculum and practical learning focused on software, systems, and web technologies.' },
+    { title: 'Diploma in Computer Science & Engineering', institution: 'Computer Science & Engineering Diploma Program', dates: '2024 — 2027', location: 'India', description: 'Core curriculum and practical learning focused on software, systems, and web technologies.' },
     { title: 'Web Technology & UI Practice', institution: 'Independent Learning Path', dates: 'Ongoing', location: 'Remote / Self-directed', description: 'Structured practice in frontend architecture, interface systems, and interactive design.' },
   ],
   experienceEntries: [
-    { company: 'EDITABLE PLACEHOLDER COMPANY', role: 'Frontend Learner / Product Intern', type: 'Learning Internship / Project Experience', dates: '2025 — Present', location: 'Remote', description: 'Supported learning projects, product experimentation, and interface refinement.', achievements: ['UI prototyping', 'Design iteration', 'Workflow learning'] },
-    { company: 'EDITABLE PLACEHOLDER COMPANY', role: 'Web Development Intern', type: 'Project-Based', dates: '2024 — 2025', location: 'Remote', description: 'Worked on static and dynamic web interfaces while learning reusable systems.', achievements: ['Responsive layouts', 'Component thinking', 'Code organization'] },
+    { company: 'Independent Design & Learning Studio', role: 'Frontend Learner / Product Intern', type: 'Learning Internship / Project Experience', dates: '2025 — Present', location: 'Remote', description: 'Supported learning projects, product experimentation, and interface refinement.', achievements: ['UI prototyping', 'Design iteration', 'Workflow learning'] },
+    { company: 'Freelance Web Practice', role: 'Web Development Intern', type: 'Project-Based', dates: '2024 — 2025', location: 'Remote', description: 'Worked on static and dynamic web interfaces while learning reusable systems.', achievements: ['Responsive layouts', 'Component thinking', 'Code organization'] },
   ],
   certificateEntries: [
-    { title: 'Frontend Fundamentals', issuer: 'EDITABLE PLACEHOLDER', date: '2025', credential: 'Certificate ID — EDITABLE PLACEHOLDER' },
-    { title: 'Web Development Essentials', issuer: 'EDITABLE PLACEHOLDER', date: '2025', credential: 'Certificate ID — EDITABLE PLACEHOLDER' },
-    { title: 'UI / UX Design Practice', issuer: 'EDITABLE PLACEHOLDER', date: '2026', credential: 'Certificate ID — EDITABLE PLACEHOLDER' },
+    { title: 'Frontend Fundamentals', issuer: 'Self-Directed Learning', date: '2025', credential: 'Certificate ID — Frontend Fundamentals' },
+    { title: 'Web Development Essentials', issuer: 'Self-Directed Learning', date: '2025', credential: 'Certificate ID — Web Development Essentials' },
+    { title: 'UI / UX Design Practice', issuer: 'Self-Directed Learning', date: '2026', credential: 'Certificate ID — UI / UX Design Practice' },
   ],
   achievements: [
     { title: 'Project-Based Learning Archive', organization: 'Independent Practice', date: '2025', description: 'A structured series of experiments and builds created while learning web product design.' },
