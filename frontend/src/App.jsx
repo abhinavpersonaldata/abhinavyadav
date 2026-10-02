@@ -164,6 +164,13 @@ const MOTION_SCOPES = [
   { id: 'content', name: 'Content blocks', description: 'Focus animation on major content sections.' },
   { id: 'cards', name: 'Cards & tiles', description: 'Give emphasis to project cards, gallery, and panels.' },
 ]
+const MOTION_PRESETS = [
+  { id: 'studio', name: 'Studio Default', description: 'Balanced motion for a premium portfolio.', effect: 'aurora', intensity: 72, scope: 'all' },
+  { id: 'cinematic', name: 'Cinematic Glow', description: 'Rich contrast and warmer transitions.', effect: 'sunrise', intensity: 88, scope: 'content' },
+  { id: 'neon', name: 'Neon Pulse', description: 'High-energy interface for a bold first impression.', effect: 'neon-glow', intensity: 94, scope: 'all' },
+  { id: 'minimal', name: 'Minimal Glass', description: 'Subtle motion with a clean editorial finish.', effect: 'glass', intensity: 48, scope: 'cards' },
+  { id: 'orbital', name: 'Orbital Drift', description: 'More spatial motion for concept and creative layouts.', effect: 'orbit', intensity: 78, scope: 'hero' },
+]
 const DEFAULT_VISUAL_SETTINGS = {
   visualEffect: 'aurora',
   visualIntensity: 72,
@@ -564,6 +571,21 @@ function App() {
   const resetMotionSettings = () => {
     setPortfolio((current) => {
       const nextPortfolio = { ...current, ...DEFAULT_VISUAL_SETTINGS }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+  }
+
+  const applyMotionPreset = (preset) => {
+    if (!preset) return
+
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        visualEffect: preset.effect,
+        visualIntensity: preset.intensity,
+        visualScope: preset.scope,
+      }
       savePortfolioToStorage(nextPortfolio)
       return nextPortfolio
     })
@@ -2620,6 +2642,23 @@ function App() {
               </div>
             </div>
 
+            <div className="preset-grid">
+              {MOTION_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={`preset-card ${portfolio.visualEffect === preset.effect && portfolio.visualIntensity === preset.intensity && portfolio.visualScope === preset.scope ? 'selected' : ''}`}
+                  onClick={() => applyMotionPreset(preset)}
+                >
+                  <div className="preset-header">
+                    <strong>{preset.name}</strong>
+                    <span>{preset.effect}</span>
+                  </div>
+                  <p>{preset.description}</p>
+                </button>
+              ))}
+            </div>
+
             <div className="effect-control-block">
               <div className="effect-control-header">
                 <span>Motion intensity</span>
@@ -2673,14 +2712,27 @@ function App() {
             </div>
 
             <div className="effect-live-preview">
-              <div className={`effect-preview-scene effect-scene-${portfolio.visualEffect || 'aurora'}`}>
+              <div
+                className={`effect-preview-scene effect-scene-${portfolio.visualEffect || 'aurora'}`}
+                data-preview-scope={portfolio.visualScope || 'all'}
+                data-preview-effect={portfolio.visualEffect || 'aurora'}
+                style={{ '--preview-strength': String((Number(portfolio.visualIntensity) || 72) / 100) }}
+              >
                 <div className="scene-panel">
-                  <span className="scene-tag">LIVE PREVIEW</span>
-                  <h3>Portfolio motion</h3>
+                  <span className="scene-tag">
+                    {MOTION_SCOPES.find((scope) => scope.id === (portfolio.visualScope || 'all'))?.name || 'Full site'} / {EFFECT_OPTIONS.find((effect) => effect.id === (portfolio.visualEffect || 'aurora'))?.name || 'Aurora Drift'}
+                  </span>
+                  <h3>{EFFECT_OPTIONS.find((effect) => effect.id === (portfolio.visualEffect || 'aurora'))?.name || 'Aurora Drift'}</h3>
                   <div className="scene-content">
                     <span className="scene-pill">UI</span>
                     <span className="scene-pill">Build</span>
                     <span className="scene-pill">Design</span>
+                  </div>
+                  <div className="scene-reading">
+                    <span>Intensity {portfolio.visualIntensity || 72}%</span>
+                    <div className="scene-meter" aria-label="Selected motion intensity">
+                      <i style={{ width: `${portfolio.visualIntensity || 72}%` }} />
+                    </div>
                   </div>
                 </div>
               </div>
