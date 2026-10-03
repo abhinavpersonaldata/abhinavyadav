@@ -99,6 +99,7 @@ const portfolioContentSchema = new mongoose.Schema({
   data: { type: mongoose.Schema.Types.Mixed, required: true },
 }, { timestamps: true })
 const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('PortfolioContent', portfolioContentSchema)
+let aboutStorage = 'default'
 let adminAccessSettingsStorage = 'default'
 let edgeAnimationSettingsStorage = 'default'
 
@@ -249,6 +250,7 @@ app.get('/api/portfolio', async (req, res) => {
     res.json({
       ...portfolioData,
       about: savedAbout?.data || portfolioData.about,
+      aboutStorage: savedAbout ? 'database' : aboutStorage,
       adminAccessSettings: savedAdminAccess?.data || portfolioData.adminAccessSettings,
       adminAccessSettingsStorage: savedAdminAccess ? 'database' : adminAccessSettingsStorage,
       edgeAnimationSettings: savedEdgeAnimation?.data || portfolioData.edgeAnimationSettings,
@@ -352,7 +354,9 @@ app.put('/api/portfolio/about', async (req, res) => {
   }
 
   if (mongoose.connection.readyState !== 1) {
-    return res.status(503).json({ success: false, message: 'MongoDB is not connected. About changes can only be saved in this browser.' })
+    portfolioData.about = about
+    aboutStorage = 'memory'
+    return res.json({ success: true, about, storage: 'memory' })
   }
 
   try {
@@ -362,10 +366,13 @@ app.put('/api/portfolio/about', async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).lean()
 
-    return res.json({ success: true, about: savedAbout.data })
+    aboutStorage = 'database'
+    return res.json({ success: true, about: savedAbout.data, storage: 'database' })
   } catch (error) {
     console.error('Failed to save About content:', error)
-    return res.status(503).json({ success: false, message: 'About content could not be saved.' })
+    portfolioData.about = about
+    aboutStorage = 'memory'
+    return res.json({ success: true, about, storage: 'memory' })
   }
 })
 

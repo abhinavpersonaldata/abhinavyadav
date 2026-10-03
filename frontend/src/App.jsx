@@ -661,17 +661,23 @@ function App() {
 
   useEffect(() => {
     const loadPortfolio = async () => {
+      const savedPortfolio = (() => {
+        try {
+          const raw = localStorage.getItem(PORTFOLIO_STORAGE_KEY)
+          return raw ? JSON.parse(raw) : null
+        } catch {
+          return null
+        }
+      })()
+
+      if (savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)) {
+        setPortfolio((current) => ({ ...current, ...savedPortfolio }))
+      }
+
       try {
         const response = await apiFetch('/api/portfolio')
         const data = await response.json()
-        const savedPortfolio = (() => {
-          try {
-            const raw = localStorage.getItem(PORTFOLIO_STORAGE_KEY)
-            return raw ? JSON.parse(raw) : null
-          } catch {
-            return null
-          }
-        })()
+        const hasSavedServerAbout = ['database', 'memory'].includes(data.aboutStorage)
         const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
         const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
 
@@ -679,7 +685,10 @@ function App() {
           ? {
               ...data,
               ...savedPortfolio,
-              about: savedPortfolio.about || data.about || DEFAULT_ABOUT,
+              about: hasSavedServerAbout
+                ? data.about || DEFAULT_ABOUT
+                : savedPortfolio.about || data.about || DEFAULT_ABOUT,
+              aboutStorage: hasSavedServerAbout ? data.aboutStorage : savedPortfolio.aboutStorage || data.aboutStorage,
               visualEffect: savedPortfolio.visualEffect || data.visualEffect || 'aurora',
               visualIntensity: Number(savedPortfolio.visualIntensity) || Number(data.visualIntensity) || 72,
               visualScope: savedPortfolio.visualScope || data.visualScope || 'all',
@@ -1423,12 +1432,14 @@ function App() {
 
       const savedAbout = result.about || about
       setPortfolio((current) => {
-        const nextPortfolio = { ...current, about: savedAbout }
+        const nextPortfolio = { ...current, about: savedAbout, aboutStorage: result.storage || 'database' }
         savePortfolioToStorage(nextPortfolio)
         return nextPortfolio
       })
       setAboutDraft(savedAbout)
-      setAboutSaveStatus('About section saved.')
+      setAboutSaveStatus(result.storage === 'memory'
+        ? 'Saved for this running server only. Reconnect MongoDB for permanent storage.'
+        : 'About section saved.')
     } catch (error) {
       setAboutSaveStatus(`${error.message || 'About content could not be saved.'} Changes remain saved in this browser.`)
     }
