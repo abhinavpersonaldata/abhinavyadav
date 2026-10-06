@@ -101,6 +101,7 @@ const portfolioContentSchema = new mongoose.Schema({
 const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('PortfolioContent', portfolioContentSchema)
 let aboutStorage = 'default'
 let adminAccessSettingsStorage = 'default'
+let homepageSettingsStorage = 'default'
 let edgeAnimationSettingsStorage = 'default'
 let motionSettingsStorage = 'default'
 
@@ -182,6 +183,9 @@ const portfolioData = {
     logoClickWindowSeconds: 5,
     unlockPattern: [2, 6, 4],
   },
+  homepageSettings: {
+    activeDesign: 'placement-pro',
+  },
   edgeAnimationSettings: {
     style: 'spectrum',
     speedSeconds: 8,
@@ -238,6 +242,9 @@ app.get('/api/portfolio', async (req, res) => {
     const savedAdminAccess = mongoose.connection.readyState === 1
       ? await PortfolioContent.findOne({ key: 'adminAccessSettings' }).lean()
       : null
+    const savedHomepageSettings = mongoose.connection.readyState === 1
+      ? await PortfolioContent.findOne({ key: 'homepageSettings' }).lean()
+      : null
     const savedEdgeAnimation = mongoose.connection.readyState === 1
       ? await PortfolioContent.findOne({ key: 'edgeAnimationSettings' }).lean()
       : null
@@ -261,6 +268,8 @@ app.get('/api/portfolio', async (req, res) => {
       aboutStorage: savedAbout ? 'database' : aboutStorage,
       adminAccessSettings: savedAdminAccess?.data || portfolioData.adminAccessSettings,
       adminAccessSettingsStorage: savedAdminAccess ? 'database' : adminAccessSettingsStorage,
+      homepageSettings: savedHomepageSettings?.data || portfolioData.homepageSettings,
+      homepageSettingsStorage: savedHomepageSettings ? 'database' : homepageSettingsStorage,
       edgeAnimationSettings: savedEdgeAnimation?.data || portfolioData.edgeAnimationSettings,
       edgeAnimationSettingsStorage: savedEdgeAnimation ? 'database' : edgeAnimationSettingsStorage,
       motionSettings: savedMotionSettings?.data || portfolioData.motionSettings,
@@ -351,6 +360,36 @@ app.put('/api/portfolio/admin-access', async (req, res) => {
     console.error('Failed to save admin access settings:', error)
     portfolioData.adminAccessSettings = settings
     adminAccessSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+})
+
+app.put('/api/portfolio/homepage-settings', async (req, res) => {
+  const allowedDesigns = ['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid', 'cosmic-studio']
+  const activeDesign = allowedDesigns.includes(req.body?.settings?.activeDesign)
+    ? req.body.settings.activeDesign
+    : 'placement-pro'
+  const settings = { activeDesign }
+
+  if (mongoose.connection.readyState !== 1) {
+    portfolioData.homepageSettings = settings
+    homepageSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+
+  try {
+    const savedSettings = await PortfolioContent.findOneAndUpdate(
+      { key: 'homepageSettings' },
+      { key: 'homepageSettings', data: settings },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean()
+
+    homepageSettingsStorage = 'database'
+    return res.json({ success: true, settings: savedSettings.data, storage: 'database' })
+  } catch (error) {
+    console.error('Failed to save homepage settings:', error)
+    portfolioData.homepageSettings = settings
+    homepageSettingsStorage = 'memory'
     return res.json({ success: true, settings, storage: 'memory' })
   }
 })

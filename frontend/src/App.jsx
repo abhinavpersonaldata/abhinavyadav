@@ -74,9 +74,11 @@ const MotionArticle = ({ children, ...props }) => {
   return <Component {...props}>{children}</Component>
 }
 
+const StaticPresence = ({ children }) => <>{children}</>
+
 const AnimatedPresence = ({ children, ...props }) => {
   const motionLibrary = useMotionLibrary()
-  const Component = motionLibrary?.AnimatePresence || (({ children: presenceChildren }) => <>{presenceChildren}</>)
+  const Component = motionLibrary?.AnimatePresence || StaticPresence
 
   return <Component {...props}>{children}</Component>
 }
@@ -91,6 +93,42 @@ const DEFAULT_ADMIN_ACCESS_SETTINGS = {
   logoClickWindowSeconds: 5,
   unlockPattern: [2, 6, 4],
 }
+const DEFAULT_HOMEPAGE_SETTINGS = {
+  activeDesign: 'placement-pro',
+}
+const HOMEPAGE_DESIGNS = [
+  {
+    id: 'placement-pro',
+    name: 'Placement Pro',
+    description: 'A recruiter-ready CSE engineer homepage with biodata, skills, projects, and resume actions.',
+    tone: 'Professional',
+  },
+  {
+    id: 'academic-clean',
+    name: 'Academic Clean',
+    description: 'A clear profile-first layout for teachers, mentors, and college submissions.',
+    tone: 'Academic',
+  },
+  {
+    id: 'recruiter-brief',
+    name: 'Recruiter Brief',
+    description: 'A faster placement-facing version focused on quick scan, proof, and contact.',
+    tone: 'Placement',
+  },
+  {
+    id: 'resume-grid',
+    name: 'Resume Grid',
+    description: 'A structured biodata grid with compact facts and document-style sections.',
+    tone: 'Biodata',
+  },
+  {
+    id: 'cosmic-studio',
+    name: 'Default',
+    description: 'The previous animated portfolio homepage, preserved as the original default UI.',
+    tone: 'Original',
+  },
+]
+const PROFESSIONAL_HOMEPAGE_IDS = new Set(['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid'])
 const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
 const SOLAR_SYSTEM_BODIES = [
   { name: 'Mercury', short: 'mercury', size: 13, orbit: 128, radius: 64, duration: 10, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
@@ -321,6 +359,7 @@ function App() {
     achievements: [],
     galleryItems: [],
     adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
+    homepageSettings: DEFAULT_HOMEPAGE_SETTINGS,
     edgeAnimationSettings: DEFAULT_EDGE_ANIMATION_SETTINGS,
     motionSettings: DEFAULT_SITE_MOTION_SETTINGS,
     ...DEFAULT_VISUAL_SETTINGS,
@@ -401,6 +440,7 @@ function App() {
   const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
   const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
   const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
+  const [homepageSaveStatus, setHomepageSaveStatus] = useState('')
   const [edgeAnimationSaveStatus, setEdgeAnimationSaveStatus] = useState('')
   const [motionSettingsSaveStatus, setMotionSettingsSaveStatus] = useState('')
   const [adminUnlockStage, setAdminUnlockStage] = useState('hidden')
@@ -734,6 +774,7 @@ function App() {
         const data = await response.json()
         const hasSavedServerAbout = ['database', 'memory'].includes(data.aboutStorage)
         const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
+        const hasSavedServerHomepageSettings = ['database', 'memory'].includes(data.homepageSettingsStorage)
         const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
         const hasSavedServerMotionSettings = ['database', 'memory'].includes(data.motionSettingsStorage)
 
@@ -753,6 +794,12 @@ function App() {
                 ...(hasSavedServerAccessSettings
                   ? data.adminAccessSettings || {}
                   : savedPortfolio.adminAccessSettings || data.adminAccessSettings || {}),
+              },
+              homepageSettings: {
+                ...DEFAULT_HOMEPAGE_SETTINGS,
+                ...(hasSavedServerHomepageSettings
+                  ? data.homepageSettings || {}
+                  : savedPortfolio.homepageSettings || data.homepageSettings || {}),
               },
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
@@ -775,6 +822,10 @@ function App() {
               adminAccessSettings: {
                 ...DEFAULT_ADMIN_ACCESS_SETTINGS,
                 ...(data.adminAccessSettings || {}),
+              },
+              homepageSettings: {
+                ...DEFAULT_HOMEPAGE_SETTINGS,
+                ...(data.homepageSettings || {}),
               },
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
@@ -846,6 +897,15 @@ function App() {
     () => SOLAR_SYSTEM_BODIES.find((planet) => planet.short === activePlanetShort) ?? null,
     [activePlanetShort],
   )
+
+  const activeHomepageDesignId = HOMEPAGE_DESIGNS.some((design) => design.id === portfolio.homepageSettings?.activeDesign)
+    ? portfolio.homepageSettings.activeDesign
+    : DEFAULT_HOMEPAGE_SETTINGS.activeDesign
+  const activeHomepageDesign = HOMEPAGE_DESIGNS.find((design) => design.id === activeHomepageDesignId) || HOMEPAGE_DESIGNS[0]
+  const isProfessionalHomepage = PROFESSIONAL_HOMEPAGE_IDS.has(activeHomepageDesignId)
+  const publicNavItems = isProfessionalHomepage
+    ? ['PROFILE', 'BIODATA', 'PROJECTS', 'SKILLS', 'EDUCATION', 'CONTACT']
+    : portfolio.navItems
 
   const adminStats = useMemo(
     () => [
@@ -972,6 +1032,43 @@ function App() {
       ...current,
       [sectionKey]: !current[sectionKey],
     }))
+  }
+
+  const saveHomepageSettings = async (designId) => {
+    const nextSettings = {
+      ...DEFAULT_HOMEPAGE_SETTINGS,
+      activeDesign: HOMEPAGE_DESIGNS.some((design) => design.id === designId) ? designId : DEFAULT_HOMEPAGE_SETTINGS.activeDesign,
+    }
+
+    setPortfolio((current) => {
+      const nextPortfolio = { ...current, homepageSettings: nextSettings }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+    setHomepageSaveStatus('Saving homepage design...')
+
+    try {
+      const response = await apiFetch('/api/portfolio/homepage-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: nextSettings }),
+      })
+      const result = await response.json()
+
+      if (!response.ok) throw new Error(result.message || 'Homepage design could not be saved.')
+
+      const savedSettings = result.settings || nextSettings
+      setPortfolio((current) => {
+        const nextPortfolio = { ...current, homepageSettings: savedSettings, homepageSettingsStorage: result.storage || 'database' }
+        savePortfolioToStorage(nextPortfolio)
+        return nextPortfolio
+      })
+      setHomepageSaveStatus(result.storage === 'memory'
+        ? 'Homepage selected for this running server only. Reconnect MongoDB for permanent storage.'
+        : 'Homepage design updated.')
+    } catch (error) {
+      setHomepageSaveStatus(`${error.message || 'Homepage design could not be saved.'} Selection remains saved in this browser.`)
+    }
   }
 
   const handleFormChange = (event) => {
@@ -1810,6 +1907,200 @@ function App() {
     })
   }, [portfolio.projects, projectFilter, projectSearch])
 
+  const renderProfessionalHomepageContent = () => {
+    const allSkills = portfolio.toolkitGroups.flatMap((group) => group.skills).slice(0, 12)
+    const educationItems = [
+      ...portfolio.educationEntries,
+      ...(portfolio.about?.colleges || []).map((item) => ({
+        title: item.program || item.title,
+        institution: item.title,
+        dates: item.dates || '',
+        location: item.location || '',
+        description: item.description || '',
+      })),
+    ].slice(0, 4)
+    const proofItems = [
+      ...portfolio.certificateEntries.map((item) => ({ label: item.title, meta: item.issuer || item.date })),
+      ...portfolio.achievements.map((item) => ({ label: item.title, meta: item.organization || item.date })),
+    ].slice(0, 6)
+
+    return (
+      <>
+        <MotionSection id="profile" className={`pro-hero pro-home-${activeHomepageDesignId}`} initial="hidden" animate="show" variants={motionSettings}>
+          <div className="pro-hero-copy">
+            <p className="section-tag">COMPUTER SCIENCE ENGINEER PROFILE</p>
+            <h1>{portfolio.profile.name}</h1>
+            <p className="pro-title">{portfolio.profile.title}</p>
+            <p className="pro-lede">
+              A placement-ready digital biodata built for teachers, recruiters, and mentors. It brings my projects, learning record, technical stack, certificates, and contact details into one clear professional website.
+            </p>
+            <div className="pro-action-row">
+              <a href="#biodata" className="primary-btn">
+                <span>View Biodata</span>
+                <ArrowRight size={15} />
+              </a>
+              <a href="/resume.pdf" download="abhinav-yadav-resume.pdf" className="secondary-btn">
+                <Download size={15} />
+                <span>Download Resume</span>
+              </a>
+            </div>
+          </div>
+
+          <div className="pro-profile-panel" aria-label="Profile summary">
+            <div className="pro-avatar">{portfolio.profile.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div>
+            <div>
+              <span>Candidate</span>
+              <strong>{portfolio.profile.name}</strong>
+            </div>
+            <div className="pro-status-grid">
+              <span>CSE Diploma</span>
+              <span>Frontend</span>
+              <span>India</span>
+              <span>Open to Internship</span>
+            </div>
+          </div>
+        </MotionSection>
+
+        <MotionSection id="biodata" className="pro-section pro-biodata" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+          <div className="section-header">
+            <span className="section-tag">01 - BIODATA</span>
+            <h2>Profile details for teachers and placement review.</h2>
+          </div>
+          <div className="pro-biodata-grid">
+            {(portfolio.about?.facts || DEFAULT_ABOUT.facts).map((fact, index) => (
+              <div key={`${fact.label}-${index}`} className="pro-fact">
+                <span>{fact.label}</span>
+                <strong>{fact.value}</strong>
+              </div>
+            ))}
+            <div className="pro-fact">
+              <span>Email</span>
+              <strong>{portfolio.profile.email}</strong>
+            </div>
+            <div className="pro-fact">
+              <span>Location</span>
+              <strong>{portfolio.profile.location}</strong>
+            </div>
+          </div>
+          <p className="pro-bio-copy">{portfolio.about?.biography || DEFAULT_ABOUT.biography}</p>
+        </MotionSection>
+
+        <MotionSection id="projects" className="pro-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+          <div className="section-header">
+            <span className="section-tag">02 - PROJECTS</span>
+            <h2>Selected work that shows practical skills.</h2>
+          </div>
+          <div className="pro-project-grid">
+            {portfolio.projects.slice(0, 3).map((project) => (
+              <article key={project.id} className="pro-project-card">
+                <span>{project.category}</span>
+                <h3>{project.title}</h3>
+                <p>{project.description}</p>
+                <div className="pro-chip-row">
+                  {(project.tech || []).slice(0, 4).map((item) => <i key={item}>{item}</i>)}
+                </div>
+                <button type="button" className="inline-link" onClick={() => openProject(project.id)}>
+                  VIEW PROJECT <ArrowUpRight size={14} />
+                </button>
+              </article>
+            ))}
+          </div>
+        </MotionSection>
+
+        <MotionSection id="skills" className="pro-section pro-skills" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+          <div>
+            <span className="section-tag">03 - SKILLS</span>
+            <h2>Technical stack and learning focus.</h2>
+          </div>
+          <div className="pro-skill-cloud">
+            {allSkills.map((skill, index) => <span key={`${skill}-${index}`}>{skill}</span>)}
+          </div>
+        </MotionSection>
+
+        <MotionSection id="education" className="pro-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+          <div className="section-header">
+            <span className="section-tag">04 - EDUCATION</span>
+            <h2>Academic background and verified progress.</h2>
+          </div>
+          <div className="pro-timeline-list">
+            {educationItems.map((item, index) => (
+              <article key={`${item.title}-${index}`} className="pro-timeline-item">
+                <span>{item.dates || 'Ongoing'}</span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <strong>{item.institution}</strong>
+                  <p>{item.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </MotionSection>
+
+        <MotionSection className="pro-section pro-proof" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+          <div>
+            <span className="section-tag">05 - PROOF</span>
+            <h2>Certificates and achievements for quick review.</h2>
+          </div>
+          <div className="pro-proof-list">
+            {proofItems.map((item, index) => (
+              <div key={`${item.label}-${index}`}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <strong>{item.label}</strong>
+                <p>{item.meta}</p>
+              </div>
+            ))}
+          </div>
+        </MotionSection>
+
+        <MotionSection id="contact" className="pro-section pro-contact" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+          <div>
+            <span className="section-tag">06 - CONTACT</span>
+            <h2>Share this website as my biodata and portfolio.</h2>
+            <div className="contact-meta">
+              {(portfolio.contactLinks || DEFAULT_CONTACT_LINKS).filter((item) => item.value).map((item, index) => (
+                <a
+                  key={`${item.type}-${item.value}-${index}`}
+                  href={item.type === 'email' ? `mailto:${item.value}` : item.value}
+                  target={item.type === 'email' ? undefined : '_blank'}
+                  rel={item.type === 'email' ? undefined : 'noreferrer'}
+                >
+                  {item.type === 'email' ? <Mail size={16} /> : item.type === 'github' ? <GitBranch size={16} /> : <Globe size={16} />}
+                  {item.type === 'email' ? item.value : item.label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <form className="contact-form" onSubmit={handleSubmit}>
+            <div className="field-grid">
+              <label>
+                <span>Name</span>
+                <input type="text" name="name" value={formState.name} onChange={handleFormChange} placeholder="Your name" required />
+              </label>
+              <label>
+                <span>Email</span>
+                <input type="email" name="email" value={formState.email} onChange={handleFormChange} placeholder="you@example.com" required />
+              </label>
+            </div>
+            <label>
+              <span>Subject</span>
+              <input type="text" name="subject" value={formState.subject} onChange={handleFormChange} placeholder="Placement, teaching, or collaboration" />
+            </label>
+            <label>
+              <span>Message</span>
+              <textarea rows="5" name="message" value={formState.message} onChange={handleFormChange} placeholder="Write your message..." required />
+            </label>
+            {formStatus ? <p className="form-status">{formStatus}</p> : null}
+            <button type="submit" className="primary-btn">
+              <span>Send Message</span>
+              <ArrowUpRight size={15} />
+            </button>
+          </form>
+        </MotionSection>
+      </>
+    )
+  }
+
   const renderHome = () => (
     <>
       {adminUnlockStage === 'active' ? (
@@ -1852,7 +2143,7 @@ function App() {
         </button>
 
         <nav id="site-navigation" className={`main-nav${isMobileMenuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
-          {portfolio.navItems.map((item) => (
+          {publicNavItems.map((item) => (
             <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsMobileMenuOpen(false)}>
               {item}
             </a>
@@ -1885,7 +2176,9 @@ function App() {
         </div>
       </header>
 
-      <main className="page-content">
+      <main className={`page-content ${isProfessionalHomepage ? `pro-home-page pro-home-page-${activeHomepageDesignId}` : 'classic-home-page'}`}>
+        {isProfessionalHomepage ? renderProfessionalHomepageContent() : (
+          <>
         <MotionSection className="hero-panel" initial="hidden" animate="show" variants={motionSettings}>
           <div className="status-line">AVAILABLE FOR FRONTEND / PRODUCT / INTERNSHIP</div>
 
@@ -2504,6 +2797,8 @@ function App() {
             </form>
           </div>
         </MotionSection>
+          </>
+        )}
       </main>
 
       <footer className="site-footer">
@@ -2516,11 +2811,9 @@ function App() {
         </div>
 
         <div className="footer-links">
-          <a href="#work">WORK</a>
-          <a href="#about">ABOUT</a>
-          <a href="#journey">JOURNEY</a>
-          <a href="#toolkit">TOOLKIT</a>
-          <a href="#contact">CONTACT</a>
+          {publicNavItems.map((item) => (
+            <a key={`footer-${item}`} href={`#${item.toLowerCase()}`}>{item}</a>
+          ))}
         </div>
 
         <div className="footer-meta">
@@ -2716,6 +3009,7 @@ function App() {
         <nav className="admin-nav">
           <span className="nav-group-label">Dashboard</span>
           <button type="button" className={`nav-button ${adminSection === 'overview' ? 'active' : ''}`} onClick={() => handleAdminAction('overview')}>Overview</button>
+          <button type="button" className={`nav-button ${adminSection === 'homepage' ? 'active' : ''}`} onClick={() => handleAdminAction('homepage')}>Homepage</button>
           <button type="button" className={`nav-button ${adminSection === 'projects' ? 'active' : ''}`} onClick={() => handleAdminAction('projects')}>Projects</button>
           <button type="button" className={`nav-button ${adminSection === 'about' ? 'active' : ''}`} onClick={beginEditAbout}>About</button>
           <button type="button" className={`nav-button ${adminSection === 'experience' ? 'active' : ''}`} onClick={() => handleAdminAction('experience')}>Experience</button>
@@ -2753,6 +3047,39 @@ function App() {
             </div>
           ))}
         </section>
+
+        {adminSection === 'homepage' ? (
+          <section className="panel-card admin-list-panel homepage-panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">HOMEPAGE SECTION</span>
+                <h2>Choose default homepage</h2>
+              </div>
+              <span className="status-badge">{activeHomepageDesign.name}</span>
+            </div>
+
+            <div className="homepage-design-grid">
+              {HOMEPAGE_DESIGNS.map((design) => (
+                <article key={design.id} className={`homepage-design-card ${activeHomepageDesignId === design.id ? 'active' : ''}`}>
+                  <div>
+                    <span>{design.tone}</span>
+                    <h3>{design.name}</h3>
+                    <p>{design.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={activeHomepageDesignId === design.id ? 'primary-btn small-btn' : 'secondary-btn small-btn'}
+                    onClick={() => saveHomepageSettings(design.id)}
+                  >
+                    {activeHomepageDesignId === design.id ? 'Active' : 'Set Homepage'}
+                  </button>
+                </article>
+              ))}
+            </div>
+
+            {homepageSaveStatus ? <p className="form-status">{homepageSaveStatus}</p> : null}
+          </section>
+        ) : null}
 
         {adminSection === 'access' ? (
           <section className="panel-card admin-list-panel access-gate-panel">
