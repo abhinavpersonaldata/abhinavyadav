@@ -670,11 +670,19 @@ a {
 
 .pro-home-page {
   gap: 1rem;
+  --pro-accent: var(--color-secondary);
+  --pro-accent-2: var(--color-primary);
+  --pro-accent-3: var(--color-violet);
+  --pro-panel-bg: rgba(255, 255, 255, 0.035);
+  --pro-panel-border: var(--color-border);
+  --pro-hero-overlay:
+    linear-gradient(90deg, rgba(98, 208, 255, 0.16), transparent 34%),
+    linear-gradient(180deg, transparent 55%, rgba(200, 255, 61, 0.07));
 }
 
 .pro-hero,
 .pro-section {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--pro-panel-border);
   border-radius: 24px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
@@ -698,9 +706,7 @@ a {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(98, 208, 255, 0.16), transparent 34%),
-    linear-gradient(180deg, transparent 55%, rgba(200, 255, 61, 0.07));
+  background: var(--pro-hero-overlay);
 }
 
 .pro-hero > * {
@@ -724,7 +730,7 @@ a {
 
 .pro-title {
   margin: 0;
-  color: var(--color-primary);
+  color: var(--pro-accent-2);
   font-weight: 800;
   font-size: clamp(1rem, 2vw, 1.45rem);
 }
@@ -759,8 +765,8 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 22px;
   background:
-    linear-gradient(135deg, rgba(98, 208, 255, 0.12), rgba(200, 255, 61, 0.08)),
-    rgba(255, 255, 255, 0.035);
+    linear-gradient(135deg, color-mix(in srgb, var(--pro-accent) 16%, transparent), color-mix(in srgb, var(--pro-accent-2) 10%, transparent)),
+    var(--pro-panel-bg);
 }
 
 .pro-avatar {
@@ -769,7 +775,7 @@ a {
   display: grid;
   place-items: center;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  background: linear-gradient(135deg, var(--pro-accent-2), var(--pro-accent));
   color: #10140d;
   font-family: 'Space Grotesk', sans-serif;
   font-size: clamp(2rem, 5vw, 4rem);
@@ -812,7 +818,7 @@ a {
 .homepage-design-card {
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--pro-panel-bg);
 }
 
 .pro-status-grid span {
@@ -879,10 +885,10 @@ a {
 .pro-chip-row i,
 .pro-skill-cloud span {
   font-style: normal;
-  border: 1px solid rgba(98, 208, 255, 0.25);
+  border: 1px solid color-mix(in srgb, var(--pro-accent) 35%, transparent);
   border-radius: 999px;
   color: var(--color-text);
-  background: rgba(98, 208, 255, 0.08);
+  background: color-mix(in srgb, var(--pro-accent) 12%, transparent);
 }
 
 .pro-chip-row i {
@@ -935,9 +941,55 @@ a {
   margin-top: 0.45rem;
 }
 
+.pro-home-page-placement-pro {
+  --pro-accent: #2dd4bf;
+  --pro-accent-2: #c8ff3d;
+  --pro-accent-3: #62d0ff;
+  --pro-panel-border: rgba(45, 212, 191, 0.22);
+  --pro-hero-overlay:
+    linear-gradient(120deg, rgba(45, 212, 191, 0.18), transparent 38%),
+    radial-gradient(circle at 84% 18%, rgba(200, 255, 61, 0.18), transparent 24%),
+    linear-gradient(180deg, transparent 58%, rgba(98, 208, 255, 0.08));
+}
+
+.pro-home-page-placement-pro .pro-hero {
+  background:
+    linear-gradient(135deg, rgba(8, 22, 28, 0.96), rgba(7, 13, 21, 0.9)),
+    repeating-linear-gradient(90deg, rgba(45, 212, 191, 0.08) 0 1px, transparent 1px 72px);
+}
+
+.pro-home-page-placement-pro .pro-section {
+  background:
+    linear-gradient(135deg, rgba(45, 212, 191, 0.055), rgba(200, 255, 61, 0.025)),
+    rgba(9, 16, 25, 0.9);
+}
+
+.pro-home-page-academic-clean {
+  --pro-accent: #7dd3fc;
+  --pro-accent-2: #e8f1ff;
+  --pro-accent-3: #93c5fd;
+  --pro-panel-bg: rgba(232, 241, 255, 0.045);
+  --pro-panel-border: rgba(125, 211, 252, 0.2);
+  --pro-hero-overlay:
+    linear-gradient(180deg, rgba(125, 211, 252, 0.14), transparent 42%),
+    linear-gradient(90deg, transparent 0 46%, rgba(232, 241, 255, 0.08) 46% 46.4%, transparent 46.4%);
+}
+
 .pro-home-page-academic-clean .pro-hero,
 .pro-home-page-academic-clean .pro-section {
-  background: linear-gradient(180deg, rgba(18, 26, 38, 0.94), rgba(8, 13, 20, 0.9));
+  background:
+    linear-gradient(180deg, rgba(18, 26, 38, 0.96), rgba(8, 13, 20, 0.92)),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.05), transparent 32%);
+  border-radius: 12px;
+}
+
+.pro-home-page-academic-clean .pro-avatar,
+.pro-home-page-academic-clean .pro-status-grid span,
+.pro-home-page-academic-clean .pro-fact,
+.pro-home-page-academic-clean .pro-project-card,
+.pro-home-page-academic-clean .pro-timeline-item,
+.pro-home-page-academic-clean .pro-proof-list div {
+  border-radius: 8px;
 }
 
 .pro-home-page-recruiter-brief .pro-hero {
@@ -945,8 +997,63 @@ a {
   min-height: clamp(520px, 68vh, 680px);
 }
 
+.pro-home-page-recruiter-brief {
+  --pro-accent: #fb7185;
+  --pro-accent-2: #facc15;
+  --pro-accent-3: #34d399;
+  --pro-panel-bg: rgba(251, 113, 133, 0.045);
+  --pro-panel-border: rgba(250, 204, 21, 0.22);
+  --pro-hero-overlay:
+    linear-gradient(135deg, rgba(251, 113, 133, 0.2), transparent 36%),
+    linear-gradient(315deg, rgba(250, 204, 21, 0.16), transparent 34%);
+}
+
+.pro-home-page-recruiter-brief .pro-hero,
+.pro-home-page-recruiter-brief .pro-section {
+  background:
+    linear-gradient(135deg, rgba(28, 12, 18, 0.94), rgba(12, 16, 21, 0.92)),
+    repeating-linear-gradient(-45deg, rgba(250, 204, 21, 0.05) 0 1px, transparent 1px 18px);
+}
+
+.pro-home-page-recruiter-brief .pro-project-card,
+.pro-home-page-recruiter-brief .pro-fact,
+.pro-home-page-recruiter-brief .pro-proof-list div {
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--pro-accent) 80%, transparent);
+}
+
 .pro-home-page-resume-grid .pro-hero {
   min-height: 0;
+}
+
+.pro-home-page-resume-grid {
+  --pro-accent: #a7f3d0;
+  --pro-accent-2: #f8fafc;
+  --pro-accent-3: #cbd5e1;
+  --pro-panel-bg: rgba(248, 250, 252, 0.04);
+  --pro-panel-border: rgba(203, 213, 225, 0.22);
+  --pro-hero-overlay:
+    linear-gradient(90deg, rgba(248, 250, 252, 0.08), transparent 45%),
+    repeating-linear-gradient(0deg, transparent 0 47px, rgba(203, 213, 225, 0.07) 47px 48px);
+}
+
+.pro-home-page-resume-grid .pro-hero,
+.pro-home-page-resume-grid .pro-section {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(10, 15, 24, 0.94)),
+    repeating-linear-gradient(90deg, rgba(203, 213, 225, 0.055) 0 1px, transparent 1px 120px);
+  border-radius: 6px;
+}
+
+.pro-home-page-resume-grid .pro-hero h1 {
+  font-size: clamp(3rem, 7vw, 6.4rem);
+}
+
+.pro-home-page-resume-grid .pro-profile-panel,
+.pro-home-page-resume-grid .pro-fact,
+.pro-home-page-resume-grid .pro-project-card,
+.pro-home-page-resume-grid .pro-timeline-item,
+.pro-home-page-resume-grid .pro-proof-list div {
+  border-radius: 4px;
 }
 
 .pro-home-page-resume-grid .pro-biodata-grid,
