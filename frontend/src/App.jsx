@@ -10,25 +10,26 @@ import {
   Menu,
   MoonStar,
   SunMedium,
+  X,
 } from 'lucide-react'
 
-const motionSettings = {
+const createMotionSettings = (speed) => ({
   hidden: { opacity: 0, y: 32, scale: 0.98 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
-}
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7 / speed, ease: [0.22, 1, 0.36, 1] } },
+})
 
-const staggerContainer = {
+const createStaggerContainer = (speed) => ({
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.12, delayChildren: 0.08 },
+    transition: { staggerChildren: 0.12 / speed, delayChildren: 0.08 / speed },
   },
-}
+})
 
-const fadeInUp = {
+const createFadeInUp = (speed) => ({
   hidden: { opacity: 0, y: 22 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.56, ease: [0.22, 1, 0.36, 1] } },
-}
+  show: { opacity: 1, y: 0, transition: { duration: 0.56 / speed, ease: [0.22, 1, 0.36, 1] } },
+})
 
 const useMotionLibrary = () => {
   const [motionLibrary, setMotionLibrary] = useState(null)
@@ -180,6 +181,10 @@ const DEFAULT_VISUAL_SETTINGS = {
   visualIntensity: 72,
   visualScope: 'all',
 }
+const DEFAULT_SITE_MOTION_SETTINGS = {
+  speed: 1,
+  brightness: 100,
+}
 const DEFAULT_EDGE_ANIMATION_SETTINGS = {
   style: 'spectrum',
   speedSeconds: 8,
@@ -291,6 +296,7 @@ function ProjectVideoPlayer({ src, poster, title, controls = false, detail = fal
 
 function App() {
   const [theme, setTheme] = useState('dark')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [view, setView] = useState('home')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     try {
@@ -316,6 +322,7 @@ function App() {
     galleryItems: [],
     adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
     edgeAnimationSettings: DEFAULT_EDGE_ANIMATION_SETTINGS,
+    motionSettings: DEFAULT_SITE_MOTION_SETTINGS,
     ...DEFAULT_VISUAL_SETTINGS,
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
@@ -395,6 +402,7 @@ function App() {
   const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
   const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
   const [edgeAnimationSaveStatus, setEdgeAnimationSaveStatus] = useState('')
+  const [motionSettingsSaveStatus, setMotionSettingsSaveStatus] = useState('')
   const [adminUnlockStage, setAdminUnlockStage] = useState('hidden')
   const [unlockProgress, setUnlockProgress] = useState(0)
   const logoClickCountRef = useRef(0)
@@ -419,6 +427,10 @@ function App() {
       date: 'Yesterday',
     },
   ])
+  const motionSpeed = Number(portfolio.motionSettings?.speed) || DEFAULT_SITE_MOTION_SETTINGS.speed
+  const motionSettings = useMemo(() => createMotionSettings(motionSpeed), [motionSpeed])
+  const staggerContainer = useMemo(() => createStaggerContainer(motionSpeed), [motionSpeed])
+  const fadeInUp = useMemo(() => createFadeInUp(motionSpeed), [motionSpeed])
 
   useEffect(() => {
     try {
@@ -659,6 +671,49 @@ function App() {
     }
   }
 
+  const updateMotionSetting = (field, value) => {
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        motionSettings: { ...DEFAULT_SITE_MOTION_SETTINGS, ...current.motionSettings, [field]: value },
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+    setMotionSettingsSaveStatus('')
+  }
+
+  const saveMotionSettings = async () => {
+    const settings = {
+      speed: Math.min(2, Math.max(0.5, Number(portfolio.motionSettings?.speed) || 1)),
+      brightness: Math.min(150, Math.max(50, Number(portfolio.motionSettings?.brightness) || 100)),
+    }
+    const nextPortfolio = { ...portfolio, motionSettings: settings }
+    setPortfolio(nextPortfolio)
+    savePortfolioToStorage(nextPortfolio)
+    setMotionSettingsSaveStatus('Saving motion settings...')
+
+    try {
+      const response = await apiFetch('/api/portfolio/motion-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || `Settings could not sync (HTTP ${response.status}).`)
+      }
+      const savedPortfolio = { ...nextPortfolio, motionSettings: result.settings || settings }
+      setPortfolio(savedPortfolio)
+      savePortfolioToStorage(savedPortfolio)
+      setMotionSettingsSaveStatus(result.storage === 'memory'
+        ? 'Saved for this running server only. Reconnect MongoDB for permanent storage.'
+        : 'Motion settings saved.')
+    } catch (error) {
+      setMotionSettingsSaveStatus(`${error.message || 'Settings could not be saved.'} They remain saved in this browser.`)
+    }
+  }
+
   useEffect(() => {
     const loadPortfolio = async () => {
       const savedPortfolio = (() => {
@@ -680,6 +735,7 @@ function App() {
         const hasSavedServerAbout = ['database', 'memory'].includes(data.aboutStorage)
         const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
         const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
+        const hasSavedServerMotionSettings = ['database', 'memory'].includes(data.motionSettingsStorage)
 
         const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
           ? {
@@ -704,6 +760,12 @@ function App() {
                   ? data.edgeAnimationSettings || {}
                   : savedPortfolio.edgeAnimationSettings || data.edgeAnimationSettings || {}),
               },
+              motionSettings: {
+                ...DEFAULT_SITE_MOTION_SETTINGS,
+                ...(hasSavedServerMotionSettings
+                  ? data.motionSettings || {}
+                  : savedPortfolio.motionSettings || data.motionSettings || {}),
+              },
             }
           : {
               ...data,
@@ -717,6 +779,10 @@ function App() {
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
                 ...(data.edgeAnimationSettings || {}),
+              },
+              motionSettings: {
+                ...DEFAULT_SITE_MOTION_SETTINGS,
+                ...(data.motionSettings || {}),
               },
             }
         setPortfolio(hydrated)
@@ -757,6 +823,9 @@ function App() {
     document.documentElement.dataset.effect = portfolio.visualEffect || 'aurora'
     document.documentElement.dataset.scope = portfolio.visualScope || 'all'
     document.documentElement.style.setProperty('--motion-strength', String((Number(portfolio.visualIntensity) || 72) / 100))
+    const motionSettings = { ...DEFAULT_SITE_MOTION_SETTINGS, ...portfolio.motionSettings }
+    document.documentElement.style.setProperty('--motion-speed', String(motionSettings.speed))
+    document.documentElement.style.setProperty('--motion-brightness', String(motionSettings.brightness / 100))
     const edgeSettings = { ...DEFAULT_EDGE_ANIMATION_SETTINGS, ...portfolio.edgeAnimationSettings }
     document.documentElement.dataset.edgeStyle = edgeSettings.style
     document.documentElement.dataset.edgeScope = edgeSettings.scope
@@ -766,7 +835,7 @@ function App() {
       const enabled = Boolean(sectionMotion[key])
       document.documentElement.dataset[`motion${key.charAt(0).toUpperCase()}${key.slice(1)}`] = String(enabled)
     })
-  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, portfolio.edgeAnimationSettings, sectionMotion])
+  }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, portfolio.motionSettings, portfolio.edgeAnimationSettings, sectionMotion])
 
   const selectedProject = useMemo(
     () => portfolio.projects.find((project) => project.id === selectedProjectId) ?? portfolio.projects[0],
@@ -825,11 +894,12 @@ function App() {
 
   const resetMotionSettings = () => {
     setPortfolio((current) => {
-      const nextPortfolio = { ...current, ...DEFAULT_VISUAL_SETTINGS }
+      const nextPortfolio = { ...current, ...DEFAULT_VISUAL_SETTINGS, motionSettings: DEFAULT_SITE_MOTION_SETTINGS }
       savePortfolioToStorage(nextPortfolio)
       return nextPortfolio
     })
     setSectionMotion(SECTION_MOTION_DEFAULTS)
+    setMotionSettingsSaveStatus('')
   }
 
   const applyMotionPreset = (preset) => {
@@ -1781,9 +1851,9 @@ function App() {
           AY
         </button>
 
-        <nav className="main-nav" aria-label="Main navigation">
+        <nav id="site-navigation" className={`main-nav${isMobileMenuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
           {portfolio.navItems.map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`}>
+            <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsMobileMenuOpen(false)}>
               {item}
             </a>
           ))}
@@ -1802,8 +1872,15 @@ function App() {
             <span>Let&apos;s Talk</span>
             <ArrowUpRight size={15} />
           </a>
-          <button type="button" className="mobile-menu" aria-label="Open menu">
-            <Menu size={18} />
+          <button
+            type="button"
+            className={`mobile-menu${isMobileMenuOpen ? ' is-open' : ''}`}
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="site-navigation"
+            onClick={() => setIsMobileMenuOpen((open) => !open)}
+          >
+            {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </header>
@@ -3147,6 +3224,53 @@ function App() {
               {edgeAnimationSaveStatus ? <p className="form-status" role="status">{edgeAnimationSaveStatus}</p> : null}
               <div className="form-actions">
                 <button type="button" className="primary-btn" onClick={saveEdgeAnimationSettings}>Save edge motion</button>
+              </div>
+            </section>
+
+            <section className="site-motion-controls">
+              <div className="panel-header">
+                <div>
+                  <span className="section-tag">SITE-WIDE CONTROLS</span>
+                  <h3>Animation speed & brightness</h3>
+                </div>
+              </div>
+              <div className="site-motion-control-grid">
+                <div className="effect-control-block">
+                  <div className="effect-control-header">
+                    <label htmlFor="site-motion-speed">Animation speed</label>
+                    <strong>{(portfolio.motionSettings?.speed ?? DEFAULT_SITE_MOTION_SETTINGS.speed).toFixed(1)}x</strong>
+                  </div>
+                  <input
+                    id="site-motion-speed"
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={portfolio.motionSettings?.speed ?? DEFAULT_SITE_MOTION_SETTINGS.speed}
+                    onChange={(event) => updateMotionSetting('speed', Number(event.target.value))}
+                  />
+                  <div className="motion-range-labels"><span>Slower</span><span>Faster</span></div>
+                </div>
+                <div className="effect-control-block">
+                  <div className="effect-control-header">
+                    <label htmlFor="site-motion-brightness">Animation brightness</label>
+                    <strong>{portfolio.motionSettings?.brightness ?? DEFAULT_SITE_MOTION_SETTINGS.brightness}%</strong>
+                  </div>
+                  <input
+                    id="site-motion-brightness"
+                    type="range"
+                    min="50"
+                    max="150"
+                    step="5"
+                    value={portfolio.motionSettings?.brightness ?? DEFAULT_SITE_MOTION_SETTINGS.brightness}
+                    onChange={(event) => updateMotionSetting('brightness', Number(event.target.value))}
+                  />
+                  <div className="motion-range-labels"><span>Darker</span><span>Brighter</span></div>
+                </div>
+              </div>
+              {motionSettingsSaveStatus ? <p className="form-status" role="status">{motionSettingsSaveStatus}</p> : null}
+              <div className="form-actions">
+                <button type="button" className="primary-btn" onClick={saveMotionSettings}>Save motion settings</button>
               </div>
             </section>
 

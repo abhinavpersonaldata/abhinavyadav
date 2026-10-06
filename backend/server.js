@@ -102,6 +102,7 @@ const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('Por
 let aboutStorage = 'default'
 let adminAccessSettingsStorage = 'default'
 let edgeAnimationSettingsStorage = 'default'
+let motionSettingsStorage = 'default'
 
 const portfolioData = {
   profile: {
@@ -187,6 +188,10 @@ const portfolioData = {
     color: '#62d0ff',
     scope: 'both',
   },
+  motionSettings: {
+    speed: 1,
+    brightness: 100,
+  },
   toolkitGroups: [
     { label: '01 FRONTEND', skills: ['React', 'Vite', 'Tailwind CSS', 'Framer Motion', 'Responsive UI'] },
     { label: '02 BACKEND', skills: ['Node.js', 'Express', 'REST APIs', 'File uploads'] },
@@ -236,6 +241,9 @@ app.get('/api/portfolio', async (req, res) => {
     const savedEdgeAnimation = mongoose.connection.readyState === 1
       ? await PortfolioContent.findOne({ key: 'edgeAnimationSettings' }).lean()
       : null
+    const savedMotionSettings = mongoose.connection.readyState === 1
+      ? await PortfolioContent.findOne({ key: 'motionSettings' }).lean()
+      : null
     const savedCollections = mongoose.connection.readyState === 1
       ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks'] } }).lean()
       : []
@@ -255,6 +263,8 @@ app.get('/api/portfolio', async (req, res) => {
       adminAccessSettingsStorage: savedAdminAccess ? 'database' : adminAccessSettingsStorage,
       edgeAnimationSettings: savedEdgeAnimation?.data || portfolioData.edgeAnimationSettings,
       edgeAnimationSettingsStorage: savedEdgeAnimation ? 'database' : edgeAnimationSettingsStorage,
+      motionSettings: savedMotionSettings?.data || portfolioData.motionSettings,
+      motionSettingsStorage: savedMotionSettings ? 'database' : motionSettingsStorage,
       experienceEntries: savedCollectionData.get('experienceEntries') || portfolioData.experienceEntries,
       achievements: savedCollectionData.get('achievements') || portfolioData.achievements,
       galleryItems: savedCollectionData.get('galleryItems') || portfolioData.galleryItems,
@@ -264,6 +274,42 @@ app.get('/api/portfolio', async (req, res) => {
   } catch (error) {
     console.error('Failed to load saved projects:', error)
     res.json(portfolioData)
+  }
+})
+
+app.put('/api/portfolio/motion-settings', async (req, res) => {
+  const settings = req.body?.settings
+  const validSettings = Number.isFinite(settings?.speed)
+    && settings.speed >= 0.5
+    && settings.speed <= 2
+    && Number.isInteger(settings?.brightness)
+    && settings.brightness >= 50
+    && settings.brightness <= 150
+
+  if (!validSettings) {
+    return res.status(400).json({ success: false, message: 'Motion settings are invalid.' })
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    portfolioData.motionSettings = settings
+    motionSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+
+  try {
+    const savedSettings = await PortfolioContent.findOneAndUpdate(
+      { key: 'motionSettings' },
+      { key: 'motionSettings', data: settings },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+    ).lean()
+
+    motionSettingsStorage = 'database'
+    return res.json({ success: true, settings: savedSettings.data, storage: 'database' })
+  } catch (error) {
+    console.error('Failed to save motion settings:', error)
+    portfolioData.motionSettings = settings
+    motionSettingsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
   }
 })
 
