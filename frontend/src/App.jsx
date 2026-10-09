@@ -160,6 +160,7 @@ const formatDistanceFromEarth = (distanceAu) => {
 const DEFAULT_ABOUT = {
   heading: 'Building useful digital experiences with clarity and craft.',
   biography: 'I am a Computer Science & Engineering diploma student focused on frontend development, product thinking, and building polished web experiences. I enjoy translating ideas into interfaces that are thoughtful, responsive, and genuinely useful.',
+  homepageIntro: 'I design and build polished web experiences with React, clean interfaces, and product-minded thinking—from concept to launch-ready UI.',
   photo: '',
   facts: [
     { label: 'CURRENTLY STUDYING', value: 'Diploma in Computer Science & Engineering' },
@@ -1629,12 +1630,19 @@ function App() {
 
   const handleSaveAbout = async (event) => {
     event.preventDefault()
+    const homepageIntro = aboutDraft.homepageIntro.trim()
+    if (!homepageIntro) {
+      setAboutSaveStatus('Please enter a homepage introduction before saving.')
+      return
+    }
+
     const trimRecords = (records) => records
       .filter((record) => Object.values(record).some((value) => String(value || '').trim()))
       .map((record) => Object.fromEntries(Object.entries(record).map(([key, value]) => [key, String(value || '').trim()])))
     const about = {
       heading: aboutDraft.heading.trim(),
       biography: aboutDraft.biography.trim(),
+      homepageIntro,
       photo: aboutDraft.photo.trim(),
       facts: trimRecords(aboutDraft.facts),
       colleges: trimRecords(aboutDraft.colleges),
@@ -2282,7 +2290,7 @@ function App() {
                 <span>YADAV</span>
               </h1>
               <p className="lede">
-                I design and build polished web experiences with React, clean interfaces, and product-minded thinking—from concept to launch-ready UI.
+                {portfolio.about?.homepageIntro || DEFAULT_ABOUT.homepageIntro}
               </p>
 
               <div className="hero-stackline" aria-label="Core technology stack">
@@ -3344,6 +3352,11 @@ function App() {
             <label>
               <span>About biography</span>
               <textarea name="biography" value={aboutDraft.biography} onChange={handleAboutDraftChange} rows="5" placeholder="Write your professional introduction..." />
+            </label>
+            <label>
+              <span>Homepage introduction</span>
+              <textarea name="homepageIntro" value={aboutDraft.homepageIntro} onChange={handleAboutDraftChange} rows="4" maxLength="600" required placeholder="Write the introduction shown below your name on the homepage..." />
+              <span className="upload-hint">This text appears in the main homepage hero section.</span>
             </label>
 
             {ABOUT_COLLECTIONS.map((collection) => (

@@ -133,6 +133,7 @@ const portfolioData = {
   about: {
     heading: 'Building useful digital experiences with clarity and craft.',
     biography: 'I am a Computer Science & Engineering diploma student focused on frontend development, product thinking, and building polished web experiences. I enjoy translating ideas into interfaces that are thoughtful, responsive, and genuinely useful.',
+    homepageIntro: 'I design and build polished web experiences with React, clean interfaces, and product-minded thinking—from concept to launch-ready UI.',
     photo: '',
     facts: [
       { label: 'CURRENTLY STUDYING', value: 'Diploma in Computer Science & Engineering' },
@@ -447,7 +448,11 @@ app.put('/api/portfolio/about', async (req, res) => {
   const about = req.body
   const collectionKeys = ['facts', 'colleges', 'webinars', 'certificates', 'images', 'links']
 
-  if (typeof about?.biography !== 'string' || collectionKeys.some((key) => !Array.isArray(about[key]))) {
+  if (typeof about?.biography !== 'string'
+    || typeof about?.homepageIntro !== 'string'
+    || about.homepageIntro.trim().length === 0
+    || about.homepageIntro.length > 600
+    || collectionKeys.some((key) => !Array.isArray(about[key]))) {
     return res.status(400).json({ success: false, message: 'About content is incomplete or invalid.' })
   }
 
