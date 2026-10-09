@@ -144,7 +144,14 @@ html {
 
 @keyframes headerFloat {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes mediaSweep {
+  0%, 12% { transform: translateX(-110%) skewX(-14deg); opacity: 0; }
+  22% { opacity: 0.9; }
+  68% { opacity: 0.9; }
+  82%, 100% { transform: translateX(110%) skewX(-14deg); opacity: 0; }
 }
 
 body {
@@ -272,7 +279,7 @@ a {
   top: 1rem;
   z-index: 20;
   box-shadow: 0 24px 56px rgba(5, 12, 24, 0.24), 0 0 0 1px rgba(200,255,61,0.04), inset 0 1px 0 rgba(255,255,255,0.08);
-  animation: headerFloat calc(6s / var(--motion-speed)) ease-in-out infinite;
+  animation: headerFloat calc(5s / var(--motion-speed)) ease-in-out infinite;
 }
 
 .topbar::before {
@@ -283,16 +290,17 @@ a {
   border-radius: inherit;
   pointer-events: none;
   background: linear-gradient(112deg,
-    rgba(48, 176, 186, 0.28),
-    rgba(17, 26, 34, 0.04) 28%,
-    rgba(200, 255, 61, 0.17) 48%,
-    rgba(20, 33, 43, 0.04) 68%,
-    rgba(98, 208, 255, 0.27));
+    rgba(48, 176, 186, 0.4),
+    rgba(91, 140, 255, 0.14) 24%,
+    rgba(175, 123, 255, 0.3) 43%,
+    rgba(200, 255, 61, 0.25) 62%,
+    rgba(255, 139, 103, 0.32) 82%,
+    rgba(98, 208, 255, 0.4));
   background-size: 240% 240%;
   opacity: 0.92;
   mix-blend-mode: var(--motion-overlay-blend);
   filter: brightness(var(--motion-brightness));
-  animation: ambientColorFlow calc(16s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+  animation: ambientColorFlow calc(8s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .topbar::after {
@@ -1302,7 +1310,7 @@ a {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(118deg, rgba(65, 190, 199, 0.24) 0%, transparent 22%, rgba(200, 255, 61, 0.16) 43%, transparent 64%, rgba(255, 139, 103, 0.2) 83%, rgba(98, 208, 255, 0.24) 100%),
+    linear-gradient(118deg, rgba(65, 190, 199, 0.34) 0%, transparent 22%, rgba(200, 255, 61, 0.22) 43%, transparent 64%, rgba(255, 139, 103, 0.28) 83%, rgba(98, 208, 255, 0.34) 100%),
     radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.06), transparent 20%),
     linear-gradient(130deg, transparent 0%, rgba(175, 123, 255, 0.07) 28%, rgba(98, 208, 255, 0.09) 100%);
   background-size: 240% 240%, 100% 100%, 100% 100%;
@@ -1310,7 +1318,7 @@ a {
   opacity: 0.88;
   pointer-events: none;
   filter: brightness(var(--motion-brightness));
-  animation: ambientColorFlow calc(14s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+  animation: ambientColorFlow calc(8s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .hero-panel::after {
@@ -1981,17 +1989,17 @@ a {
   border-radius: inherit;
   pointer-events: none;
   background: linear-gradient(118deg,
-    rgba(65, 190, 199, 0.22) 0%,
+    rgba(65, 190, 199, 0.46) 0%,
     rgba(26, 45, 58, 0.02) 22%,
-    rgba(200, 255, 61, 0.12) 42%,
+    rgba(200, 255, 61, 0.34) 42%,
     rgba(25, 40, 55, 0.02) 62%,
-    rgba(255, 139, 103, 0.17) 81%,
-    rgba(98, 208, 255, 0.2) 100%);
+    rgba(255, 139, 103, 0.38) 81%,
+    rgba(98, 208, 255, 0.44) 100%);
   background-size: 260% 260%;
-  opacity: 0.72;
+  opacity: 0.86;
   mix-blend-mode: var(--motion-overlay-blend);
   filter: brightness(var(--motion-brightness));
-  animation: ambientColorFlow calc(18s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+  animation: ambientColorFlow calc(7s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .content-section:nth-of-type(2n)::before {
@@ -2084,10 +2092,10 @@ a {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(98,208,255,0.04), transparent 32%, rgba(200,255,61,0.04), transparent 68%, rgba(175,123,255,0.05));
-  background-size: 240% 240%;
+  background: linear-gradient(125deg, rgba(98,208,255,0.28), transparent 28%, rgba(200,255,61,0.24) 47%, transparent 68%, rgba(175,123,255,0.3));
+  background-size: 300% 300%;
   pointer-events: none;
-  animation: ambientColorFlow calc(18s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+  animation: ambientColorFlow calc(7s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .project-panel:nth-child(2n) {
@@ -2129,10 +2137,21 @@ a:focus-visible {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 36%, rgba(98,208,255,0.06), transparent 68%, rgba(200,255,61,0.05));
-  background-size: 240% 240%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.24), transparent 30%, rgba(98,208,255,0.3), transparent 65%, rgba(200,255,61,0.24));
+  background-size: 300% 300%;
   pointer-events: none;
-  animation: ambientColorFlow calc(12s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+  animation: ambientColorFlow calc(6s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+}
+
+.project-media::after {
+  content: '';
+  position: absolute;
+  inset: -35% auto -35% -30%;
+  z-index: 2;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(98, 208, 255, 0.32), rgba(255, 255, 255, 0.48), rgba(175, 123, 255, 0.32), transparent);
+  animation: mediaSweep calc(7s / var(--motion-speed)) ease-in-out infinite;
 }
 
 .project-image,
