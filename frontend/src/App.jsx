@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import heroGraphic from './assets/hero.png'
 import {
   ArrowRight,
@@ -208,7 +209,18 @@ const HOMEPAGE_DESIGNS = [
 ]
 const PROFESSIONAL_HOMEPAGE_IDS = new Set(['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid'])
 const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
-const DEFAULT_SUN_LINK = 'https://science.nasa.gov/sun/'
+const DEFAULT_SUN_LINK = 'https://nineplanets.org/solar-system/'
+const LEGACY_DEFAULT_PLANET_LINKS = {
+  sun: 'https://science.nasa.gov/sun/',
+  mercury: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  venus: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  earth: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  mars: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  jupiter: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  saturn: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  uranus: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+  neptune: 'https://spaceinformer.com/planets-in-order-from-the-sun/',
+}
 const SUN_DETAILS = {
   name: 'Sun',
   short: 'sun',
@@ -216,19 +228,25 @@ const SUN_DETAILS = {
   image: '',
 }
 const SOLAR_SYSTEM_BODIES = [
-  { name: 'Mercury', short: 'mercury', size: 13, readableOrbit: 38, distanceAu: 0.387, duration: 8, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Venus', short: 'venus', size: 17, readableOrbit: 44, distanceAu: 0.723, duration: 11, delay: -1.4, angle: 120, image: '/planets/venus.svg', distanceFromSun: '108.2 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Earth', short: 'earth', size: 18, readableOrbit: 50, distanceAu: 1, duration: 14, delay: -2.8, angle: 210, image: '/planets/earth.svg', distanceFromSun: '149.6 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Mars', short: 'mars', size: 15, readableOrbit: 56, distanceAu: 1.524, duration: 18, delay: -4.2, angle: 300, image: '/planets/mars.svg', distanceFromSun: '227.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Jupiter', short: 'jupiter', size: 27, readableOrbit: 62, distanceAu: 5.203, duration: 24, delay: -6.5, angle: 70, image: '/planets/jupiter.svg', distanceFromSun: '778.6 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Saturn', short: 'saturn', size: 25, readableOrbit: 68, distanceAu: 9.537, duration: 30, delay: -9.2, angle: 170, image: '/planets/saturn.svg', distanceFromSun: '1.434 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Uranus', short: 'uranus', size: 20, readableOrbit: 74, distanceAu: 19.191, duration: 38, delay: -12.5, angle: 330, image: '/planets/uranus.svg', distanceFromSun: '2.871 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Neptune', short: 'neptune', size: 19, readableOrbit: 80, distanceAu: 30.07, duration: 48, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '4.495 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Mercury', short: 'mercury', size: 13, readableOrbit: 38, distanceAu: 0.387, duration: 8, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://nineplanets.org/mercury/' },
+  { name: 'Venus', short: 'venus', size: 17, readableOrbit: 44, distanceAu: 0.723, duration: 11, delay: -1.4, angle: 120, image: '/planets/venus.svg', distanceFromSun: '108.2 million km', sourceUrl: 'https://nineplanets.org/venus/' },
+  { name: 'Earth', short: 'earth', size: 18, readableOrbit: 50, distanceAu: 1, duration: 14, delay: -2.8, angle: 210, image: '/planets/earth.svg', distanceFromSun: '149.6 million km', sourceUrl: 'https://nineplanets.org/earth/' },
+  { name: 'Mars', short: 'mars', size: 15, readableOrbit: 56, distanceAu: 1.524, duration: 18, delay: -4.2, angle: 300, image: '/planets/mars.svg', distanceFromSun: '227.9 million km', sourceUrl: 'https://nineplanets.org/mars/' },
+  { name: 'Jupiter', short: 'jupiter', size: 27, readableOrbit: 62, distanceAu: 5.203, duration: 24, delay: -6.5, angle: 70, image: '/planets/jupiter.svg', distanceFromSun: '778.6 million km', sourceUrl: 'https://nineplanets.org/jupiter/' },
+  { name: 'Saturn', short: 'saturn', size: 25, readableOrbit: 68, distanceAu: 9.537, duration: 30, delay: -9.2, angle: 170, image: '/planets/saturn.svg', distanceFromSun: '1.434 billion km', sourceUrl: 'https://nineplanets.org/saturn/' },
+  { name: 'Uranus', short: 'uranus', size: 20, readableOrbit: 74, distanceAu: 19.191, duration: 38, delay: -12.5, angle: 330, image: '/planets/uranus.svg', distanceFromSun: '2.871 billion km', sourceUrl: 'https://nineplanets.org/uranus/' },
+  { name: 'Neptune', short: 'neptune', size: 19, readableOrbit: 80, distanceAu: 30.07, duration: 48, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '4.495 billion km', sourceUrl: 'https://nineplanets.org/neptune/' },
 ]
 const DEFAULT_PLANET_LINKS = [
   { name: 'Sun', short: 'sun', url: DEFAULT_SUN_LINK },
   ...SOLAR_SYSTEM_BODIES.map(({ name, short, sourceUrl }) => ({ name, short, url: sourceUrl })),
 ]
+const normalizePlanetLinks = (links) => (Array.isArray(links) ? links : DEFAULT_PLANET_LINKS).map((link) => {
+  const defaultLink = DEFAULT_PLANET_LINKS.find((item) => item.short === link.short)
+  return defaultLink && link.url === LEGACY_DEFAULT_PLANET_LINKS[link.short]
+    ? { ...link, url: defaultLink.url }
+    : link
+})
 const formatDistanceFromEarth = (distanceAu) => {
   const distanceKm = Math.abs(distanceAu - 1) * 149.6e6
   if (distanceKm === 0) return '0 km (Earth)'
@@ -342,6 +360,14 @@ const SECTION_MOTION_DEFAULTS = {
   contact: true,
 }
 const CUSTOM_MOTION_THEMES_KEY = 'portfolio-custom-motion-themes-v1'
+const BOOT_ANIMATION_STORAGE_KEY = 'portfolio-boot-animation-enabled-v1'
+const isBootAnimationEnabled = () => {
+  try {
+    return localStorage.getItem(BOOT_ANIMATION_STORAGE_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
 const createExperienceDraft = () => ({
   company: '', role: '', type: '', dates: '', location: '', description: '',
   achievements: '', image: '', images: '', links: '',
@@ -428,7 +454,122 @@ function ProjectVideoPlayer({ src, poster, title, controls = false, detail = fal
   )
 }
 
+const BOOT_CODE_LINES = [
+  ['01', 'const', 'portfolio', ' = await initialize();'],
+  ['02', 'import', ' motion', ' from "experience";'],
+  ['03', 'render', '(<Canvas', ' theme="aurora" />);'],
+  ['04', 'async', ' function', ' buildExperience() {'],
+  ['05', '  await', ' loadProjects', '({ priority: "high" });'],
+  ['06', '  return', ' createInterface', '();'],
+  ['07', '}', '', ' // ready to explore'],
+  ['08', 'system', ' .status', ' = "online";'],
+]
+
+function SiteBootLoader({ visible }) {
+  const [isMounted, setIsMounted] = useState(true)
+
+  useEffect(() => {
+    if (visible) return undefined
+
+    const timeoutId = window.setTimeout(() => setIsMounted(false), 360)
+    return () => window.clearTimeout(timeoutId)
+  }, [visible])
+
+  if (!isMounted) return null
+
+  return (
+    <div className={`site-boot-loader${visible ? ' is-visible' : ' is-leaving'}`} role="status" aria-live="polite" aria-label="Loading portfolio">
+      <div className="boot-loader-card">
+        <div className="boot-loader-topline">
+          <span className="boot-loader-brand"><span>AY</span> DIGITAL EXPERIENCE</span>
+          <span className="boot-loader-live"><i /> SYSTEM ONLINE</span>
+        </div>
+        <div className="boot-loader-heading">
+          <span className="boot-loader-kicker">PORTFOLIO / 2026</span>
+          <h1>Building your<br /><span>next experience.</span></h1>
+          <p>Initializing interface<span className="boot-loader-dots">...</span></p>
+        </div>
+        <div className="boot-code-window" aria-hidden="true">
+          <div className="boot-code-toolbar"><span /><span /><span /><b>portfolio.init</b><i>JS</i></div>
+          <div className="boot-code-stream">
+            {[0, 1].map((copy) => (
+              <div className="boot-code-copy" key={copy}>
+                {BOOT_CODE_LINES.map(([number, keyword, name, rest]) => (
+                  <div className="boot-code-line" key={`${copy}-${number}`}>
+                    <span className="boot-code-number">{number}</span>
+                    <span className="boot-code-keyword">{keyword}</span>
+                    <span className="boot-code-name">{name}</span>
+                    <span>{rest}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="boot-code-scanline" />
+        </div>
+        <div className="boot-loader-progress">
+          <span><i /></span>
+          <b>PREPARING YOUR VIEW</b>
+          <small>PLEASE WAIT</small>
+        </div>
+        <div className="boot-loader-index"><span>DESIGN</span><i /><span>DEVELOP</span><i /><span>DELIVER</span></div>
+      </div>
+    </div>
+  )
+}
+
+function startBootScrollTour(onComplete) {
+  const root = document.documentElement
+  const originalScrollBehavior = root.style.scrollBehavior
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (prefersReducedMotion) {
+    onComplete()
+    return () => {}
+  }
+
+  root.style.scrollBehavior = 'auto'
+  window.scrollTo(0, 0)
+  const startedAt = performance.now()
+  const duration = 2400
+  let frameId = 0
+
+  const animateScroll = (now) => {
+    const progress = Math.min(1, (now - startedAt) / duration)
+    const downProgress = Math.min(1, progress / 0.62)
+    const upProgress = Math.max(0, (progress - 0.62) / 0.38)
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+    const easedDown = 1 - ((1 - downProgress) ** 3)
+    const easedUp = 1 - ((1 - upProgress) ** 3)
+    const scrollPosition = progress < 0.62
+      ? maxScroll * easedDown
+      : maxScroll * (1 - easedUp)
+
+    window.scrollTo(0, scrollPosition)
+
+    if (progress < 1) {
+      frameId = window.requestAnimationFrame(animateScroll)
+      return
+    }
+
+    window.scrollTo(0, 0)
+    root.style.scrollBehavior = originalScrollBehavior
+    onComplete()
+  }
+
+  frameId = window.requestAnimationFrame(animateScroll)
+
+  return () => {
+    window.cancelAnimationFrame(frameId)
+    window.scrollTo(0, 0)
+    root.style.scrollBehavior = originalScrollBehavior
+  }
+}
+
 function App() {
+  const [isBootAnimationEnabledState, setIsBootAnimationEnabledState] = useState(isBootAnimationEnabled)
+  const [isSiteBooting, setIsSiteBooting] = useState(isBootAnimationEnabled)
+  const bootAnimationEnabledAtMount = useRef(isBootAnimationEnabledState)
   const [theme, setTheme] = useState('dark')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [view, setView] = useState('home')
@@ -464,6 +605,7 @@ function App() {
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
   const [activePlanetShort, setActivePlanetShort] = useState(null)
   const [isPlanetDetailOpen, setIsPlanetDetailOpen] = useState(false)
+  const [isPlanetLearnMoreOpen, setIsPlanetLearnMoreOpen] = useState(false)
   const planetDetailRef = useRef(null)
   const [formState, setFormState] = useState({ name: '', email: '', subject: '', message: '' })
   const [formStatus, setFormStatus] = useState('')
@@ -896,6 +1038,10 @@ function App() {
   }
 
   useEffect(() => {
+    let isMounted = true
+    let bootCompletionTimer
+    let stopBootScrollTour = () => {}
+    const bootStartedAt = typeof performance === 'undefined' ? Date.now() : performance.now()
     const loadPortfolio = async () => {
       const savedPortfolio = (() => {
         try {
@@ -943,9 +1089,9 @@ function App() {
                   ? data.homepageSettings || {}
                   : savedPortfolio.homepageSettings || data.homepageSettings || {}),
               },
-              planetLinks: hasSavedServerPlanetLinks
+              planetLinks: normalizePlanetLinks(hasSavedServerPlanetLinks
                 ? data.planetLinks || DEFAULT_PLANET_LINKS
-                : savedPortfolio.planetLinks || data.planetLinks || DEFAULT_PLANET_LINKS,
+                : savedPortfolio.planetLinks || data.planetLinks || DEFAULT_PLANET_LINKS),
               planetLinksStorage: hasSavedServerPlanetLinks ? data.planetLinksStorage : savedPortfolio.planetLinksStorage || data.planetLinksStorage,
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
@@ -973,7 +1119,7 @@ function App() {
                 ...DEFAULT_HOMEPAGE_SETTINGS,
                 ...(data.homepageSettings || {}),
               },
-              planetLinks: data.planetLinks || DEFAULT_PLANET_LINKS,
+              planetLinks: normalizePlanetLinks(data.planetLinks || DEFAULT_PLANET_LINKS),
               planetLinksStorage: data.planetLinksStorage,
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
@@ -992,10 +1138,28 @@ function App() {
         }
       } catch (error) {
         console.error('Failed to load portfolio data:', error)
+      } finally {
+        if (bootAnimationEnabledAtMount.current) {
+          const currentTime = typeof performance === 'undefined' ? Date.now() : performance.now()
+          const elapsed = currentTime - bootStartedAt
+          bootCompletionTimer = window.setTimeout(
+            () => {
+              stopBootScrollTour = startBootScrollTour(() => {
+                if (isMounted) setIsSiteBooting(false)
+              })
+            },
+            Math.max(0, 900 - elapsed),
+          )
+        }
       }
     }
 
     loadPortfolio()
+    return () => {
+      isMounted = false
+      window.clearTimeout(bootCompletionTimer)
+      stopBootScrollTour()
+    }
   }, [])
 
   useEffect(() => {
@@ -1052,6 +1216,19 @@ function App() {
       : SOLAR_SYSTEM_BODIES.find((planet) => planet.short === activePlanetShort) ?? null,
     [activePlanetShort],
   )
+  const selectedPlanetLearnMoreUrl = useMemo(() => {
+    if (!selectedPlanet) return ''
+
+    const configuredUrl = portfolio.planetLinks?.find((link) => link.short === selectedPlanet.short)?.url
+    const candidate = configuredUrl || (selectedPlanet.isSun ? DEFAULT_SUN_LINK : selectedPlanet.sourceUrl)
+
+    try {
+      const parsedUrl = new URL(candidate)
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? parsedUrl.href : ''
+    } catch {
+      return ''
+    }
+  }, [portfolio.planetLinks, selectedPlanet])
 
   const activeHomepageDesignId = HOMEPAGE_DESIGNS.some((design) => design.id === portfolio.homepageSettings?.activeDesign)
     ? portfolio.homepageSettings.activeDesign
@@ -1187,6 +1364,18 @@ function App() {
       ...current,
       [sectionKey]: !current[sectionKey],
     }))
+  }
+
+  const toggleBootAnimation = () => {
+    setIsBootAnimationEnabledState((enabled) => {
+      const nextEnabled = !enabled
+      try {
+        localStorage.setItem(BOOT_ANIMATION_STORAGE_KEY, String(nextEnabled))
+      } catch {
+        // The setting remains active for this page session if browser storage is unavailable.
+      }
+      return nextEnabled
+    })
   }
 
   const saveHomepageSettings = async (designId) => {
@@ -2434,6 +2623,7 @@ function App() {
                         onClick={() => {
                           setActivePlanetShort(planet.short)
                           setIsPlanetDetailOpen(true)
+                          setIsPlanetLearnMoreOpen(false)
                         }}
                         aria-label={`View details for ${planet.name}`}
                       >
@@ -2449,6 +2639,7 @@ function App() {
                     onClick={() => {
                       setActivePlanetShort('sun')
                       setIsPlanetDetailOpen(true)
+                      setIsPlanetLearnMoreOpen(false)
                     }}
                     aria-label="View details for the Sun"
                   >
@@ -2471,7 +2662,10 @@ function App() {
                     <button
                       type="button"
                       className="planet-close-btn"
-                      onClick={() => setIsPlanetDetailOpen(false)}
+                      onClick={() => {
+                        setIsPlanetDetailOpen(false)
+                        setIsPlanetLearnMoreOpen(false)
+                      }}
                       aria-label={`Close details for ${selectedPlanet.name}`}
                     >
                       ×
@@ -2521,15 +2715,44 @@ function App() {
                       </>
                     )}
 
-                    <a
-                      href={portfolio.planetLinks?.find((link) => link.short === selectedPlanet.short)?.url
-                        || (selectedPlanet.isSun ? DEFAULT_SUN_LINK : selectedPlanet.sourceUrl)}
-                      target="_blank"
-                      rel="noreferrer"
+                    {isPlanetLearnMoreOpen
+                      ? createPortal(
+                        <div className="planet-learn-more-overlay" role="dialog" aria-modal="true" aria-label={`${selectedPlanet.name} details`}>
+                          <div className="planet-learn-more-toolbar">
+                            <span>{selectedPlanet.name} / Learn more</span>
+                            <button
+                              type="button"
+                              className="planet-learn-more-close"
+                              onClick={() => setIsPlanetLearnMoreOpen(false)}
+                            >
+                              Back to planet
+                            </button>
+                          </div>
+                          {selectedPlanetLearnMoreUrl ? (
+                            <iframe
+                              className="planet-learn-more-frame"
+                              src={selectedPlanetLearnMoreUrl}
+                              title={`${selectedPlanet.name} reference page`}
+                              loading="eager"
+                              referrerPolicy="no-referrer"
+                              sandbox="allow-forms allow-scripts"
+                            />
+                          ) : (
+                            <p className="planet-learn-more-error" role="alert">
+                              This planet does not have a valid reference page. Update its URL in Admin → Planet Links.
+                            </p>
+                          )}
+                        </div>,
+                        document.body,
+                      )
+                      : null}
+                    <button
+                      type="button"
                       className="planet-source-link"
+                      onClick={() => setIsPlanetLearnMoreOpen(true)}
                     >
                       Learn more
-                    </a>
+                    </button>
                   </MotionDiv>
                 )}
               </AnimatedPresence>
@@ -3319,8 +3542,8 @@ function App() {
             <div className="panel-header">
               <div>
                 <span className="section-tag">SOLAR SYSTEM</span>
-                <h2>Sun &amp; planet Learn more links</h2>
-                <p>Sun ya planet ke details card ka Learn more button yahan diya gaya URL kholega.</p>
+                <h2>Sun &amp; planet reference links</h2>
+                <p>Visitor ka Learn more button yahan set kiya gaya page isi website ke andar kholta hai; naya tab nahi khulta aur URL page par text ke roop mein nahi dikhaya jata.</p>
               </div>
             </div>
             <div className="contact-editor-list">
@@ -3715,6 +3938,23 @@ function App() {
                 <span className="section-tag">SITE MOTION</span>
                 <h2>Choose a portfolio animation style</h2>
               </div>
+            </div>
+
+            <div className="boot-animation-setting">
+              <div>
+                <span className="section-tag">STARTUP EXPERIENCE</span>
+                <h3>Code boot animation</h3>
+                <p>Show the animated code loading screen and automatic page tour when the website opens.</p>
+              </div>
+              <button
+                type="button"
+                className={`section-toggle ${isBootAnimationEnabledState ? 'enabled' : 'disabled'}`}
+                aria-pressed={isBootAnimationEnabledState}
+                onClick={toggleBootAnimation}
+              >
+                <span>Boot animation</span>
+                <strong>{isBootAnimationEnabledState ? 'On' : 'Off'}</strong>
+              </button>
             </div>
 
             <section className="edge-motion-panel">
@@ -4384,7 +4624,12 @@ function App() {
     )
   }
 
-  return <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+  return (
+    <>
+      <SiteBootLoader visible={isSiteBooting} />
+      <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+    </>
+  )
 }
 
 export default App

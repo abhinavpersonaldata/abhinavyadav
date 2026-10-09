@@ -154,6 +154,319 @@ html {
   82%, 100% { transform: translateX(110%) skewX(-14deg); opacity: 0; }
 }
 
+.site-boot-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 1rem;
+  background: #050912;
+  color: #edf5ff;
+  opacity: 1;
+  transition: opacity 320ms ease, visibility 320ms ease;
+}
+
+.site-boot-loader::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.15;
+  background-image: linear-gradient(rgba(98, 208, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(98, 208, 255, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse at center, #000 12%, transparent 78%);
+}
+
+.site-boot-loader.is-leaving {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-loader-card {
+  position: relative;
+  width: min(100%, 33rem);
+  padding: clamp(1rem, 5vw, 2rem);
+  border: 1px solid rgba(119, 198, 232, 0.2);
+  border-radius: 1.15rem;
+  background: linear-gradient(145deg, rgba(14, 24, 37, 0.96), rgba(7, 13, 23, 0.96));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.boot-loader-topline,
+.boot-loader-brand,
+.boot-loader-live,
+.boot-loader-progress,
+.boot-loader-index {
+  display: flex;
+  align-items: center;
+}
+
+.boot-loader-topline {
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(153, 180, 230, 0.12);
+  color: #93a8bd;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.boot-loader-brand {
+  gap: 0.55rem;
+}
+
+.boot-loader-brand > span {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-items: center;
+  border-radius: 0.55rem;
+  background: linear-gradient(135deg, #c8ff3d, #62d0ff);
+  color: #09111a;
+  font-size: 0.7rem;
+  letter-spacing: -0.06em;
+}
+
+.boot-loader-live {
+  gap: 0.4rem;
+  color: #a8d7c4;
+  white-space: nowrap;
+}
+
+.boot-loader-live i {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: #54e59a;
+  box-shadow: 0 0 12px rgba(84, 229, 154, 0.75);
+  animation: bootLivePulse 1s ease-in-out infinite alternate;
+}
+
+.boot-loader-heading {
+  padding: 1.4rem 0 1.15rem;
+}
+
+.boot-loader-kicker {
+  color: #7c9ab3;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.boot-loader-heading h1 {
+  margin: 0.55rem 0 0.45rem;
+  color: #f4f8ff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(2rem, 8vw, 3.25rem);
+  font-weight: 500;
+  letter-spacing: -0.075em;
+  line-height: 0.98;
+}
+
+.boot-loader-heading h1 span {
+  color: #72d9ff;
+}
+
+.boot-loader-heading p {
+  margin: 0.75rem 0 0;
+  color: #b6c5d5;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.boot-loader-dots {
+  display: inline-block;
+  width: 1.2rem;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: bootTypingDots 1.1s steps(4, end) infinite;
+}
+
+.boot-code-window {
+  position: relative;
+  height: 10.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(98, 208, 255, 0.16);
+  border-radius: 0.7rem;
+  background: rgba(3, 8, 15, 0.78);
+}
+
+.boot-code-toolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border-bottom: 1px solid rgba(153, 180, 230, 0.1);
+  background: rgba(13, 22, 34, 0.96);
+}
+
+.boot-code-toolbar > span {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: #ff746d;
+}
+
+.boot-code-toolbar > span:nth-child(2) { background: #ffc45c; }
+.boot-code-toolbar > span:nth-child(3) { background: #56d890; }
+
+.boot-code-toolbar b {
+  margin-left: 0.45rem;
+  color: #8296ab;
+  font-size: 0.58rem;
+  font-weight: 500;
+}
+
+.boot-code-toolbar i {
+  margin-left: auto;
+  color: #61cfff;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.boot-code-stream {
+  animation: bootCodeScroll 3.6s linear infinite;
+}
+
+.boot-code-copy {
+  padding: 0.55rem 0;
+}
+
+.boot-code-line {
+  display: flex;
+  min-width: max-content;
+  gap: 0.38rem;
+  padding: 0.19rem 0.7rem;
+  color: #9fb0c1;
+  font-family: 'Consolas', 'SFMono-Regular', monospace;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  white-space: pre;
+}
+
+.boot-code-number { color: #53677d; }
+.boot-code-keyword { color: #c792ea; }
+.boot-code-name { color: #82d7ff; }
+.boot-code-line:nth-child(3n) .boot-code-name { color: #d9f47a; }
+
+.boot-code-scanline {
+  position: absolute;
+  inset: -35% 0 auto;
+  height: 25%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(77, 197, 255, 0.08), transparent);
+  animation: bootScan 2.8s linear infinite;
+}
+
+.boot-loader-progress {
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.boot-loader-progress > span {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(153, 180, 230, 0.16);
+}
+
+.boot-loader-progress > span i {
+  position: absolute;
+  inset: 0 auto 0 -42%;
+  width: 42%;
+  background: linear-gradient(90deg, #c8ff3d, #62d0ff);
+  box-shadow: 0 0 12px rgba(98, 208, 255, 0.7);
+  animation: bootProgress 1.15s ease-in-out infinite;
+}
+
+.boot-loader-progress b,
+.boot-loader-progress small,
+.boot-loader-index {
+  color: #91a4b7;
+  font-family: 'Consolas', 'SFMono-Regular', monospace;
+  font-size: 0.53rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.boot-loader-progress b {
+  color: #c5d7e8;
+  font-weight: 500;
+}
+
+.boot-loader-progress small {
+  color: #61758b;
+}
+
+.boot-loader-index {
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 1.1rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+}
+
+.boot-loader-index i {
+  width: 0.18rem;
+  height: 0.18rem;
+  border-radius: 50%;
+  background: #62d0ff;
+}
+
+.boot-animation-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.boot-animation-setting h3 {
+  margin: 0.35rem 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.boot-animation-setting p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+@keyframes bootCodeScroll {
+  to { transform: translateY(-50%); }
+}
+
+@keyframes bootScan {
+  to { transform: translateY(560%); }
+}
+
+@keyframes bootProgress {
+  to { transform: translateX(340%); }
+}
+
+@keyframes bootLivePulse {
+  to { opacity: 0.45; }
+}
+
+@keyframes bootTypingDots {
+  from { width: 0; }
+  to { width: 1.2rem; }
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -1993,13 +2306,67 @@ a {
 .planet-source-link {
   pointer-events: auto;
   display: inline-flex;
+  padding: 0;
   margin-top: 0.75rem;
+  border: 0;
+  background: transparent;
   color: var(--color-primary);
   text-decoration: none;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.66rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.planet-learn-more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: clamp(0.5rem, 2vw, 1.25rem);
+  background: var(--color-bg);
+  pointer-events: auto;
+}
+
+.planet-learn-more-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text);
+  font-size: 0.8rem;
+}
+
+.planet-learn-more-close {
+  min-height: 2.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.planet-learn-more-frame {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.planet-learn-more-error {
+  align-self: center;
+  justify-self: center;
+  max-width: 32rem;
+  color: var(--color-text);
+  text-align: center;
 }
 
 :root[data-theme='light'] .planet-source-link {
@@ -5697,6 +6064,29 @@ a:focus-visible {
     -webkit-backdrop-filter: none !important;
   }
 
+  .topbar,
+  .topbar::before,
+  .hero-panel::before,
+  .hero-panel::after,
+  .info-strip span,
+  .primary-btn,
+  .pro-hero::after,
+  .pro-section::after,
+  .content-section::before,
+  .project-panel::before,
+  .project-media::before,
+  .project-media::after,
+  .planet-marker::after,
+  .solar-sun::before,
+  .contact-graphic::after,
+  .contact-graphic-title span:last-child,
+  .contact-visual,
+  .site-footer,
+  .site-footer::before,
+  .footer-live-status i {
+    animation: none !important;
+  }
+
   .site-shell {
     width: min(var(--container-width), calc(100% - 1rem));
   }
@@ -5874,6 +6264,40 @@ a:focus-visible {
 }
 
 @media (max-width: 560px) {
+  .site-boot-loader {
+    padding: 0.75rem;
+  }
+
+  .boot-loader-card {
+    padding: 1rem;
+  }
+
+  .boot-loader-topline {
+    font-size: 0.48rem;
+  }
+
+  .boot-code-window {
+    height: 9.5rem;
+  }
+
+  .boot-loader-progress {
+    gap: 0.45rem;
+  }
+
+  .boot-loader-progress b,
+  .boot-loader-progress small {
+    font-size: 0.46rem;
+  }
+
+  .planet-learn-more-overlay {
+    padding: 0.25rem;
+  }
+
+  .planet-learn-more-toolbar {
+    min-height: 3rem;
+    padding: 0.4rem;
+  }
+
   .site-shell {
     width: min(var(--container-width), calc(100% - 0.75rem));
     padding-top: 0.75rem;
