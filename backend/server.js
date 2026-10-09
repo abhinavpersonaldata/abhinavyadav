@@ -119,6 +119,17 @@ const portfolioData = {
     { label: 'GitHub', type: 'github', value: 'https://github.com/abhinavpersonaldata' },
     { label: 'LinkedIn', type: 'linkedin', value: 'https://www.linkedin.com' },
   ],
+  planetLinks: [
+    { name: 'Sun', short: 'sun', url: 'https://science.nasa.gov/sun/' },
+    { name: 'Mercury', short: 'mercury', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Venus', short: 'venus', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Earth', short: 'earth', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Mars', short: 'mars', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Jupiter', short: 'jupiter', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Saturn', short: 'saturn', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Uranus', short: 'uranus', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+    { name: 'Neptune', short: 'neptune', url: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  ],
   about: {
     heading: 'Building useful digital experiences with clarity and craft.',
     biography: 'I am a Computer Science & Engineering diploma student focused on frontend development, product thinking, and building polished web experiences. I enjoy translating ideas into interfaces that are thoughtful, responsive, and genuinely useful.',
@@ -252,7 +263,7 @@ app.get('/api/portfolio', async (req, res) => {
       ? await PortfolioContent.findOne({ key: 'motionSettings' }).lean()
       : null
     const savedCollections = mongoose.connection.readyState === 1
-      ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks'] } }).lean()
+      ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks'] } }).lean()
       : []
     const savedCollectionData = new Map(savedCollections.map((collection) => [collection.key, collection.data]))
     const savedById = new Map(savedProjects.map((project) => [project.id, project.data]))
@@ -278,6 +289,8 @@ app.get('/api/portfolio', async (req, res) => {
       achievements: savedCollectionData.get('achievements') || portfolioData.achievements,
       galleryItems: savedCollectionData.get('galleryItems') || portfolioData.galleryItems,
       contactLinks: savedCollectionData.get('contactLinks') || portfolioData.contactLinks,
+      planetLinks: savedCollectionData.get('planetLinks') || portfolioData.planetLinks,
+      planetLinksStorage: savedCollectionData.has('planetLinks') ? 'database' : 'default',
       projects,
     })
   } catch (error) {
@@ -463,10 +476,25 @@ app.put('/api/portfolio/about', async (req, res) => {
 
 app.put('/api/portfolio/content/:key', async (req, res) => {
   const { key } = req.params
-  const allowedKeys = ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks']
+  const allowedKeys = ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks']
 
   if (!allowedKeys.includes(key) || !Array.isArray(req.body?.entries)) {
     return res.status(400).json({ success: false, message: 'A valid portfolio collection is required.' })
+  }
+
+  if (key === 'planetLinks') {
+    const expectedPlanetShorts = ['sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
+    const entries = req.body.entries
+    const planetShorts = entries.map((entry) => entry?.short)
+    const hasValidPlanetLinks = entries.length === expectedPlanetShorts.length
+      && expectedPlanetShorts.every((short) => planetShorts.filter((entryShort) => entryShort === short).length === 1)
+      && entries.every((entry) => typeof entry?.name === 'string'
+        && typeof entry?.url === 'string'
+        && /^https?:\/\/\S+$/i.test(entry.url.trim()))
+
+    if (!hasValidPlanetLinks) {
+      return res.status(400).json({ success: false, message: 'The Sun and each planet need one valid HTTP or HTTPS link.' })
+    }
   }
 
   if (mongoose.connection.readyState !== 1) {
@@ -480,7 +508,7 @@ app.put('/api/portfolio/content/:key', async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).lean()
 
-    return res.json({ success: true, key, entries: savedCollection.data })
+    return res.json({ success: true, key, entries: savedCollection.data, storage: 'database' })
   } catch (error) {
     console.error(`Failed to save ${key}:`, error)
     return res.status(503).json({ success: false, message: 'Portfolio entries could not be saved.' })

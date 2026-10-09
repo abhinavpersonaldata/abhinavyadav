@@ -130,16 +130,33 @@ const HOMEPAGE_DESIGNS = [
 ]
 const PROFESSIONAL_HOMEPAGE_IDS = new Set(['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid'])
 const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
+const DEFAULT_SUN_LINK = 'https://science.nasa.gov/sun/'
+const SUN_DETAILS = {
+  name: 'Sun',
+  short: 'sun',
+  isSun: true,
+  image: '',
+}
 const SOLAR_SYSTEM_BODIES = [
-  { name: 'Mercury', short: 'mercury', size: 13, orbit: 128, radius: 64, duration: 10, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Venus', short: 'venus', size: 17, orbit: 176, radius: 88, duration: 14, delay: -1.4, angle: 120, image: '/planets/venus.svg', distanceFromSun: '121 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Earth', short: 'earth', size: 18, orbit: 224, radius: 112, duration: 19, delay: -2.8, angle: 210, image: '/planets/earth.svg', distanceFromSun: '149.6 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Mars', short: 'mars', size: 15, orbit: 272, radius: 136, duration: 24, delay: -4.2, angle: 300, image: '/planets/mars.svg', distanceFromSun: '1.5 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Jupiter', short: 'jupiter', size: 27, orbit: 320, radius: 160, duration: 36, delay: -6.5, angle: 70, image: '/planets/jupiter.svg', distanceFromSun: '5.2 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Saturn', short: 'saturn', size: 25, orbit: 364, radius: 182, duration: 52, delay: -9.2, angle: 170, image: '/planets/saturn.svg', distanceFromSun: '7.4 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Uranus', short: 'uranus', size: 20, orbit: 404, radius: 202, duration: 68, delay: -12.5, angle: 330, image: '/planets/uranus.svg', distanceFromSun: '2.9 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
-  { name: 'Neptune', short: 'neptune', size: 19, orbit: 438, radius: 219, duration: 88, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '3.2 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Mercury', short: 'mercury', size: 13, readableOrbit: 38, distanceAu: 0.387, duration: 8, delay: 0, angle: 15, image: '/planets/mercury.svg', distanceFromSun: '57.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Venus', short: 'venus', size: 17, readableOrbit: 44, distanceAu: 0.723, duration: 11, delay: -1.4, angle: 120, image: '/planets/venus.svg', distanceFromSun: '108.2 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Earth', short: 'earth', size: 18, readableOrbit: 50, distanceAu: 1, duration: 14, delay: -2.8, angle: 210, image: '/planets/earth.svg', distanceFromSun: '149.6 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Mars', short: 'mars', size: 15, readableOrbit: 56, distanceAu: 1.524, duration: 18, delay: -4.2, angle: 300, image: '/planets/mars.svg', distanceFromSun: '227.9 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Jupiter', short: 'jupiter', size: 27, readableOrbit: 62, distanceAu: 5.203, duration: 24, delay: -6.5, angle: 70, image: '/planets/jupiter.svg', distanceFromSun: '778.6 million km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Saturn', short: 'saturn', size: 25, readableOrbit: 68, distanceAu: 9.537, duration: 30, delay: -9.2, angle: 170, image: '/planets/saturn.svg', distanceFromSun: '1.434 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Uranus', short: 'uranus', size: 20, readableOrbit: 74, distanceAu: 19.191, duration: 38, delay: -12.5, angle: 330, image: '/planets/uranus.svg', distanceFromSun: '2.871 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
+  { name: 'Neptune', short: 'neptune', size: 19, readableOrbit: 80, distanceAu: 30.07, duration: 48, delay: -15.5, angle: 246, image: '/planets/neptune.svg', distanceFromSun: '4.495 billion km', sourceUrl: 'https://spaceinformer.com/planets-in-order-from-the-sun/' },
 ]
+const DEFAULT_PLANET_LINKS = [
+  { name: 'Sun', short: 'sun', url: DEFAULT_SUN_LINK },
+  ...SOLAR_SYSTEM_BODIES.map(({ name, short, sourceUrl }) => ({ name, short, url: sourceUrl })),
+]
+const formatDistanceFromEarth = (distanceAu) => {
+  const distanceKm = Math.abs(distanceAu - 1) * 149.6e6
+  if (distanceKm === 0) return '0 km (Earth)'
+  if (distanceKm >= 1e9) return `~${(distanceKm / 1e9).toFixed(2)} billion km`
+  return `~${(distanceKm / 1e6).toFixed(1)} million km`
+}
 const DEFAULT_ABOUT = {
   heading: 'Building useful digital experiences with clarity and craft.',
   biography: 'I am a Computer Science & Engineering diploma student focused on frontend development, product thinking, and building polished web experiences. I enjoy translating ideas into interfaces that are thoughtful, responsive, and genuinely useful.',
@@ -360,6 +377,7 @@ function App() {
     galleryItems: [],
     adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
     homepageSettings: DEFAULT_HOMEPAGE_SETTINGS,
+    planetLinks: DEFAULT_PLANET_LINKS,
     edgeAnimationSettings: DEFAULT_EDGE_ANIMATION_SETTINGS,
     motionSettings: DEFAULT_SITE_MOTION_SETTINGS,
     ...DEFAULT_VISUAL_SETTINGS,
@@ -427,6 +445,8 @@ function App() {
   const [gallerySaveStatus, setGallerySaveStatus] = useState('')
   const [contactLinksDraft, setContactLinksDraft] = useState(DEFAULT_CONTACT_LINKS)
   const [contactSaveStatus, setContactSaveStatus] = useState('')
+  const [planetLinksDraft, setPlanetLinksDraft] = useState(DEFAULT_PLANET_LINKS)
+  const [planetLinksSaveStatus, setPlanetLinksSaveStatus] = useState('')
   const [customThemeName, setCustomThemeName] = useState('')
   const [customThemes, setCustomThemes] = useState(() => {
     try {
@@ -481,6 +501,41 @@ function App() {
   }, [isAdminAuthenticated])
 
   useEffect(() => {
+    const isCopyAllowedTarget = (target) => (
+      target instanceof Element
+      && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [data-allow-copy="true"]'))
+    )
+
+    const preventPageCopy = (event) => {
+      if (!isCopyAllowedTarget(event.target)) {
+        event.preventDefault()
+      }
+    }
+
+    const preventImageContextMenu = (event) => {
+      if (event.target instanceof Element && event.target.closest('img, picture, video, canvas')) {
+        event.preventDefault()
+      }
+    }
+
+    const preventImageDrag = (event) => {
+      if (event.target instanceof Element && event.target.closest('img, picture, video, canvas')) {
+        event.preventDefault()
+      }
+    }
+
+    document.addEventListener('copy', preventPageCopy, true)
+    document.addEventListener('contextmenu', preventImageContextMenu, true)
+    document.addEventListener('dragstart', preventImageDrag, true)
+
+    return () => {
+      document.removeEventListener('copy', preventPageCopy, true)
+      document.removeEventListener('contextmenu', preventImageContextMenu, true)
+      document.removeEventListener('dragstart', preventImageDrag, true)
+    }
+  }, [])
+
+  useEffect(() => {
     const loadMessages = async () => {
       try {
         const response = await apiFetch('/api/messages')
@@ -503,9 +558,9 @@ function App() {
       }
 
       const clickedInsidePanel = planetDetailRef.current?.contains(event.target)
-      const clickedPlanetButton = event.target.closest('.orbit-planet')
+      const clickedSolarBodyButton = event.target.closest('.orbit-planet, .solar-sun')
 
-      if (!clickedInsidePanel && !clickedPlanetButton) {
+      if (!clickedInsidePanel && !clickedSolarBodyButton) {
         setIsPlanetDetailOpen(false)
       }
     }
@@ -775,6 +830,7 @@ function App() {
         const hasSavedServerAbout = ['database', 'memory'].includes(data.aboutStorage)
         const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
         const hasSavedServerHomepageSettings = ['database', 'memory'].includes(data.homepageSettingsStorage)
+        const hasSavedServerPlanetLinks = data.planetLinksStorage === 'database'
         const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
         const hasSavedServerMotionSettings = ['database', 'memory'].includes(data.motionSettingsStorage)
 
@@ -801,6 +857,10 @@ function App() {
                   ? data.homepageSettings || {}
                   : savedPortfolio.homepageSettings || data.homepageSettings || {}),
               },
+              planetLinks: hasSavedServerPlanetLinks
+                ? data.planetLinks || DEFAULT_PLANET_LINKS
+                : savedPortfolio.planetLinks || data.planetLinks || DEFAULT_PLANET_LINKS,
+              planetLinksStorage: hasSavedServerPlanetLinks ? data.planetLinksStorage : savedPortfolio.planetLinksStorage || data.planetLinksStorage,
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
                 ...(hasSavedServerEdgeSettings
@@ -827,6 +887,8 @@ function App() {
                 ...DEFAULT_HOMEPAGE_SETTINGS,
                 ...(data.homepageSettings || {}),
               },
+              planetLinks: data.planetLinks || DEFAULT_PLANET_LINKS,
+              planetLinksStorage: data.planetLinksStorage,
               edgeAnimationSettings: {
                 ...DEFAULT_EDGE_ANIMATION_SETTINGS,
                 ...(data.edgeAnimationSettings || {}),
@@ -894,7 +956,9 @@ function App() {
   )
 
   const selectedPlanet = useMemo(
-    () => SOLAR_SYSTEM_BODIES.find((planet) => planet.short === activePlanetShort) ?? null,
+    () => activePlanetShort === 'sun'
+      ? SUN_DETAILS
+      : SOLAR_SYSTEM_BODIES.find((planet) => planet.short === activePlanetShort) ?? null,
     [activePlanetShort],
   )
 
@@ -1632,7 +1696,11 @@ function App() {
 
       const savedEntries = result.entries || entries
       setPortfolio((current) => {
-        const nextPortfolio = { ...current, [key]: savedEntries }
+        const nextPortfolio = {
+          ...current,
+          [key]: savedEntries,
+          ...(key === 'planetLinks' ? { planetLinksStorage: result.storage || 'database' } : {}),
+        }
         savePortfolioToStorage(nextPortfolio)
         return nextPortfolio
       })
@@ -1896,6 +1964,30 @@ function App() {
       .map((item) => ({ label: item.label.trim(), type: item.type, value: item.value.trim() }))
 
     await savePortfolioCollection('contactLinks', entries, setContactSaveStatus)
+  }
+
+  const beginEditPlanetLinks = () => {
+    setPlanetLinksDraft(DEFAULT_PLANET_LINKS.map(({ name, short, url }) => {
+      const savedLink = portfolio.planetLinks?.find((link) => link.short === short)
+      return { name, short, url: savedLink?.url || url }
+    }))
+    setPlanetLinksSaveStatus('')
+    setAdminSection('planetLinks')
+  }
+
+  const updatePlanetLink = (short, url) => {
+    setPlanetLinksDraft((current) => current.map((link) => link.short === short ? { ...link, url } : link))
+  }
+
+  const handleSavePlanetLinks = async () => {
+    const hasInvalidUrl = planetLinksDraft.some((link) => !/^https?:\/\/\S+$/i.test(link.url.trim()))
+    if (hasInvalidUrl) {
+      setPlanetLinksSaveStatus('Sun aur har planet ke liye valid http:// ya https:// link enter karein.')
+      return
+    }
+
+    const entries = planetLinksDraft.map((link) => ({ ...link, url: link.url.trim() }))
+    await savePortfolioCollection('planetLinks', entries, setPlanetLinksSaveStatus)
   }
 
   const visibleProjects = useMemo(() => {
@@ -2221,40 +2313,49 @@ function App() {
               </div>
             </div>
 
-            <div className="hero-visual" aria-hidden="true">
+            <div className="hero-visual">
               <div className="visual-core solar-scene">
-                <div className="solar-system">
-                  <div className="orbit orbit-outer" />
-                  <div className="orbit orbit-mid" />
-                  <div className="orbit orbit-inner" />
+                <div className="solar-system" role="group" aria-label="Interactive solar system">
                   {SOLAR_SYSTEM_BODIES.map((planet) => (
-                    <button
+                    <div
                       key={planet.short}
-                      type="button"
-                      className={`orbit orbit-planet ${activePlanetShort === planet.short ? 'is-selected' : ''}`}
+                      className="orbit-planet-track"
                       style={{
-                        '--orbit-size': `${planet.orbit}px`,
-                        '--planet-radius': `${planet.radius}px`,
+                        '--orbit-size': `${planet.readableOrbit}cqw`,
+                        '--planet-radius': `${(planet.readableOrbit / 2).toFixed(1)}cqw`,
                         '--planet-size': `${planet.size}px`,
                         '--orbit-duration': `${planet.duration}s`,
                         '--orbit-delay': `${planet.delay}s`,
                         '--planet-angle': `${planet.angle}deg`,
-                        '--planet-tilt': `${planet.angle}deg`,
                       }}
-                      onClick={() => {
-                        setActivePlanetShort(planet.short)
-                        setIsPlanetDetailOpen(true)
-                      }}
-                      aria-label={`View details for ${planet.name}`}
                     >
-                      <span className="planet-marker">
-                        <img src={planet.image} alt={planet.name} className="planet-image" />
-                      </span>
-                    </button>
+                      <span className="planet-orbit-path" aria-hidden="true" />
+                      <button
+                        type="button"
+                        className={`orbit-planet ${activePlanetShort === planet.short ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setActivePlanetShort(planet.short)
+                          setIsPlanetDetailOpen(true)
+                        }}
+                        aria-label={`View details for ${planet.name}`}
+                      >
+                        <span className="planet-marker">
+                          <img src={planet.image} alt="" className="planet-image" />
+                        </span>
+                      </button>
+                    </div>
                   ))}
-                  <div className="solar-sun">
+                  <button
+                    type="button"
+                    className={`solar-sun ${activePlanetShort === 'sun' ? 'is-selected' : ''}`}
+                    onClick={() => {
+                      setActivePlanetShort('sun')
+                      setIsPlanetDetailOpen(true)
+                    }}
+                    aria-label="View details for the Sun"
+                  >
                     <span>AY</span>
-                  </div>
+                  </button>
                 </div>
               </div>
 
@@ -2279,24 +2380,56 @@ function App() {
                     </button>
 
                     <div className="planet-details-header">
-                      <img src={selectedPlanet.image} alt={selectedPlanet.name} className="planet-details-image" />
+                      {selectedPlanet.isSun ? (
+                        <span className="planet-details-sun" aria-hidden="true">AY</span>
+                      ) : (
+                        <img src={selectedPlanet.image} alt={selectedPlanet.name} className="planet-details-image" />
+                      )}
                       <div>
-                        <span className="planet-details-label">Selected Planet</span>
+                        <span className="planet-details-label">{selectedPlanet.isSun ? 'Solar System Star' : 'Selected Planet'}</span>
                         <h3>{selectedPlanet.name}</h3>
                       </div>
                     </div>
 
-                    <div className="planet-detail-row">
-                      <span className="planet-detail-key">Distance from Sun</span>
-                      <strong>{selectedPlanet.distanceFromSun}</strong>
-                    </div>
+                    {selectedPlanet.isSun ? (
+                      <>
+                        <div className="planet-detail-row">
+                          <span className="planet-detail-key">Type</span>
+                          <strong>Star</strong>
+                        </div>
+                        <div className="planet-detail-row">
+                          <span className="planet-detail-key">Approx. distance from Earth</span>
+                          <strong>149.6 million km</strong>
+                        </div>
+                        <div className="planet-detail-row">
+                          <span className="planet-detail-key">Position</span>
+                          <strong>Center of the solar system</strong>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="planet-detail-row">
+                          <span className="planet-detail-key">Distance from Sun</span>
+                          <strong>{selectedPlanet.distanceFromSun}</strong>
+                        </div>
+                        <div className="planet-detail-row">
+                          <span className="planet-detail-key">Approx. distance from Earth</span>
+                          <strong>{formatDistanceFromEarth(selectedPlanet.distanceAu)}</strong>
+                        </div>
+                        <div className="planet-detail-row">
+                          <span className="planet-detail-key">Position in order</span>
+                          <strong>{SOLAR_SYSTEM_BODIES.findIndex((planet) => planet.short === selectedPlanet.short) + 1}</strong>
+                        </div>
+                      </>
+                    )}
 
-                    <div className="planet-detail-row">
-                      <span className="planet-detail-key">Position in order</span>
-                      <strong>{SOLAR_SYSTEM_BODIES.findIndex((planet) => planet.short === selectedPlanet.short) + 1}</strong>
-                    </div>
-
-                    <a href={selectedPlanet.sourceUrl} target="_blank" rel="noreferrer" className="planet-source-link">
+                    <a
+                      href={portfolio.planetLinks?.find((link) => link.short === selectedPlanet.short)?.url
+                        || (selectedPlanet.isSun ? DEFAULT_SUN_LINK : selectedPlanet.sourceUrl)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="planet-source-link"
+                    >
                       Learn more
                     </a>
                   </MotionDiv>
@@ -3015,6 +3148,7 @@ function App() {
           <button type="button" className={`nav-button ${adminSection === 'experience' ? 'active' : ''}`} onClick={() => handleAdminAction('experience')}>Experience</button>
           <button type="button" className={`nav-button ${adminSection === 'achievements' ? 'active' : ''}`} onClick={() => handleAdminAction('achievements')}>Achievements</button>
           <button type="button" className={`nav-button ${adminSection === 'gallery' ? 'active' : ''}`} onClick={() => handleAdminAction('gallery')}>Gallery Images</button>
+          <button type="button" className={`nav-button ${adminSection === 'planetLinks' ? 'active' : ''}`} onClick={beginEditPlanetLinks}>Planet Links</button>
           <button type="button" className={`nav-button ${adminSection === 'contact' ? 'active' : ''}`} onClick={beginEditContactLinks}>Contact</button>
           <button type="button" className={`nav-button ${adminSection === 'access' ? 'active' : ''}`} onClick={() => handleAdminAction('access')}>Access Gate</button>
           <button type="button" className={`nav-button ${adminSection === 'effects' ? 'active' : ''}`} onClick={() => handleAdminAction('effects')}>Effects</button>
@@ -3078,6 +3212,38 @@ function App() {
             </div>
 
             {homepageSaveStatus ? <p className="form-status">{homepageSaveStatus}</p> : null}
+          </section>
+        ) : null}
+
+        {adminSection === 'planetLinks' ? (
+          <section className="panel-card admin-list-panel contact-editor-panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">SOLAR SYSTEM</span>
+                <h2>Sun &amp; planet Learn more links</h2>
+                <p>Sun ya planet ke details card ka Learn more button yahan diya gaya URL kholega.</p>
+              </div>
+            </div>
+            <div className="contact-editor-list">
+              {planetLinksDraft.map((link) => (
+                <div className="contact-editor-row" key={link.short}>
+                  <label>
+                    <span>{link.name}</span>
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={(event) => updatePlanetLink(link.short, event.target.value)}
+                      placeholder="https://example.com/planet"
+                      required
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+            {planetLinksSaveStatus ? <p className="form-status" role="status">{planetLinksSaveStatus}</p> : null}
+            <div className="form-actions">
+              <button type="button" className="primary-btn" onClick={handleSavePlanetLinks}>Save Sun &amp; planet links</button>
+            </div>
           </section>
         ) : null}
 
