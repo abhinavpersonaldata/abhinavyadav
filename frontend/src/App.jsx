@@ -212,6 +212,12 @@ const HOMEPAGE_DESIGNS = [
 ]
 const PROFESSIONAL_HOMEPAGE_IDS = new Set(['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid'])
 const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
+const DEFAULT_RESUME_ENTRIES = [{
+  title: 'Abhinav Yadav Resume',
+  url: '/resume/Abhinav-Yadav-Resume.pdf',
+  fileName: 'Abhinav-Yadav-Resume.pdf',
+  fileType: 'application/pdf',
+}]
 const DEFAULT_SUN_LINK = 'https://nineplanets.org/solar-system/'
 const LEGACY_DEFAULT_PLANET_LINKS = {
   sun: 'https://science.nasa.gov/sun/',
@@ -767,7 +773,7 @@ function App() {
     certificateEntries: [],
     achievements: [],
     galleryItems: [],
-    resumeEntries: [],
+    resumeEntries: DEFAULT_RESUME_ENTRIES,
     adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
     homepageSettings: DEFAULT_HOMEPAGE_SETTINGS,
     planetLinks: DEFAULT_PLANET_LINKS,
@@ -1362,7 +1368,11 @@ function App() {
               },
               resumeEntries: hasSavedServerResume
                 ? data.resumeEntries || []
-                : savedPortfolio.resumeEntries || data.resumeEntries || [],
+                : savedPortfolio.resumeEntries?.length
+                  ? savedPortfolio.resumeEntries
+                  : data.resumeEntries?.length
+                    ? data.resumeEntries
+                    : DEFAULT_RESUME_ENTRIES,
               resumeStorage: hasSavedServerResume ? data.resumeStorage : savedPortfolio.resumeStorage || data.resumeStorage,
             }
           : {
@@ -1388,7 +1398,11 @@ function App() {
                 ...DEFAULT_SITE_MOTION_SETTINGS,
                 ...(data.motionSettings || {}),
               },
-              resumeEntries: data.resumeEntries || [],
+              resumeEntries: data.resumeStorage === 'database'
+                ? data.resumeEntries || []
+                : data.resumeEntries?.length
+                  ? data.resumeEntries
+                  : DEFAULT_RESUME_ENTRIES,
               resumeStorage: data.resumeStorage,
             }
         setPortfolio(hydrated)
@@ -2699,12 +2713,13 @@ function App() {
       return
     }
 
-    const shareData = {
-      title: activeResume.title || 'Resume',
-      text: `${activeResume.title || 'Resume'} — original uploaded file`,
-      url: activeResume.url,
-    }
     try {
+      const resumeUrl = new URL(activeResume.url, window.location.origin).href
+      const shareData = {
+        title: activeResume.title || 'Resume',
+        text: `${activeResume.title || 'Resume'} — original uploaded file`,
+        url: resumeUrl,
+      }
       if (navigator.share) {
         if (navigator.canShare) {
           try {
@@ -2724,7 +2739,7 @@ function App() {
         return
       }
 
-      await navigator.clipboard.writeText(activeResume.url)
+      await navigator.clipboard.writeText(resumeUrl)
       setResumeActionStatus('Resume link clipboard mein copy ho gaya.')
     } catch (error) {
       if (error.name === 'AbortError') return
@@ -5332,7 +5347,7 @@ function App() {
               title={`${linkPage.title} page`}
               loading="eager"
               referrerPolicy="no-referrer"
-              sandbox={new URL(linkPage.url).origin === window.location.origin ? 'allow-forms allow-scripts allow-same-origin' : 'allow-forms allow-scripts'}
+              sandbox={new URL(linkPage.url, window.location.href).origin === window.location.origin ? 'allow-forms allow-scripts allow-same-origin' : 'allow-forms allow-scripts'}
               onLoad={() => setIsLinkPageLoading(false)}
               onError={() => setIsLinkPageLoading(false)}
             />

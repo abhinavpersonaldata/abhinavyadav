@@ -121,7 +121,12 @@ const portfolioData = {
     { label: 'GitHub', type: 'github', value: 'https://github.com/abhinavpersonaldata' },
     { label: 'LinkedIn', type: 'linkedin', value: 'https://www.linkedin.com' },
   ],
-  resumeEntries: [],
+  resumeEntries: [{
+    title: 'Abhinav Yadav Resume',
+    url: '/resume/Abhinav-Yadav-Resume.pdf',
+    fileName: 'Abhinav-Yadav-Resume.pdf',
+    fileType: 'application/pdf',
+  }],
   planetLinks: [
     { name: 'Sun', short: 'sun', url: 'https://nineplanets.org/solar-system/' },
     { name: 'Mercury', short: 'mercury', url: 'https://nineplanets.org/mercury/' },
