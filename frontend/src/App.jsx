@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import heroGraphic from './assets/hero.png'
 import {
   ArrowRight,
@@ -31,6 +31,8 @@ const createFadeInUp = (speed) => ({
   show: { opacity: 1, y: 0, transition: { duration: 0.56 / speed, ease: [0.22, 1, 0.36, 1] } },
 })
 
+const MotionScopeContext = createContext({ enabled: true, group: 'content', scope: 'all' })
+
 const useMotionLibrary = () => {
   const [motionLibrary, setMotionLibrary] = useState(null)
 
@@ -53,41 +55,101 @@ const useMotionLibrary = () => {
   return motionLibrary
 }
 
-const MotionSection = ({ children, motionEnabled = true, initial, animate, whileInView, viewport, variants, ...props }) => {
+const MotionSection = ({ children, motionEnabled = true, activeMotionScope = 'all', initial, animate, whileInView, viewport, variants, ...props }) => {
   const motionLibrary = useMotionLibrary()
+  const parentMotion = useContext(MotionScopeContext)
   const Component = motionLibrary?.motion?.section
+  const motionGroup = props.className?.split(/\s+/).some((className) => className.includes('hero')) ? 'hero' : 'content'
+  const scopeEnabled = activeMotionScope === 'all' || activeMotionScope === motionGroup
+  const shouldAnimate = motionEnabled && parentMotion.enabled && scopeEnabled
+  const childMotion = {
+    enabled: motionEnabled && parentMotion.enabled,
+    group: motionGroup,
+    scope: activeMotionScope,
+  }
 
   if (!Component) {
-    return <section {...props} data-motion-enabled={motionEnabled ? 'true' : 'false'}>{children}</section>
+    return (
+      <section
+        {...props}
+        data-motion-enabled={motionEnabled ? 'true' : 'false'}
+        data-motion-group={motionGroup}
+        data-motion-scope-active={shouldAnimate ? 'true' : 'false'}
+      >
+        <MotionScopeContext.Provider value={childMotion}>{children}</MotionScopeContext.Provider>
+      </section>
+    )
   }
 
   return (
     <Component
       {...props}
       data-motion-enabled={motionEnabled ? 'true' : 'false'}
-      initial={motionEnabled ? initial : false}
-      animate={motionEnabled ? animate : undefined}
-      whileInView={motionEnabled ? whileInView : undefined}
+      data-motion-group={motionGroup}
+      data-motion-scope-active={shouldAnimate ? 'true' : 'false'}
+      initial={shouldAnimate ? initial : false}
+      animate={shouldAnimate ? animate : undefined}
+      whileInView={shouldAnimate ? whileInView : undefined}
       viewport={viewport}
-      variants={motionEnabled ? variants : undefined}
+      variants={shouldAnimate ? variants : undefined}
+    >
+      <MotionScopeContext.Provider value={childMotion}>{children}</MotionScopeContext.Provider>
+    </Component>
+  )
+}
+
+const MotionDiv = ({ children, motionScopeGroup, ...props }) => {
+  const motionLibrary = useMotionLibrary()
+  const parentMotion = useContext(MotionScopeContext)
+  const { initial, animate, whileInView, viewport, variants, transition, ...elementProps } = props
+  const Component = motionLibrary?.motion?.div
+  const scopeEnabled = parentMotion.enabled
+    && (parentMotion.scope === 'all' || parentMotion.scope === (motionScopeGroup || parentMotion.group))
+
+  if (!Component) {
+    return <div {...elementProps}>{children}</div>
+  }
+
+  return (
+    <Component
+      {...elementProps}
+      initial={scopeEnabled ? initial : false}
+      animate={scopeEnabled ? animate : undefined}
+      whileInView={scopeEnabled ? whileInView : undefined}
+      viewport={viewport}
+      variants={scopeEnabled ? variants : undefined}
+      transition={scopeEnabled ? transition : undefined}
     >
       {children}
     </Component>
   )
 }
 
-const MotionDiv = ({ children, ...props }) => {
+const MotionArticle = ({ children, motionScopeGroup, ...props }) => {
   const motionLibrary = useMotionLibrary()
-  const Component = motionLibrary?.motion?.div || 'div'
+  const parentMotion = useContext(MotionScopeContext)
+  const { initial, animate, whileInView, viewport, variants, transition, ...elementProps } = props
+  const Component = motionLibrary?.motion?.article
+  const scopeEnabled = parentMotion.enabled
+    && (parentMotion.scope === 'all' || parentMotion.scope === (motionScopeGroup || parentMotion.group))
 
-  return <Component {...props}>{children}</Component>
-}
+  if (!Component) {
+    return <article {...elementProps}>{children}</article>
+  }
 
-const MotionArticle = ({ children, ...props }) => {
-  const motionLibrary = useMotionLibrary()
-  const Component = motionLibrary?.motion?.article || 'article'
-
-  return <Component {...props}>{children}</Component>
+  return (
+    <Component
+      {...elementProps}
+      initial={scopeEnabled ? initial : false}
+      animate={scopeEnabled ? animate : undefined}
+      whileInView={scopeEnabled ? whileInView : undefined}
+      viewport={viewport}
+      variants={scopeEnabled ? variants : undefined}
+      transition={scopeEnabled ? transition : undefined}
+    >
+      {children}
+    </Component>
+  )
 }
 
 const StaticPresence = ({ children }) => <>{children}</>
@@ -2054,7 +2116,7 @@ function App() {
 
     return (
       <>
-        <MotionSection id="profile" className={`pro-hero pro-home-${activeHomepageDesignId}`} motionEnabled={sectionMotion.hero} initial="hidden" animate="show" variants={motionSettings}>
+        <MotionSection id="profile" className={`pro-hero pro-home-${activeHomepageDesignId}`} motionEnabled={sectionMotion.hero} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" animate="show" variants={motionSettings}>
           <div className="pro-hero-copy">
             <p className="section-tag">COMPUTER SCIENCE ENGINEER PROFILE</p>
             <h1>{portfolio.profile.name}</h1>
@@ -2089,7 +2151,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="biodata" className="pro-section pro-biodata" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="biodata" className="pro-section pro-biodata" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">01 - BIODATA</span>
             <h2>Profile details for teachers and placement review.</h2>
@@ -2113,7 +2175,7 @@ function App() {
           <p className="pro-bio-copy">{portfolio.about?.biography || DEFAULT_ABOUT.biography}</p>
         </MotionSection>
 
-        <MotionSection id="projects" className="pro-section" motionEnabled={sectionMotion.work} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="projects" className="pro-section" motionEnabled={sectionMotion.work} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">02 - PROJECTS</span>
             <h2>Selected work that shows practical skills.</h2>
@@ -2135,7 +2197,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="skills" className="pro-section pro-skills" motionEnabled={sectionMotion.toolkit} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="skills" className="pro-section pro-skills" motionEnabled={sectionMotion.toolkit} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">03 - SKILLS</span>
             <h2>Technical stack and learning focus.</h2>
@@ -2145,7 +2207,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="education" className="pro-section" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="education" className="pro-section" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">04 - EDUCATION</span>
             <h2>Academic background and verified progress.</h2>
@@ -2164,7 +2226,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection className="pro-section pro-proof" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection className="pro-section pro-proof" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">05 - PROOF</span>
             <h2>Certificates and achievements for quick review.</h2>
@@ -2180,7 +2242,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="contact" className="pro-section pro-contact" motionEnabled={sectionMotion.contact} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="contact" className="pro-section pro-contact" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">06 - CONTACT</span>
             <h2>Share this website as my biodata and portfolio.</h2>
@@ -2307,7 +2369,7 @@ function App() {
       <main className={`page-content ${isProfessionalHomepage ? `pro-home-page pro-home-page-${activeHomepageDesignId}` : 'classic-home-page'}`}>
         {isProfessionalHomepage ? renderProfessionalHomepageContent() : (
           <>
-        <MotionSection className="hero-panel" motionEnabled={sectionMotion.hero} initial="hidden" animate="show" variants={motionSettings}>
+        <MotionSection className="hero-panel" motionEnabled={sectionMotion.hero} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" animate="show" variants={motionSettings}>
           <div className="status-line">AVAILABLE FOR FRONTEND / PRODUCT / INTERNSHIP</div>
 
           <div className="hero-grid">
@@ -2480,7 +2542,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="work" className="content-section" motionEnabled={sectionMotion.work} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="work" className="content-section" motionEnabled={sectionMotion.work} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">01 — SELECTED WORK</span>
             <h2>Things I&apos;ve built while learning.</h2>
@@ -2510,11 +2572,12 @@ function App() {
             </label>
           </div>
 
-          <MotionDiv className="project-stack" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
+          <MotionDiv className="project-stack" motionScopeGroup="cards" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
             {visibleProjects.length ? visibleProjects.map((project, index) => (
               <MotionArticle
                 key={project.title}
                 className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`}
+                motionScopeGroup="cards"
                 variants={fadeInUp}
                 initial="hidden"
                 whileInView="show"
@@ -2584,7 +2647,7 @@ function App() {
           </MotionDiv>
         </MotionSection>
 
-        <MotionSection id="about" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="about" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header narrow-header">
             <span className="section-tag">02 — ABOUT</span>
             <h2>{portfolio.about?.heading || DEFAULT_ABOUT.heading}</h2>
@@ -2667,7 +2730,7 @@ function App() {
             ) : null}
         </MotionSection>
 
-        <MotionSection id="toolkit" className="content-section spaced" motionEnabled={sectionMotion.toolkit} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="toolkit" className="content-section spaced" motionEnabled={sectionMotion.toolkit} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">03 — TOOLKIT</span>
             <h2>The systems I keep learning and shipping with.</h2>
@@ -2687,7 +2750,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="journey" className="content-section spaced" motionEnabled={sectionMotion.journey} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="journey" className="content-section spaced" motionEnabled={sectionMotion.journey} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">04 — JOURNEY</span>
             <h2>Career archive and learning path.</h2>
@@ -2728,7 +2791,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="education" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="education" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">05 — EDUCATION</span>
             <h2>Academic record and learning focus.</h2>
@@ -2764,7 +2827,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="experience" className="content-section spaced" motionEnabled={sectionMotion.journey} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="experience" className="content-section spaced" motionEnabled={sectionMotion.journey} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">06 — EXPERIENCE</span>
             <h2>Professional context and working rhythm.</h2>
@@ -2800,7 +2863,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="certificates" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="certificates" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">07 — CERTIFICATES</span>
             <h2>Proof of learning and technical progress.</h2>
@@ -2837,7 +2900,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="achievements" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="achievements" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">08 — ACHIEVEMENTS</span>
             <h2>Milestones shaped by iteration and curiosity.</h2>
@@ -2867,7 +2930,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="gallery" className="content-section spaced" motionEnabled={sectionMotion.gallery} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="gallery" className="content-section spaced" motionEnabled={sectionMotion.gallery} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">09 — GALLERY</span>
             <h2>Visual notes from research, build, and process.</h2>
@@ -2883,7 +2946,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="resume" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="resume" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="resume-panel">
             <div>
               <span className="section-tag">10 — RESUME</span>
@@ -2906,7 +2969,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="contact" className="content-section contact-panel" motionEnabled={sectionMotion.contact} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="contact" className="content-section contact-panel" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="contact-graphic">
             <div className="contact-art-overline"><span>CONTACT / 11</span><span>BUILT WITH INTENTION</span></div>
             <h2 className="contact-graphic-title">
