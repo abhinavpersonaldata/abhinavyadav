@@ -71,12 +71,14 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, callback) => {
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+    const extension = file.originalname.split('.').pop()?.toLowerCase()
+    const supportedResumeExtensions = new Set(['pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'html', 'htm'])
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || supportedResumeExtensions.has(extension)) {
       callback(null, true)
       return
     }
 
-    callback(new Error('Only image and video files are supported.'))
+    callback(new Error('Upload an image, video, PDF, Word, RTF, text, or HTML file.'))
   },
 })
 
@@ -119,6 +121,7 @@ const portfolioData = {
     { label: 'GitHub', type: 'github', value: 'https://github.com/abhinavpersonaldata' },
     { label: 'LinkedIn', type: 'linkedin', value: 'https://www.linkedin.com' },
   ],
+  resumeEntries: [],
   planetLinks: [
     { name: 'Sun', short: 'sun', url: 'https://nineplanets.org/solar-system/' },
     { name: 'Mercury', short: 'mercury', url: 'https://nineplanets.org/mercury/' },
@@ -264,7 +267,7 @@ app.get('/api/portfolio', async (req, res) => {
       ? await PortfolioContent.findOne({ key: 'motionSettings' }).lean()
       : null
     const savedCollections = mongoose.connection.readyState === 1
-      ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks'] } }).lean()
+      ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries'] } }).lean()
       : []
     const savedCollectionData = new Map(savedCollections.map((collection) => [collection.key, collection.data]))
     const savedById = new Map(savedProjects.map((project) => [project.id, project.data]))
@@ -292,6 +295,8 @@ app.get('/api/portfolio', async (req, res) => {
       contactLinks: savedCollectionData.get('contactLinks') || portfolioData.contactLinks,
       planetLinks: savedCollectionData.get('planetLinks') || portfolioData.planetLinks,
       planetLinksStorage: savedCollectionData.has('planetLinks') ? 'database' : 'default',
+      resumeEntries: savedCollectionData.get('resumeEntries') || portfolioData.resumeEntries,
+      resumeStorage: savedCollectionData.has('resumeEntries') ? 'database' : 'default',
       projects,
     })
   } catch (error) {
@@ -481,10 +486,26 @@ app.put('/api/portfolio/about', async (req, res) => {
 
 app.put('/api/portfolio/content/:key', async (req, res) => {
   const { key } = req.params
-  const allowedKeys = ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks']
+  const allowedKeys = ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries']
 
   if (!allowedKeys.includes(key) || !Array.isArray(req.body?.entries)) {
     return res.status(400).json({ success: false, message: 'A valid portfolio collection is required.' })
+  }
+
+  if (key === 'resumeEntries') {
+    const [resume] = req.body.entries
+    const isHttpUrl = (value) => typeof value === 'string'
+      && (!value || /^https?:\/\/\S+$/i.test(value.trim()))
+    if (req.body.entries.length > 1
+      || (req.body.entries.length === 1 && (!resume || typeof resume !== 'object'
+        || !isHttpUrl(resume.url)
+        || !isHttpUrl(resume.previewUrl)
+        || !isHttpUrl(resume.linkUrl)
+        || typeof resume.title !== 'string'
+        || typeof resume.fileName !== 'string'
+        || typeof resume.fileType !== 'string'))) {
+      return res.status(400).json({ success: false, message: 'Resume details or links are invalid.' })
+    }
   }
 
   if (key === 'planetLinks') {
@@ -573,7 +594,7 @@ app.delete('/api/projects/:id', async (req, res) => {
 
 app.post('/api/uploads', upload.single('file'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ success: false, message: 'An image or video file is required.' })
+    return res.status(400).json({ success: false, message: 'A supported media or resume file is required.' })
   }
 
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
@@ -581,15 +602,20 @@ app.post('/api/uploads', upload.single('file'), async (req, res) => {
   }
 
   try {
-    const resourceType = req.file.mimetype.startsWith('video/') ? 'video' : 'image'
+    const resourceType = req.file.mimetype.startsWith('video/')
+      ? 'video'
+      : req.file.mimetype.startsWith('image/') ? 'image' : 'raw'
+    const isResumeUpload = req.body.category === 'resume'
+    const safeOriginalName = req.file.originalname.replace(/[^\w.-]+/g, '-')
     const result = await new Promise((resolve, reject) => {
       const uploadMethod = resourceType === 'video'
         ? cloudinary.uploader.upload_chunked_stream
         : cloudinary.uploader.upload_stream
       const stream = uploadMethod.call(cloudinary.uploader,
         {
-          folder: 'abhinav-portfolio/projects',
+          folder: isResumeUpload ? 'abhinav-portfolio/resumes' : 'abhinav-portfolio/projects',
           resource_type: resourceType,
+          ...(resourceType === 'raw' ? { public_id: safeOriginalName } : {}),
           chunk_size: 6 * 1024 * 1024,
         },
         (error, uploadResult) => (error ? reject(error) : resolve(uploadResult)),
@@ -603,6 +629,8 @@ app.post('/api/uploads', upload.single('file'), async (req, res) => {
       url: result.secure_url,
       publicId: result.public_id,
       resourceType: result.resource_type,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
     })
   } catch (error) {
     console.error('Cloudinary upload failed:', error)
@@ -632,7 +660,7 @@ app.use((error, req, res, next) => {
     return res.status(413).json({ success: false, message: 'Media files must be 100MB or smaller.' })
   }
 
-  if (error?.message === 'Only image and video files are supported.') {
+  if (error?.message === 'Upload an image, video, PDF, Word, RTF, text, or HTML file.') {
     return res.status(415).json({ success: false, message: error.message })
   }
 

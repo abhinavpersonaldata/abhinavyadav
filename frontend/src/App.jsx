@@ -2,9 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { createPortal } from 'react-dom'
 import heroGraphic from './assets/hero.png'
 import {
+  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   Download,
+  FileText,
+  Share2,
   GitBranch,
   Globe,
   Mail,
@@ -465,6 +468,175 @@ const BOOT_CODE_LINES = [
   ['08', 'system', ' .status', ' = "online";'],
 ]
 
+const PLANET_CODE_LINES = [
+  ['ASTRO::01', 'FETCH', ' /ephemeris/position', ' -> 200 OK'],
+  ['ASTRO::02', 'DECODE', ' spectral_signature', ' [GAS_GIANT]'],
+  ['ASTRO::03', 'ORBIT', ' semimajor_axis', ' = 5.204 AU'],
+  ['ASTRO::04', 'SYNC', ' atmospheric_data', ' ...........'],
+  ['ASTRO::05', 'MAP', ' cloud_bands', ' [############]'],
+  ['ASTRO::06', 'VERIFY', ' gravity_model', ' checksum: OK'],
+  ['ASTRO::07', 'RENDER', ' planetary_archive', ' -> READY'],
+]
+
+function PlanetPageLoader({ planet, visible }) {
+  if (!visible) return null
+
+  return (
+    <div className="planet-page-loader" role="status" aria-live="polite" aria-label={`Loading ${planet} information`}>
+      <div className="planet-loader-orbit" aria-hidden="true">
+        <i /><i /><i />
+        <span />
+      </div>
+      <span className="planet-loader-kicker">INCOMING TRANSMISSION / SOL SYSTEM</span>
+      <strong>{planet.toUpperCase()}<span>_DATA</span></strong>
+      <div className="planet-loader-terminal" aria-hidden="true">
+        <div className="planet-loader-terminal-bar"><i /><i /><i /><span>planetary_link.exe</span></div>
+        <div className="planet-loader-code-track">
+          {[0, 1].map((copy) => (
+            <div className="planet-loader-code-copy" key={copy}>
+              {PLANET_CODE_LINES.map(([label, command, target, result]) => (
+                <div className="planet-loader-code-line" key={`${copy}-${label}`}>
+                  <span>{label}</span><b>{command}</b><i>{target}</i><em>{result}</em>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="planet-loader-status"><span /><span>ESTABLISHING SECURE DATA STREAM</span><b>LIVE</b></div>
+    </div>
+  )
+}
+
+const LINK_LOADER_VARIANTS = ['terminal', 'matrix', 'signal', 'scan']
+
+function LinkPageLoader({ title, variant }) {
+  return (
+    <div className={`planet-page-loader site-link-page-loader link-loader-${variant}`} role="status" aria-live="polite" aria-label={`Loading ${title}`}>
+      <div className="planet-loader-orbit" aria-hidden="true">
+        <i /><i /><i />
+        <span />
+      </div>
+      <span className="planet-loader-kicker">IN-PORTFOLIO LINK / SECURE VIEW</span>
+      <strong>{title.toUpperCase()}<span>_LOADING</span></strong>
+      <div className="planet-loader-terminal" aria-hidden="true">
+        <div className="planet-loader-terminal-bar"><i /><i /><i /><span>{variant}.link</span></div>
+        <div className="planet-loader-code-track">
+          {[0, 1].map((copy) => (
+            <div className="planet-loader-code-copy" key={copy}>
+              {PLANET_CODE_LINES.map(([label, command, target, result]) => (
+                <div className="planet-loader-code-line" key={`${copy}-${label}`}>
+                  <span>{label}</span><b>{command}</b><i>{target}</i><em>{result}</em>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="planet-loader-status"><span /><span>LOADING PAGE IN THIS WEBSITE</span><b>LIVE</b></div>
+    </div>
+  )
+}
+
+function FloatingBackButton({ label, onClick }) {
+  const [position, setPosition] = useState({ x: 14, y: 14 })
+  const [isDragging, setIsDragging] = useState(false)
+  const pointerStart = useRef(null)
+  const wasDragged = useRef(false)
+
+  const handlePointerDown = (event) => {
+    pointerStart.current = {
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      startX: position.x,
+      startY: position.y,
+    }
+    wasDragged.current = false
+    setIsDragging(true)
+  }
+
+  useEffect(() => {
+    if (!isDragging) return undefined
+    const handlePointerMove = (event) => {
+      const start = pointerStart.current
+      if (!start || start.pointerId !== event.pointerId) return
+      const deltaX = event.clientX - start.originX
+      const deltaY = event.clientY - start.originY
+      if (Math.abs(deltaX) + Math.abs(deltaY) > 5) wasDragged.current = true
+      setPosition({
+        x: Math.max(4, Math.min(window.innerWidth - 56, start.startX + deltaX)),
+        y: Math.max(4, Math.min(window.innerHeight - 52, start.startY + deltaY)),
+      })
+    }
+    const handlePointerEnd = (event) => {
+      if (pointerStart.current?.pointerId !== event.pointerId) return
+      pointerStart.current = null
+      setIsDragging(false)
+    }
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerEnd)
+    window.addEventListener('pointercancel', handlePointerEnd)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerEnd)
+      window.removeEventListener('pointercancel', handlePointerEnd)
+    }
+  }, [isDragging])
+
+  return (
+    <button
+      type="button"
+      className="floating-viewer-back"
+      style={{ left: `${position.x}px`, top: `${position.y}px` }}
+      onPointerDown={handlePointerDown}
+      onClick={(event) => {
+        if (wasDragged.current) {
+          wasDragged.current = false
+          event.preventDefault()
+          return
+        }
+        onClick()
+      }}
+      aria-label={label}
+      title={`${label} — drag to move`}
+    >
+      <ArrowLeft className="floating-viewer-back-icon" size={14} />
+      <span>{label}</span>
+      <i aria-hidden="true" />
+    </button>
+  )
+}
+
+function ResumeThumbnail({ resume, onView }) {
+  const urlPath = (resume.url || '').split('?')[0]
+  const imageUrl = resume.previewUrl || (resume.fileType?.startsWith('image/') || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(urlPath) ? resume.url : '')
+  const fileType = resume.fileName?.split('.').pop()?.toUpperCase() || resume.fileType?.split('/').pop()?.toUpperCase() || 'RESUME'
+
+  return (
+    <div className={`resume-thumbnail${imageUrl ? ' has-image' : ''}`} aria-label={resume.title || 'Resume preview'}>
+      {imageUrl ? (
+        <img src={imageUrl} alt={`${resume.title || 'Resume'} preview`} loading="lazy" decoding="async" />
+      ) : (
+        <div className="resume-document-preview" aria-hidden="true">
+          <span className="resume-document-type">{fileType}</span>
+          <FileText size={28} strokeWidth={1.5} />
+          <i /><i /><i />
+          <small>{resume.fileName || 'YOUR RESUME'}</small>
+        </div>
+      )}
+      {resume.url ? (
+        <button type="button" className="resume-thumbnail-view" onClick={onView}>
+          <span>View Resume</span>
+          <ArrowUpRight size={15} />
+        </button>
+      ) : (
+        <span className="resume-thumbnail-empty">RESUME PREVIEW</span>
+      )}
+    </div>
+  )
+}
+
 function SiteBootLoader({ visible }) {
   const [isMounted, setIsMounted] = useState(true)
 
@@ -595,6 +767,7 @@ function App() {
     certificateEntries: [],
     achievements: [],
     galleryItems: [],
+    resumeEntries: [],
     adminAccessSettings: DEFAULT_ADMIN_ACCESS_SETTINGS,
     homepageSettings: DEFAULT_HOMEPAGE_SETTINGS,
     planetLinks: DEFAULT_PLANET_LINKS,
@@ -606,6 +779,10 @@ function App() {
   const [activePlanetShort, setActivePlanetShort] = useState(null)
   const [isPlanetDetailOpen, setIsPlanetDetailOpen] = useState(false)
   const [isPlanetLearnMoreOpen, setIsPlanetLearnMoreOpen] = useState(false)
+  const [isPlanetLearnMoreLoading, setIsPlanetLearnMoreLoading] = useState(false)
+  const [linkPage, setLinkPage] = useState(null)
+  const [isLinkPageLoading, setIsLinkPageLoading] = useState(false)
+  const previousLinkLoaderVariant = useRef(null)
   const planetDetailRef = useRef(null)
   const [formState, setFormState] = useState({ name: '', email: '', subject: '', message: '' })
   const [formStatus, setFormStatus] = useState('')
@@ -635,6 +812,72 @@ function App() {
     results: '',
     gallery: ['', '', '', '', '', ''],
   })
+
+  const openLinkPage = (url, title) => {
+    const availableVariants = LINK_LOADER_VARIANTS.filter((variant) => variant !== previousLinkLoaderVariant.current)
+    const variant = availableVariants[Math.floor(Math.random() * availableVariants.length)]
+    previousLinkLoaderVariant.current = variant
+    setLinkPage({ url, title, variant })
+    setIsLinkPageLoading(true)
+  }
+
+  useEffect(() => {
+    const handleLinkClick = (event) => {
+      if (event.defaultPrevented) return
+      if (event.type === 'auxclick' && event.button !== 1) return
+      const anchor = event.target instanceof Element ? event.target.closest('a') : null
+      if (!anchor || anchor.hasAttribute('download')) return
+
+      let destination
+      try {
+        destination = new URL(anchor.href, window.location.href)
+      } catch {
+        return
+      }
+
+      if (!['http:', 'https:'].includes(destination.protocol)) return
+      const isExternal = destination.origin !== window.location.origin
+      const opensNewTab = anchor.target.toLowerCase() === '_blank'
+      const isDocument = /\.(?:pdf|html?|docx?|pptx?|xlsx?)$/i.test(destination.pathname)
+      if (!isExternal && !opensNewTab && !isDocument) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      const title = anchor.getAttribute('aria-label') || anchor.textContent?.trim() || destination.hostname
+      openLinkPage(destination.href, title)
+    }
+
+    const normalizeLinkTargets = () => {
+      document.querySelectorAll('a[target="_blank"]').forEach((anchor) => anchor.setAttribute('target', '_self'))
+    }
+    const targetObserver = new MutationObserver(normalizeLinkTargets)
+    targetObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['target'] })
+    normalizeLinkTargets()
+    document.addEventListener('click', handleLinkClick, true)
+    document.addEventListener('auxclick', handleLinkClick, true)
+    return () => {
+      targetObserver.disconnect()
+      document.removeEventListener('click', handleLinkClick, true)
+      document.removeEventListener('auxclick', handleLinkClick, true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!linkPage) return undefined
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setLinkPage(null)
+        setIsLinkPageLoading(false)
+      }
+    }
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [linkPage])
   const [showSkillForm, setShowSkillForm] = useState(false)
   const [editingSkillIndex, setEditingSkillIndex] = useState(null)
   const [skillDraft, setSkillDraft] = useState({ label: '', skills: '' })
@@ -664,6 +907,18 @@ function App() {
   const [editingGalleryIndex, setEditingGalleryIndex] = useState(null)
   const [galleryDraft, setGalleryDraft] = useState({ label: '', url: '', tone: 'normal' })
   const [gallerySaveStatus, setGallerySaveStatus] = useState('')
+  const [resumeDraft, setResumeDraft] = useState({
+    title: 'Abhinav Yadav Resume',
+    url: '',
+    fileName: '',
+    fileType: '',
+    previewUrl: '',
+    linkLabel: '',
+    linkUrl: '',
+  })
+  const [resumeUploadStatus, setResumeUploadStatus] = useState('')
+  const [resumeSaveStatus, setResumeSaveStatus] = useState('')
+  const [resumeActionStatus, setResumeActionStatus] = useState('')
   const [contactLinksDraft, setContactLinksDraft] = useState(DEFAULT_CONTACT_LINKS)
   const [contactSaveStatus, setContactSaveStatus] = useState('')
   const [planetLinksDraft, setPlanetLinksDraft] = useState(DEFAULT_PLANET_LINKS)
@@ -685,7 +940,6 @@ function App() {
       return SECTION_MOTION_DEFAULTS
     }
   })
-  const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
   const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
   const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
   const [homepageSaveStatus, setHomepageSaveStatus] = useState('')
@@ -1065,6 +1319,7 @@ function App() {
         const hasSavedServerPlanetLinks = data.planetLinksStorage === 'database'
         const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
         const hasSavedServerMotionSettings = ['database', 'memory'].includes(data.motionSettingsStorage)
+        const hasSavedServerResume = data.resumeStorage === 'database'
 
         const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
           ? {
@@ -1105,6 +1360,10 @@ function App() {
                   ? data.motionSettings || {}
                   : savedPortfolio.motionSettings || data.motionSettings || {}),
               },
+              resumeEntries: hasSavedServerResume
+                ? data.resumeEntries || []
+                : savedPortfolio.resumeEntries || data.resumeEntries || [],
+              resumeStorage: hasSavedServerResume ? data.resumeStorage : savedPortfolio.resumeStorage || data.resumeStorage,
             }
           : {
               ...data,
@@ -1129,6 +1388,8 @@ function App() {
                 ...DEFAULT_SITE_MOTION_SETTINGS,
                 ...(data.motionSettings || {}),
               },
+              resumeEntries: data.resumeEntries || [],
+              resumeStorage: data.resumeStorage,
             }
         setPortfolio(hydrated)
         setAdminAccessDraft(hydrated.adminAccessSettings)
@@ -1479,6 +1740,93 @@ function App() {
     setView('home')
   }
 
+  const beginEditResume = () => {
+    const savedResume = portfolio.resumeEntries?.[0] || {}
+    setResumeDraft({
+      title: savedResume.title || 'Abhinav Yadav Resume',
+      url: savedResume.url || '',
+      fileName: savedResume.fileName || '',
+      fileType: savedResume.fileType || '',
+      previewUrl: savedResume.previewUrl || '',
+      linkLabel: savedResume.linkLabel || '',
+      linkUrl: savedResume.linkUrl || '',
+    })
+    setResumeUploadStatus('')
+    setResumeSaveStatus('')
+    setAdminSection('resume')
+  }
+
+  const handleResumeUpload = async (event, isPreview = false) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (isPreview && !file.type.startsWith('image/')) {
+      setResumeUploadStatus('Resume thumbnail ke liye image file select karein.')
+      event.target.value = ''
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setResumeUploadStatus('Resume file 50MB ya usse chhoti honi chahiye.')
+      event.target.value = ''
+      return
+    }
+
+    setResumeUploadStatus(isPreview ? 'Uploading thumbnail...' : 'Uploading resume...')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('category', 'resume')
+      const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Resume upload nahi ho saka.')
+
+      if (isPreview) {
+        setResumeDraft((current) => ({ ...current, previewUrl: result.url }))
+      } else {
+        setResumeDraft((current) => ({
+          ...current,
+          url: result.url,
+          fileName: result.originalName || file.name,
+          fileType: result.mimeType || file.type,
+          title: current.title || file.name.replace(/\.[^.]+$/, ''),
+        }))
+      }
+      setResumeUploadStatus(isPreview ? 'Thumbnail upload ho gaya.' : 'Resume upload ho gaya. Ab Save Resume dabayein.')
+    } catch (error) {
+      setResumeUploadStatus(error.message || 'Resume upload nahi ho saka.')
+      event.target.value = ''
+    }
+  }
+
+  const handleSaveResume = async (event) => {
+    event.preventDefault()
+    const resume = {
+      ...resumeDraft,
+      title: resumeDraft.title.trim() || 'Abhinav Yadav Resume',
+      url: resumeDraft.url.trim(),
+      fileName: resumeDraft.fileName.trim(),
+      fileType: resumeDraft.fileType.trim(),
+      previewUrl: resumeDraft.previewUrl.trim(),
+      linkLabel: resumeDraft.linkLabel.trim(),
+      linkUrl: resumeDraft.linkUrl.trim(),
+    }
+    const isValidHttpUrl = (value) => {
+      if (!value) return true
+      try {
+        return ['http:', 'https:'].includes(new URL(value).protocol)
+      } catch {
+        return false
+      }
+    }
+    if (![resume.url, resume.previewUrl, resume.linkUrl].every(isValidHttpUrl)) {
+      setResumeSaveStatus('File, thumbnail aur attached link ke liye valid http:// ya https:// URL enter karein.')
+      return
+    }
+
+    const hasResumeContent = Boolean(resume.url || resume.previewUrl || resume.linkUrl)
+    await savePortfolioCollection('resumeEntries', hasResumeContent ? [resume] : [], setResumeSaveStatus)
+  }
+
   const handleAdminAction = (action) => {
     if (action === 'messages') {
       setAdminSection('messages')
@@ -1487,8 +1835,7 @@ function App() {
     }
 
     if (action === 'resume') {
-      setResumeStatus('Resume update queued for review')
-      setAdminSection('overview')
+      beginEditResume()
       return
     }
 
@@ -1987,6 +2334,7 @@ function App() {
           ...current,
           [key]: savedEntries,
           ...(key === 'planetLinks' ? { planetLinksStorage: result.storage || 'database' } : {}),
+          ...(key === 'resumeEntries' ? { resumeStorage: result.storage || 'database' } : {}),
         }
         savePortfolioToStorage(nextPortfolio)
         return nextPortfolio
@@ -2286,6 +2634,253 @@ function App() {
     })
   }, [portfolio.projects, projectFilter, projectSearch])
 
+  const activeResume = portfolio.resumeEntries?.[0] || {}
+  const getResumeFileName = () => {
+    if (activeResume.fileName) return activeResume.fileName
+    try {
+      return decodeURIComponent(new URL(activeResume.url).pathname.split('/').pop()) || 'resume'
+    } catch {
+      return 'resume'
+    }
+  }
+  const fetchResumeFile = async () => {
+    if (!activeResume.url) throw new Error('Admin panel se pehle resume upload ya link karein.')
+    const response = await fetch(activeResume.url)
+    if (!response.ok) throw new Error(`Resume download failed (HTTP ${response.status}).`)
+    return response.blob()
+  }
+  const getCloudinaryAttachmentUrl = (url, fileName) => {
+    try {
+      const parsed = new URL(url)
+      if (parsed.hostname !== 'res.cloudinary.com') return ''
+      parsed.pathname = parsed.pathname.replace(
+        /\/(raw|image)\/upload\//,
+        `/$1/upload/fl_attachment:${encodeURIComponent(fileName)}/`,
+      )
+      return parsed.href
+    } catch {
+      return ''
+    }
+  }
+  const downloadBlob = (blob, fileName) => {
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = fileName
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+  }
+  const handleResumeDownload = async () => {
+    setResumeActionStatus('Resume download ho raha hai...')
+    try {
+      const blob = await fetchResumeFile()
+      downloadBlob(blob, getResumeFileName())
+      setResumeActionStatus('Resume original uploaded format mein download ho gaya.')
+    } catch (error) {
+      const attachmentUrl = getCloudinaryAttachmentUrl(activeResume.url, getResumeFileName())
+      if (attachmentUrl) {
+        const anchor = document.createElement('a')
+        anchor.href = attachmentUrl
+        anchor.download = getResumeFileName()
+        document.body.append(anchor)
+        anchor.click()
+        anchor.remove()
+        setResumeActionStatus('Original resume download start ho gaya.')
+        return
+      }
+      setResumeActionStatus(`${error.message || 'Resume download nahi ho saka.'} Direct URL ka download access check karein.`)
+    }
+  }
+  const handleResumeShare = async () => {
+    if (!activeResume.url) {
+      setResumeActionStatus('Share karne se pehle Admin panel mein resume upload ya link karein.')
+      return
+    }
+
+    const shareData = {
+      title: activeResume.title || 'Resume',
+      text: `${activeResume.title || 'Resume'} — original uploaded file`,
+      url: activeResume.url,
+    }
+    try {
+      if (navigator.share) {
+        if (navigator.canShare) {
+          try {
+            const blob = await fetchResumeFile()
+            const file = new File([blob], getResumeFileName(), { type: blob.type || activeResume.fileType || 'application/octet-stream' })
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ title: shareData.title, text: shareData.text, files: [file] })
+              setResumeActionStatus('Uploaded resume file original format mein share ho gaya.')
+              return
+            }
+          } catch (error) {
+            if (error.name === 'AbortError') return
+          }
+        }
+        await navigator.share(shareData)
+        setResumeActionStatus('Resume link share ho gaya.')
+        return
+      }
+
+      await navigator.clipboard.writeText(activeResume.url)
+      setResumeActionStatus('Resume link clipboard mein copy ho gaya.')
+    } catch (error) {
+      if (error.name === 'AbortError') return
+      setResumeActionStatus(error.message || 'Resume share nahi ho saka.')
+    }
+  }
+  const handleResumePdfDownload = async () => {
+    if (!activeResume.url) {
+      setResumeActionStatus('PDF banane se pehle Admin panel mein resume upload ya link karein.')
+      return
+    }
+
+    setResumeActionStatus('PDF tayyar ho raha hai...')
+    try {
+      const blob = await fetchResumeFile()
+      const fileName = getResumeFileName()
+      const extension = fileName.split('.').pop()?.toLowerCase()
+      const isPdf = extension === 'pdf' || blob.type === 'application/pdf'
+      if (isPdf) {
+        downloadBlob(blob, `${fileName.replace(/\.[^.]+$/, '')}.pdf`)
+        setResumeActionStatus('Resume PDF mein download ho gaya.')
+        return
+      }
+
+      const { jsPDF } = await import('jspdf')
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 16
+      let text = ''
+      let imageData = ''
+
+      if (blob.type.startsWith('image/') || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(fileName)) {
+        const imageUrl = URL.createObjectURL(blob)
+        try {
+          const image = new Image()
+          image.src = imageUrl
+          await image.decode()
+          const canvas = document.createElement('canvas')
+          canvas.width = image.naturalWidth
+          canvas.height = image.naturalHeight
+          const context = canvas.getContext('2d')
+          if (!context) throw new Error('Image ko PDF mein convert nahi kiya ja saka.')
+          context.fillStyle = '#ffffff'
+          context.fillRect(0, 0, canvas.width, canvas.height)
+          context.drawImage(image, 0, 0)
+          imageData = canvas.toDataURL('image/jpeg', 0.94)
+        } finally {
+          URL.revokeObjectURL(imageUrl)
+        }
+        pdf.addImage(imageData, 'JPEG', margin, margin, pageWidth - margin * 2, pageHeight - margin * 2, undefined, 'FAST')
+      } else if (extension === 'docx') {
+        const mammoth = await import('mammoth')
+        const result = await mammoth.extractRawText({ arrayBuffer: await blob.arrayBuffer() })
+        text = result.value
+      } else if (extension === 'odt') {
+        const JSZip = (await import('jszip')).default
+        const archive = await JSZip.loadAsync(await blob.arrayBuffer())
+        const content = await archive.file('content.xml')?.async('text')
+        if (!content) throw new Error('ODT file se resume text read nahi ho saka.')
+        text = new DOMParser().parseFromString(content, 'text/xml').documentElement.textContent || ''
+      } else if (extension === 'html' || extension === 'htm' || blob.type.includes('html')) {
+        const html = await blob.text()
+        const parsed = new DOMParser().parseFromString(html, 'text/html')
+        const content = parsed.body.textContent || ''
+        const links = [...parsed.querySelectorAll('a[href]')].map((link) => `${link.textContent.trim()} — ${link.href}`).filter(Boolean)
+        text = [content, ...links].filter(Boolean).join('\n\n')
+      } else if (extension === 'txt' || extension === 'rtf' || blob.type.startsWith('text/')) {
+        text = await blob.text()
+        if (extension === 'rtf') {
+          text = text
+            .replace(/\\'[0-9a-f]{2}/gi, '')
+            .replace(/\\[a-z]+-?\d* ?/gi, '')
+            .replace(/[{}]/g, '')
+        }
+      } else {
+        throw new Error('PDF export PDF, image, DOCX, ODT, HTML, RTF aur TXT resume ke liye available hai. Legacy DOC files ko original format mein download/share karein.')
+      }
+
+      if (text) {
+        const lines = pdf.splitTextToSize(text.replace(/\r/g, '').trim(), pageWidth - margin * 2)
+        let y = margin
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(10)
+        for (const line of lines) {
+          if (y > pageHeight - margin) {
+            pdf.addPage()
+            y = margin
+          }
+          pdf.text(line, margin, y)
+          y += 5
+        }
+        if (activeResume.linkUrl && activeResume.linkLabel) {
+          if (y > pageHeight - margin) {
+            pdf.addPage()
+            y = margin
+          }
+          pdf.setTextColor(37, 99, 180)
+          pdf.textWithLink(activeResume.linkLabel, margin, y, { url: activeResume.linkUrl })
+        }
+      } else if (imageData && activeResume.linkUrl && activeResume.linkLabel) {
+        pdf.setTextColor(37, 99, 180)
+        pdf.textWithLink(activeResume.linkLabel, margin, pageHeight - 8, { url: activeResume.linkUrl })
+      }
+
+      pdf.save(`${fileName.replace(/\.[^.]+$/, '')}.pdf`)
+      setResumeActionStatus('PDF download ho gaya.')
+    } catch (error) {
+      setResumeActionStatus(error.message || 'Is resume ko PDF mein convert nahi kiya ja saka.')
+    }
+  }
+  const openResume = () => {
+    if (activeResume.url) openLinkPage(activeResume.url, activeResume.title || 'Resume')
+  }
+  const renderResumeSection = (professional = false) => (
+    <MotionSection
+      id="resume"
+      className={`${professional ? 'pro-section' : 'content-section spaced'} resume-section`}
+      motionEnabled={sectionMotion.about}
+      activeMotionScope={portfolio.visualScope || 'all'}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.2 }}
+      variants={motionSettings}
+    >
+      <div className={`resume-panel${professional ? ' resume-panel-professional' : ''}`}>
+        <div className="resume-intro">
+          <span className="section-tag">10 — RESUME</span>
+          <h2>{activeResume.title || 'Want the structured version?'}</h2>
+          <p>{activeResume.fileName || (activeResume.url ? 'Open the latest resume in this website.' : 'Resume preview will appear here when it is added by the site admin.')}</p>
+          <div className="resume-actions">
+            <button type="button" className="resume-action-button resume-download-button" onClick={handleResumeDownload} disabled={!activeResume.url}>
+              <Download size={15} /><span>Download Resume</span>
+            </button>
+            <button type="button" className="resume-action-button resume-share-button" onClick={handleResumeShare} disabled={!activeResume.url}>
+              <Share2 size={15} /><span>Share Resume</span>
+            </button>
+            <button type="button" className="resume-action-button resume-pdf-button" onClick={handleResumePdfDownload} disabled={!activeResume.url}>
+              <FileText size={15} /><span>Download as PDF</span>
+            </button>
+          </div>
+          {resumeActionStatus ? <p className="resume-action-status" role="status">{resumeActionStatus}</p> : null}
+        </div>
+        <div className="resume-preview-column">
+          <ResumeThumbnail resume={activeResume} onView={openResume} />
+          {activeResume.linkUrl ? (
+            <button type="button" className="resume-text-link" onClick={() => openLinkPage(activeResume.linkUrl, activeResume.linkLabel || 'Resume link')}>
+              {activeResume.linkLabel || 'Open related link'}
+              <ArrowUpRight size={14} />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </MotionSection>
+  )
+
   const renderProfessionalHomepageContent = () => {
     const allSkills = portfolio.toolkitGroups.flatMap((group) => group.skills).slice(0, 12)
     const educationItems = [
@@ -2318,9 +2913,9 @@ function App() {
                 <span>View Biodata</span>
                 <ArrowRight size={15} />
               </a>
-              <a href="/resume.pdf" download="abhinav-yadav-resume.pdf" className="secondary-btn">
-                <Download size={15} />
-                <span>Download Resume</span>
+              <a href="#resume" className="secondary-btn">
+                <ArrowUpRight size={15} />
+                <span>View Resume</span>
               </a>
             </div>
           </div>
@@ -2430,6 +3025,8 @@ function App() {
             ))}
           </div>
         </MotionSection>
+
+        {renderResumeSection(true)}
 
         <MotionSection id="contact" className="pro-section pro-contact" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
@@ -2594,8 +3191,8 @@ function App() {
                   <ArrowRight size={15} />
                 </a>
                 <a href="#resume" className="secondary-btn">
-                  <Download size={15} />
-                  <span>Download Resume</span>
+                  <ArrowUpRight size={15} />
+                  <span>View Resume</span>
                 </a>
               </div>
             </div>
@@ -2624,6 +3221,7 @@ function App() {
                           setActivePlanetShort(planet.short)
                           setIsPlanetDetailOpen(true)
                           setIsPlanetLearnMoreOpen(false)
+                          setIsPlanetLearnMoreLoading(false)
                         }}
                         aria-label={`View details for ${planet.name}`}
                       >
@@ -2640,6 +3238,7 @@ function App() {
                       setActivePlanetShort('sun')
                       setIsPlanetDetailOpen(true)
                       setIsPlanetLearnMoreOpen(false)
+                      setIsPlanetLearnMoreLoading(false)
                     }}
                     aria-label="View details for the Sun"
                   >
@@ -2718,25 +3317,25 @@ function App() {
                     {isPlanetLearnMoreOpen
                       ? createPortal(
                         <div className="planet-learn-more-overlay" role="dialog" aria-modal="true" aria-label={`${selectedPlanet.name} details`}>
-                          <div className="planet-learn-more-toolbar">
-                            <span>{selectedPlanet.name} / Learn more</span>
-                            <button
-                              type="button"
-                              className="planet-learn-more-close"
-                              onClick={() => setIsPlanetLearnMoreOpen(false)}
-                            >
-                              Back to planet
-                            </button>
-                          </div>
+                          <FloatingBackButton label="Back to planet" onClick={() => setIsPlanetLearnMoreOpen(false)} />
                           {selectedPlanetLearnMoreUrl ? (
-                            <iframe
-                              className="planet-learn-more-frame"
-                              src={selectedPlanetLearnMoreUrl}
-                              title={`${selectedPlanet.name} reference page`}
-                              loading="eager"
-                              referrerPolicy="no-referrer"
-                              sandbox="allow-forms allow-scripts"
-                            />
+                            <div className="planet-learn-more-viewer">
+                              <iframe
+                                key={selectedPlanet.short}
+                                className="planet-learn-more-frame"
+                                src={selectedPlanetLearnMoreUrl}
+                                title={`${selectedPlanet.name} reference page`}
+                                loading="eager"
+                                referrerPolicy="no-referrer"
+                                sandbox="allow-forms allow-scripts"
+                                onLoad={() => setIsPlanetLearnMoreLoading(false)}
+                                onError={() => setIsPlanetLearnMoreLoading(false)}
+                              />
+                              <PlanetPageLoader
+                                planet={selectedPlanet.name}
+                                visible={isPlanetLearnMoreLoading}
+                              />
+                            </div>
                           ) : (
                             <p className="planet-learn-more-error" role="alert">
                               This planet does not have a valid reference page. Update its URL in Admin → Planet Links.
@@ -2749,7 +3348,10 @@ function App() {
                     <button
                       type="button"
                       className="planet-source-link"
-                      onClick={() => setIsPlanetLearnMoreOpen(true)}
+                      onClick={() => {
+                        setIsPlanetLearnMoreLoading(true)
+                        setIsPlanetLearnMoreOpen(true)
+                      }}
                     >
                       Learn more
                     </button>
@@ -3169,28 +3771,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="resume" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
-          <div className="resume-panel">
-            <div>
-              <span className="section-tag">10 — RESUME</span>
-              <h2>Want the structured version?</h2>
-            </div>
-            <div className="resume-meta">
-              <span>CURRENT RESUME</span>
-              <strong>UPDATED 2026 • AVAILABLE FOR REVIEW</strong>
-            </div>
-            <div className="resume-actions">
-              <a href="/resume.html" target="_blank" rel="noreferrer" className="primary-btn">
-                <span>View Resume</span>
-                <ArrowUpRight size={15} />
-              </a>
-              <a href="/resume.pdf" download="abhinav-yadav-resume.pdf" className="secondary-btn">
-                <Download size={15} />
-                <span>Download PDF</span>
-              </a>
-            </div>
-          </div>
-        </MotionSection>
+        {renderResumeSection()}
 
         <MotionSection id="contact" className="content-section contact-panel" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="contact-graphic">
@@ -3466,6 +4047,7 @@ function App() {
           <button type="button" className={`nav-button ${adminSection === 'overview' ? 'active' : ''}`} onClick={() => handleAdminAction('overview')}>Overview</button>
           <button type="button" className={`nav-button ${adminSection === 'homepage' ? 'active' : ''}`} onClick={() => handleAdminAction('homepage')}>Homepage</button>
           <button type="button" className={`nav-button ${adminSection === 'projects' ? 'active' : ''}`} onClick={() => handleAdminAction('projects')}>Projects</button>
+          <button type="button" className={`nav-button ${adminSection === 'resume' ? 'active' : ''}`} onClick={beginEditResume}>Resume</button>
           <button type="button" className={`nav-button ${adminSection === 'about' ? 'active' : ''}`} onClick={beginEditAbout}>About</button>
           <button type="button" className={`nav-button ${adminSection === 'experience' ? 'active' : ''}`} onClick={() => handleAdminAction('experience')}>Experience</button>
           <button type="button" className={`nav-button ${adminSection === 'achievements' ? 'active' : ''}`} onClick={() => handleAdminAction('achievements')}>Achievements</button>
@@ -4438,6 +5020,109 @@ function App() {
           </>
         ) : null}
 
+        {adminSection === 'resume' ? (
+          <form className="panel-card admin-form resume-admin-form" onSubmit={handleSaveResume}>
+            <div className="panel-header">
+              <div>
+                <span className="section-tag">SECTION 10</span>
+                <h2>Manage resume</h2>
+              </div>
+              <span className="status-badge">{resumeDraft.url ? 'Resume ready' : 'No resume uploaded'}</span>
+            </div>
+
+            <div className="resume-admin-layout">
+              <div className="resume-admin-fields">
+                <label>
+                  <span>Resume heading</span>
+                  <input
+                    type="text"
+                    name="title"
+                    value={resumeDraft.title}
+                    onChange={(event) => setResumeDraft((current) => ({ ...current, title: event.target.value }))}
+                    placeholder="Abhinav Yadav Resume"
+                  />
+                </label>
+                <label>
+                  <span>Upload resume file</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.html,.htm,image/*"
+                    onChange={(event) => handleResumeUpload(event)}
+                  />
+                  <small className="upload-hint">PDF, image, Word, OpenDocument, RTF, text, ya HTML • max 50MB</small>
+                </label>
+                <label>
+                  <span>Ya resume ka direct URL</span>
+                  <input
+                    type="url"
+                    name="url"
+                    value={resumeDraft.url}
+                    onChange={(event) => setResumeDraft((current) => ({ ...current, url: event.target.value, fileName: '', fileType: '' }))}
+                    placeholder="https://..."
+                  />
+                </label>
+                <label>
+                  <span>Preview image upload (optional)</span>
+                  <input type="file" accept="image/*" onChange={(event) => handleResumeUpload(event, true)} />
+                </label>
+                <label>
+                  <span>Ya preview image URL</span>
+                  <input
+                    type="url"
+                    name="previewUrl"
+                    value={resumeDraft.previewUrl}
+                    onChange={(event) => setResumeDraft((current) => ({ ...current, previewUrl: event.target.value }))}
+                    placeholder="https://..."
+                  />
+                </label>
+                <div className="field-grid admin-field-grid">
+                  <label>
+                    <span>Resume ke saath linked text</span>
+                    <input
+                      type="text"
+                      name="linkLabel"
+                      value={resumeDraft.linkLabel}
+                      onChange={(event) => setResumeDraft((current) => ({ ...current, linkLabel: event.target.value }))}
+                      placeholder="Portfolio / LinkedIn / Project"
+                    />
+                  </label>
+                  <label>
+                    <span>Text ka URL (optional)</span>
+                    <input
+                      type="url"
+                      name="linkUrl"
+                      value={resumeDraft.linkUrl}
+                      onChange={(event) => setResumeDraft((current) => ({ ...current, linkUrl: event.target.value }))}
+                      placeholder="https://..."
+                    />
+                  </label>
+                </div>
+                {resumeDraft.fileName ? <p className="form-status">Current file: {resumeDraft.fileName}</p> : null}
+                {resumeUploadStatus ? <p className="form-status" role="status">{resumeUploadStatus}</p> : null}
+                {resumeSaveStatus ? <p className="form-status" role="status">{resumeSaveStatus}</p> : null}
+                <div className="form-actions">
+                  <button type="submit" className="primary-btn">Save Resume</button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => {
+                      setResumeDraft({ title: 'Abhinav Yadav Resume', url: '', fileName: '', fileType: '', previewUrl: '', linkLabel: '', linkUrl: '' })
+                      setResumeUploadStatus('')
+                      void savePortfolioCollection('resumeEntries', [], setResumeSaveStatus)
+                    }}
+                  >
+                    Remove Resume
+                  </button>
+                </div>
+              </div>
+              <div className="resume-admin-preview">
+                <span className="section-tag">LIVE PREVIEW</span>
+                <ResumeThumbnail resume={resumeDraft} onView={() => resumeDraft.url && openLinkPage(resumeDraft.url, resumeDraft.title || 'Resume')} />
+              </div>
+            </div>
+          </form>
+        ) : null}
+
         {adminSection === 'projects' ? (
           <section className="panel-card admin-list-panel">
             <div className="panel-header">
@@ -4618,7 +5303,9 @@ function App() {
           </section>
         ) : null}
 
-        <div className="admin-status-bar">{resumeStatus}</div>
+        <div className="admin-status-bar">
+          {resumeSaveStatus || (activeResume.url ? 'Resume is published and available on the public page.' : 'Upload or link a resume from the Resume section to publish it.')}
+        </div>
       </main>
     </div>
     )
@@ -4628,6 +5315,32 @@ function App() {
     <>
       <SiteBootLoader visible={isSiteBooting} />
       <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+      {linkPage ? createPortal(
+        <div className="planet-learn-more-overlay site-link-page-overlay" role="dialog" aria-modal="true" aria-label={`${linkPage.title} page`}>
+          <FloatingBackButton
+            label="Back to website"
+            onClick={() => {
+              setLinkPage(null)
+              setIsLinkPageLoading(false)
+            }}
+          />
+          <div className="planet-learn-more-viewer">
+            <iframe
+              key={linkPage.url}
+              className="planet-learn-more-frame"
+              src={linkPage.url}
+              title={`${linkPage.title} page`}
+              loading="eager"
+              referrerPolicy="no-referrer"
+              sandbox={new URL(linkPage.url).origin === window.location.origin ? 'allow-forms allow-scripts allow-same-origin' : 'allow-forms allow-scripts'}
+              onLoad={() => setIsLinkPageLoading(false)}
+              onError={() => setIsLinkPageLoading(false)}
+            />
+            {isLinkPageLoading ? <LinkPageLoader title={linkPage.title} variant={linkPage.variant} /> : null}
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </>
   )
 }
