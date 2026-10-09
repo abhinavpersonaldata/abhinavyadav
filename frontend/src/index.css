@@ -706,6 +706,26 @@ a {
   background: var(--pro-hero-overlay);
 }
 
+.pro-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(118deg,
+    rgba(65, 190, 199, 0.3) 0%,
+    transparent 24%,
+    rgba(200, 255, 61, 0.2) 45%,
+    transparent 68%,
+    rgba(175, 123, 255, 0.3) 86%,
+    rgba(98, 208, 255, 0.3) 100%);
+  background-size: 240% 240%;
+  opacity: 0.72;
+  mix-blend-mode: var(--motion-overlay-blend);
+  filter: brightness(var(--motion-brightness));
+  animation: ambientColorFlow calc(8s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
+}
+
 .pro-hero > * {
   position: relative;
   z-index: 1;
@@ -1137,6 +1157,8 @@ a {
 }
 
 :root[data-scope='cards'] .hero-panel,
+:root[data-scope='cards'] .pro-hero,
+:root[data-scope='cards'] .pro-hero::after,
 :root[data-scope='cards'] .topbar,
 :root[data-scope='cards'] .topbar::before,
 :root[data-scope='cards'] .content-section:not(.contact-panel),
