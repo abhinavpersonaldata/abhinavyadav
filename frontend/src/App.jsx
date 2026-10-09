@@ -53,11 +53,27 @@ const useMotionLibrary = () => {
   return motionLibrary
 }
 
-const MotionSection = ({ children, ...props }) => {
+const MotionSection = ({ children, motionEnabled = true, initial, animate, whileInView, viewport, variants, ...props }) => {
   const motionLibrary = useMotionLibrary()
-  const Component = motionLibrary?.motion?.section || 'section'
+  const Component = motionLibrary?.motion?.section
 
-  return <Component {...props}>{children}</Component>
+  if (!Component) {
+    return <section {...props} data-motion-enabled={motionEnabled ? 'true' : 'false'}>{children}</section>
+  }
+
+  return (
+    <Component
+      {...props}
+      data-motion-enabled={motionEnabled ? 'true' : 'false'}
+      initial={motionEnabled ? initial : false}
+      animate={motionEnabled ? animate : undefined}
+      whileInView={motionEnabled ? whileInView : undefined}
+      viewport={viewport}
+      variants={motionEnabled ? variants : undefined}
+    >
+      {children}
+    </Component>
+  )
 }
 
 const MotionDiv = ({ children, ...props }) => {
@@ -457,7 +473,14 @@ function App() {
       return []
     }
   })
-  const [sectionMotion, setSectionMotion] = useState(SECTION_MOTION_DEFAULTS)
+  const [sectionMotion, setSectionMotion] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('portfolio-section-motion-v1') || '{}')
+      return { ...SECTION_MOTION_DEFAULTS, ...saved }
+    } catch {
+      return SECTION_MOTION_DEFAULTS
+    }
+  })
   const [resumeStatus, setResumeStatus] = useState('Resume last updated 2 days ago')
   const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
   const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
@@ -949,6 +972,11 @@ function App() {
       const enabled = Boolean(sectionMotion[key])
       document.documentElement.dataset[`motion${key.charAt(0).toUpperCase()}${key.slice(1)}`] = String(enabled)
     })
+    try {
+      localStorage.setItem('portfolio-section-motion-v1', JSON.stringify(sectionMotion))
+    } catch {
+      // The controls remain active for this page session if browser storage is unavailable.
+    }
   }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, portfolio.motionSettings, portfolio.edgeAnimationSettings, sectionMotion])
 
   const selectedProject = useMemo(
@@ -2026,7 +2054,7 @@ function App() {
 
     return (
       <>
-        <MotionSection id="profile" className={`pro-hero pro-home-${activeHomepageDesignId}`} initial="hidden" animate="show" variants={motionSettings}>
+        <MotionSection id="profile" className={`pro-hero pro-home-${activeHomepageDesignId}`} motionEnabled={sectionMotion.hero} initial="hidden" animate="show" variants={motionSettings}>
           <div className="pro-hero-copy">
             <p className="section-tag">COMPUTER SCIENCE ENGINEER PROFILE</p>
             <h1>{portfolio.profile.name}</h1>
@@ -2061,7 +2089,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="biodata" className="pro-section pro-biodata" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="biodata" className="pro-section pro-biodata" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">01 - BIODATA</span>
             <h2>Profile details for teachers and placement review.</h2>
@@ -2085,7 +2113,7 @@ function App() {
           <p className="pro-bio-copy">{portfolio.about?.biography || DEFAULT_ABOUT.biography}</p>
         </MotionSection>
 
-        <MotionSection id="projects" className="pro-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="projects" className="pro-section" motionEnabled={sectionMotion.work} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">02 - PROJECTS</span>
             <h2>Selected work that shows practical skills.</h2>
@@ -2107,7 +2135,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="skills" className="pro-section pro-skills" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="skills" className="pro-section pro-skills" motionEnabled={sectionMotion.toolkit} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">03 - SKILLS</span>
             <h2>Technical stack and learning focus.</h2>
@@ -2117,7 +2145,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="education" className="pro-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="education" className="pro-section" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">04 - EDUCATION</span>
             <h2>Academic background and verified progress.</h2>
@@ -2136,7 +2164,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection className="pro-section pro-proof" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection className="pro-section pro-proof" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">05 - PROOF</span>
             <h2>Certificates and achievements for quick review.</h2>
@@ -2152,7 +2180,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="contact" className="pro-section pro-contact" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="contact" className="pro-section pro-contact" motionEnabled={sectionMotion.contact} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">06 - CONTACT</span>
             <h2>Share this website as my biodata and portfolio.</h2>
@@ -2232,7 +2260,7 @@ function App() {
         </div>
       ) : null}
 
-      <header id="top" className="topbar">
+      <header id="top" className="topbar" data-motion-enabled={sectionMotion.hero ? 'true' : 'false'}>
         <button
           type="button"
           className="brand-mark"
@@ -2279,7 +2307,7 @@ function App() {
       <main className={`page-content ${isProfessionalHomepage ? `pro-home-page pro-home-page-${activeHomepageDesignId}` : 'classic-home-page'}`}>
         {isProfessionalHomepage ? renderProfessionalHomepageContent() : (
           <>
-        <MotionSection className="hero-panel" initial="hidden" animate="show" variants={motionSettings}>
+        <MotionSection className="hero-panel" motionEnabled={sectionMotion.hero} initial="hidden" animate="show" variants={motionSettings}>
           <div className="status-line">AVAILABLE FOR FRONTEND / PRODUCT / INTERNSHIP</div>
 
           <div className="hero-grid">
@@ -2452,7 +2480,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="work" className="content-section" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="work" className="content-section" motionEnabled={sectionMotion.work} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">01 — SELECTED WORK</span>
             <h2>Things I&apos;ve built while learning.</h2>
@@ -2556,7 +2584,7 @@ function App() {
           </MotionDiv>
         </MotionSection>
 
-        <MotionSection id="about" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="about" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header narrow-header">
             <span className="section-tag">02 — ABOUT</span>
             <h2>{portfolio.about?.heading || DEFAULT_ABOUT.heading}</h2>
@@ -2639,7 +2667,7 @@ function App() {
             ) : null}
         </MotionSection>
 
-        <MotionSection id="toolkit" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="toolkit" className="content-section spaced" motionEnabled={sectionMotion.toolkit} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">03 — TOOLKIT</span>
             <h2>The systems I keep learning and shipping with.</h2>
@@ -2659,7 +2687,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="journey" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="journey" className="content-section spaced" motionEnabled={sectionMotion.journey} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">04 — JOURNEY</span>
             <h2>Career archive and learning path.</h2>
@@ -2700,7 +2728,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="education" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="education" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">05 — EDUCATION</span>
             <h2>Academic record and learning focus.</h2>
@@ -2736,7 +2764,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="experience" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="experience" className="content-section spaced" motionEnabled={sectionMotion.journey} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">06 — EXPERIENCE</span>
             <h2>Professional context and working rhythm.</h2>
@@ -2772,7 +2800,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="certificates" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="certificates" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">07 — CERTIFICATES</span>
             <h2>Proof of learning and technical progress.</h2>
@@ -2809,7 +2837,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="achievements" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="achievements" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">08 — ACHIEVEMENTS</span>
             <h2>Milestones shaped by iteration and curiosity.</h2>
@@ -2839,7 +2867,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="gallery" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="gallery" className="content-section spaced" motionEnabled={sectionMotion.gallery} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">09 — GALLERY</span>
             <h2>Visual notes from research, build, and process.</h2>
@@ -2855,7 +2883,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="resume" className="content-section spaced" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="resume" className="content-section spaced" motionEnabled={sectionMotion.about} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="resume-panel">
             <div>
               <span className="section-tag">10 — RESUME</span>
@@ -2878,7 +2906,7 @@ function App() {
           </div>
         </MotionSection>
 
-        <MotionSection id="contact" className="content-section contact-panel" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
+        <MotionSection id="contact" className="content-section contact-panel" motionEnabled={sectionMotion.contact} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="contact-graphic">
             <div className="contact-art-overline"><span>CONTACT / 11</span><span>BUILT WITH INTENTION</span></div>
             <h2 className="contact-graphic-title">
@@ -2942,7 +2970,7 @@ function App() {
         )}
       </main>
 
-      <footer className="site-footer">
+      <footer className="site-footer" data-motion-enabled={sectionMotion.contact ? 'true' : 'false'}>
         <div className="footer-brand">
           <div className="brand-mark small">AY</div>
           <div>
@@ -3844,7 +3872,7 @@ function App() {
             </div>
 
             <div className="section-toggle-grid">
-              {Object.entries(SECTION_MOTION_DEFAULTS).map(([sectionKey, isEnabled]) => (
+              {Object.keys(SECTION_MOTION_DEFAULTS).map((sectionKey) => (
                 <button
                   key={sectionKey}
                   type="button"
@@ -3852,7 +3880,7 @@ function App() {
                   onClick={() => handleSectionMotionToggle(sectionKey)}
                 >
                   <span>{sectionKey}</span>
-                  <strong>{isEnabled ? 'On' : 'Off'}</strong>
+                  <strong>{sectionMotion[sectionKey] ? 'On' : 'Off'}</strong>
                 </button>
               ))}
             </div>

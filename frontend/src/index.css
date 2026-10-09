@@ -42,7 +42,7 @@
 }
 
 :root[data-theme='light'] {
-  --motion-overlay-blend: multiply;
+  --motion-overlay-blend: normal;
   --color-bg: #e9edf2;
   --color-bg-secondary: #e2e8f0;
   --color-surface: #f7f9fc;
@@ -135,6 +135,16 @@ html {
 
 @keyframes edgeOrbit {
   to { --edge-angle: 360deg; }
+}
+
+@keyframes ambientColorFlow {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@keyframes headerFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 body {
@@ -262,6 +272,7 @@ a {
   top: 1rem;
   z-index: 20;
   box-shadow: 0 24px 56px rgba(5, 12, 24, 0.24), 0 0 0 1px rgba(200,255,61,0.04), inset 0 1px 0 rgba(255,255,255,0.08);
+  animation: headerFloat calc(6s / var(--motion-speed)) ease-in-out infinite;
 }
 
 .topbar::before {
@@ -281,6 +292,7 @@ a {
   opacity: 0.92;
   mix-blend-mode: var(--motion-overlay-blend);
   filter: brightness(var(--motion-brightness));
+  animation: ambientColorFlow calc(16s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .topbar::after {
@@ -306,6 +318,11 @@ a {
   mask-composite: exclude;
   filter: brightness(var(--motion-brightness)) drop-shadow(0 0 5px rgba(98, 208, 255, 0.32));
   animation: edgeOrbit calc(var(--edge-speed, 8s) / var(--motion-speed)) linear infinite;
+}
+
+:root[data-theme='light'] .topbar::after,
+:root[data-theme='light'] .site-footer::after {
+  filter: brightness(1.08) drop-shadow(0 0 7px rgba(30, 90, 215, 0.42));
 }
 
 :root[data-edge-style='spectrum'] .topbar::after,
@@ -1106,10 +1123,17 @@ a {
   transition: none !important;
 }
 
+:root[data-scope='hero'] .topbar::before,
+:root[data-scope='hero'] .site-footer::before {
+  animation: none !important;
+}
+
 :root[data-scope='cards'] .hero-panel,
 :root[data-scope='cards'] .topbar,
+:root[data-scope='cards'] .topbar::before,
 :root[data-scope='cards'] .content-section:not(.contact-panel),
 :root[data-scope='cards'] .site-footer,
+:root[data-scope='cards'] .site-footer::before,
 :root[data-scope='cards'] .project-detail-page {
   animation: none !important;
   transition: none !important;
@@ -1122,6 +1146,28 @@ a {
 :root[data-scope='content'] .achievement-row {
   animation: none !important;
   transition: none !important;
+}
+
+:root[data-scope='content'] .topbar,
+:root[data-scope='content'] .topbar::before,
+:root[data-scope='content'] .site-footer,
+:root[data-scope='content'] .site-footer::before {
+  animation: none !important;
+}
+
+[data-motion-enabled='false'],
+[data-motion-enabled='false'] *,
+[data-motion-enabled='false']::before,
+[data-motion-enabled='false']::after,
+[data-motion-enabled='false'] *::before,
+[data-motion-enabled='false'] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+[data-motion-enabled='false'] {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 :root[data-effect='neon-glow'] .hero-panel::before {
@@ -1264,6 +1310,7 @@ a {
   opacity: 0.88;
   pointer-events: none;
   filter: brightness(var(--motion-brightness));
+  animation: ambientColorFlow calc(14s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .hero-panel::after {
@@ -1277,6 +1324,11 @@ a {
   filter: brightness(var(--motion-brightness)) blur(25px);
   pointer-events: none;
   animation: drift calc(14s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite;
+}
+
+:root[data-theme='light'] .hero-panel::after {
+  background: radial-gradient(circle, rgba(30, 90, 215, 0.2), rgba(59, 125, 0, 0.08) 34%, transparent 68%);
+  filter: blur(22px);
 }
 
 :root[data-theme='light'] .hero-panel {
@@ -1517,6 +1569,20 @@ a {
   background-position: 9px 17px, 41px 63px, 77px 31px;
 }
 
+:root[data-theme='light'] .solar-scene {
+  background:
+    radial-gradient(circle at center, rgba(30, 90, 215, 0.13), rgba(59, 125, 0, 0.08) 28%, rgba(226, 234, 245, 0.28) 60%, rgba(205, 216, 231, 0.82) 100%),
+    linear-gradient(145deg, rgba(98, 150, 220, 0.16), rgba(228, 235, 245, 0.3), rgba(59, 125, 0, 0.08));
+}
+
+:root[data-theme='light'] .solar-scene::after {
+  opacity: 0.78;
+  background-image:
+    radial-gradient(circle, rgba(27, 46, 74, 0.82) 0 1px, transparent 1.8px),
+    radial-gradient(circle, rgba(30, 90, 215, 0.88) 0 1px, transparent 1.8px),
+    radial-gradient(circle, rgba(59, 125, 0, 0.82) 0 1px, transparent 1.8px);
+}
+
 .solar-system {
   position: absolute;
   inset: 0;
@@ -1538,6 +1604,11 @@ a {
   position: relative;
 }
 
+:root[data-theme='light'] .planet-orbit-path {
+  border-color: rgba(30, 76, 138, 0.3);
+  box-shadow: 0 0 12px rgba(30, 90, 215, 0.13);
+}
+
 .planet-marker::after {
   content: '';
   position: absolute;
@@ -1548,6 +1619,11 @@ a {
   pointer-events: none;
   animation: planetSignal calc(3.8s / var(--motion-speed)) ease-out infinite;
   animation-delay: var(--orbit-delay);
+}
+
+:root[data-theme='light'] .planet-marker::after {
+  border-color: rgba(72, 140, 205, 0.46);
+  box-shadow: 0 0 10px rgba(30, 90, 215, 0.18);
 }
 
 .orbit-planet-track {
@@ -1590,6 +1666,13 @@ a {
   border-color: rgba(200, 255, 61, 0.8);
 }
 
+:root[data-theme='light'] .orbit-planet:hover .planet-image,
+:root[data-theme='light'] .orbit-planet:focus-visible .planet-image,
+:root[data-theme='light'] .orbit-planet.is-selected .planet-image {
+  border-color: rgba(30, 90, 215, 0.72);
+  box-shadow: 0 0 0 2px rgba(30, 90, 215, 0.12), 0 0 22px rgba(30, 90, 215, 0.3);
+}
+
 .orbit-planet:focus-visible {
   outline: none;
 }
@@ -1614,6 +1697,11 @@ a {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   image-rendering: auto;
   filter: saturate(1.08) contrast(1.03);
+}
+
+:root[data-theme='light'] .planet-image {
+  border-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(47, 77, 119, 0.12), 0 0 16px rgba(30, 90, 215, 0.2), 0 0 24px rgba(59, 125, 0, 0.1);
 }
 
 .planet-name {
@@ -1643,6 +1731,17 @@ a {
   pointer-events: none;
 }
 
+:root[data-theme='light'] .planet-details-panel {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(30, 90, 215, 0.11), transparent 42%),
+    radial-gradient(circle at 100% 100%, rgba(59, 125, 0, 0.08), transparent 38%),
+    rgba(246, 249, 253, 0.97);
+  border-color: rgba(47, 77, 119, 0.28);
+  box-shadow: 0 20px 44px rgba(29, 47, 73, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+
 .hero-visual::after {
   content: '';
   position: absolute;
@@ -1669,6 +1768,12 @@ a {
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
+:root[data-theme='light'] .planet-close-btn {
+  border-color: rgba(47, 77, 119, 0.2);
+  background: rgba(225, 234, 246, 0.82);
+  color: #263a56;
+}
+
 .planet-close-btn:hover,
 .planet-close-btn:focus-visible {
   transform: scale(1.06);
@@ -1693,6 +1798,11 @@ a {
   box-shadow: 0 0 18px rgba(255,255,255,0.12);
 }
 
+:root[data-theme='light'] .planet-details-image {
+  border-color: rgba(47, 77, 119, 0.48);
+  box-shadow: 0 0 18px rgba(30, 90, 215, 0.16);
+}
+
 .planet-details-sun {
   display: grid;
   flex: 0 0 52px;
@@ -1707,6 +1817,11 @@ a {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
+}
+
+:root[data-theme='light'] .planet-details-sun {
+  border-color: rgba(47, 77, 119, 0.36);
+  box-shadow: 0 0 20px rgba(30, 90, 215, 0.2);
 }
 
 .planet-details-label {
@@ -1735,6 +1850,10 @@ a {
   font-size: 0.78rem;
 }
 
+:root[data-theme='light'] .planet-detail-row {
+  border-color: rgba(47, 77, 119, 0.14);
+}
+
 .planet-detail-row strong {
   color: var(--color-text);
   font-weight: 700;
@@ -1750,6 +1869,10 @@ a {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.66rem;
+}
+
+:root[data-theme='light'] .planet-source-link {
+  color: #174a9b;
 }
 
 .solar-sun {
@@ -1784,6 +1907,11 @@ a {
   box-shadow: 0 0 22px rgba(200, 255, 61, 0.18), inset 0 0 18px rgba(98, 208, 255, 0.12);
   animation: sunCorona calc(5s / var(--motion-speed)) ease-in-out infinite;
   pointer-events: none;
+}
+
+:root[data-theme='light'] .solar-sun::before {
+  border-color: rgba(30, 90, 215, 0.72);
+  box-shadow: 0 0 24px rgba(30, 90, 215, 0.3), inset 0 0 18px rgba(59, 125, 0, 0.2);
 }
 
 .solar-sun:focus-visible,
@@ -1863,6 +1991,7 @@ a {
   opacity: 0.72;
   mix-blend-mode: var(--motion-overlay-blend);
   filter: brightness(var(--motion-brightness));
+  animation: ambientColorFlow calc(18s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .content-section:nth-of-type(2n)::before {
@@ -1956,7 +2085,9 @@ a {
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(98,208,255,0.04), transparent 32%, rgba(200,255,61,0.04), transparent 68%, rgba(175,123,255,0.05));
+  background-size: 240% 240%;
   pointer-events: none;
+  animation: ambientColorFlow calc(18s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .project-panel:nth-child(2n) {
@@ -1999,7 +2130,9 @@ a:focus-visible {
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 36%, rgba(98,208,255,0.06), transparent 68%, rgba(200,255,61,0.05));
+  background-size: 240% 240%;
   pointer-events: none;
+  animation: ambientColorFlow calc(12s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .project-image,
@@ -3121,11 +3254,12 @@ a:focus-visible {
   background: linear-gradient(135deg, rgba(113, 150, 255, 0.14), rgba(93, 210, 160, 0.1), rgba(235, 255, 138, 0.12));
   border-color: rgba(17, 24, 39, 0.08);
   animation-name: pulseGlowLight;
+  animation-duration: calc(3.4s / var(--motion-speed));
 }
 
 @keyframes pulseGlowLight {
-  0%, 100% { box-shadow: 0 0 0 rgba(30, 90, 215, 0.16); }
-  50% { box-shadow: 0 0 24px rgba(30, 90, 215, 0.3), 0 0 42px rgba(59, 125, 0, 0.18); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(30, 90, 215, 0.08), 0 8px 20px rgba(30, 48, 73, 0.08); }
+  50% { box-shadow: 0 0 0 2px rgba(30, 90, 215, 0.2), 0 12px 32px rgba(30, 90, 215, 0.22), 0 0 44px rgba(59, 125, 0, 0.16); }
 }
 
 :root[data-theme='light'] .project-copy h3 {
@@ -3494,6 +3628,7 @@ a:focus-visible {
   opacity: 0.9;
   mix-blend-mode: var(--motion-overlay-blend);
   filter: brightness(var(--motion-brightness));
+  animation: ambientColorFlow calc(16s / var(--motion-strength) / var(--motion-speed)) ease-in-out infinite alternate;
 }
 
 .site-footer::after {
@@ -5402,17 +5537,7 @@ a:focus-visible {
   }
 
   body::before,
-  body::after,
-  .topbar,
-  .hero-panel,
-  .content-section,
-  .project-panel,
-  .orbit,
-  .solar-system,
-  .planet-details-panel,
-  .project-preview,
-  .contact-graphic,
-  .site-footer {
+  body::after {
     animation: none !important;
   }
 

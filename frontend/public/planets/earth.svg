@@ -4,7 +4,7 @@
       <stop offset="0%" stop-color="#8fe3ff"/>
       <stop offset="28%" stop-color="#4ec5f1"/>
       <stop offset="55%" stop-color="#1d8f5c"/>
-      <stop offset="100%" stop-color="#0e4c4a"/>
+      <stop offset="100%" stop-color="#287b73"/>
     </radialGradient>
   </defs>
   <circle cx="60" cy="60" r="52" fill="url(#earthGradient)"/>

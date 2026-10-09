@@ -4,7 +4,7 @@
       <stop offset="0%" stop-color="#efe7b6"/>
       <stop offset="35%" stop-color="#d7c48d"/>
       <stop offset="65%" stop-color="#a5844d"/>
-      <stop offset="100%" stop-color="#5a432b"/>
+      <stop offset="100%" stop-color="#92744a"/>
     </radialGradient>
   </defs>
   <circle cx="72" cy="72" r="58" fill="url(#saturnGradient)"/>
