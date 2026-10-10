@@ -672,9 +672,122 @@ html {
   border-width: 2px;
 }
 
+.boot-theme-solar.boot-layout-classic .boot-loader-topline {
+  position: relative;
+  padding-left: clamp(7rem, 28vw, 10rem);
+  border-bottom-color: transparent;
+}
+
+.boot-theme-solar.boot-layout-classic .boot-loader-topline::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: clamp(7rem, 28vw, 10rem);
+  height: 1px;
+  background: rgba(153, 180, 230, 0.12);
+  content: '';
+}
+
+.boot-theme-solar.boot-layout-classic .boot-loader-kicker {
+  display: block;
+  margin-left: clamp(3.5rem, 11vw, 5rem);
+}
+
+.boot-theme-solar.boot-layout-classic .boot-loader-heading h1,
+.boot-theme-solar.boot-layout-classic .boot-loader-heading p {
+  margin-left: clamp(2.5rem, 8vw, 3.5rem);
+}
+
+.boot-layout-orbit .boot-loader-card {
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 2rem 0.55rem 2rem 0.55rem;
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--boot-accent) 13%, transparent), transparent 62%),
+    linear-gradient(145deg, var(--boot-surface-start), var(--boot-surface-end));
+}
+
+.boot-layout-orbit .boot-loader-card::before {
+  position: absolute;
+  z-index: -1;
+  top: -12rem;
+  left: 50%;
+  width: min(68vw, 24rem);
+  aspect-ratio: 1;
+  border: 1px dashed color-mix(in srgb, var(--boot-accent) 28%, transparent);
+  border-top-color: var(--boot-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--boot-accent) 10%, transparent);
+  content: '';
+  pointer-events: none;
+  animation: bootLoaderOrbit 18s linear infinite;
+}
+
+.boot-layout-orbit .boot-loader-topline {
+  padding-left: 0;
+  border-bottom-color: rgba(153, 180, 230, 0.16);
+}
+
+.boot-layout-orbit .boot-loader-brand > span {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--boot-accent-secondary) 30%, transparent);
+}
+
+.boot-layout-orbit .boot-loader-heading {
+  text-align: center;
+}
+
+.boot-layout-orbit .boot-loader-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.boot-layout-orbit .boot-loader-kicker::before,
+.boot-layout-orbit .boot-loader-kicker::after {
+  width: 1.1rem;
+  height: 1px;
+  background: color-mix(in srgb, var(--boot-accent) 60%, transparent);
+  content: '';
+}
+
+.boot-layout-orbit .boot-loader-heading h1 {
+  font-size: clamp(1.9rem, 7.4vw, 3rem);
+}
+
+.boot-layout-orbit .boot-code-window {
+  border-radius: 1.15rem;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--boot-accent) 6%, transparent);
+}
+
+.boot-layout-orbit .boot-loader-progress > span {
+  height: 3px;
+  border-radius: 999px;
+}
+
+.boot-layout-orbit .boot-loader-index {
+  width: fit-content;
+  margin-right: auto;
+  margin-left: auto;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--boot-accent) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--boot-accent) 5%, transparent);
+}
+
+.boot-layout-orbit .boot-loader-credit {
+  text-align: center;
+}
+
 .boot-theme-ocean::before,
 .boot-theme-lagoon::before {
   mask-image: radial-gradient(ellipse at 50% 50%, #000 5%, transparent 80%);
+}
+
+@keyframes bootLoaderOrbit {
+  to { transform: translateX(-50%) rotate(360deg); }
 }
 
 @keyframes bootThemePattern {

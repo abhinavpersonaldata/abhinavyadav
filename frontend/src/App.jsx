@@ -1306,17 +1306,21 @@ function ResumeDesigner({ design, onChange, onReset, onOpenLink }) {
   )
 }
 
-const BOOT_LOADER_VARIANTS = [
+const BOOT_LOADER_THEMES = [
   'aurora', 'ember', 'ocean', 'violet', 'rose', 'mint',
   'solar', 'ice', 'crimson', 'gold', 'mono', 'lagoon',
 ]
+const BOOT_LOADER_VARIANTS = BOOT_LOADER_THEMES.flatMap((theme) => [
+  { id: theme, theme, layout: 'classic' },
+  { id: `${theme}-orbit`, theme, layout: 'orbit' },
+])
 
 function getBootLoaderVariant() {
   try {
     const previous = sessionStorage.getItem('portfolio-boot-loader-variant')
-    const choices = BOOT_LOADER_VARIANTS.filter((variant) => variant !== previous)
+    const choices = BOOT_LOADER_VARIANTS.filter((variant) => variant.id !== previous)
     const variant = choices[Math.floor(Math.random() * choices.length)] || BOOT_LOADER_VARIANTS[0]
-    sessionStorage.setItem('portfolio-boot-loader-variant', variant)
+    sessionStorage.setItem('portfolio-boot-loader-variant', variant.id)
     return variant
   } catch {
     return BOOT_LOADER_VARIANTS[Math.floor(Math.random() * BOOT_LOADER_VARIANTS.length)]
@@ -1337,7 +1341,7 @@ function SiteBootLoader({ visible }) {
   if (!isMounted) return null
 
   return (
-    <div className={`site-boot-loader boot-theme-${variant}${visible ? ' is-visible' : ' is-leaving'}`} role="status" aria-live="polite" aria-label="Loading portfolio">
+    <div className={`site-boot-loader boot-theme-${variant.theme} boot-layout-${variant.layout}${visible ? ' is-visible' : ' is-leaving'}`} role="status" aria-live="polite" aria-label="Loading portfolio">
       <div className="boot-loader-card">
         <div className="boot-loader-topline">
           <span className="boot-loader-brand"><span>AY</span> DIGITAL EXPERIENCE</span>
