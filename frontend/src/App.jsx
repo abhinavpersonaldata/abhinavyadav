@@ -1342,6 +1342,11 @@ function SiteBootLoader({ visible }) {
 
   return (
     <div className={`site-boot-loader boot-theme-${variant.theme} boot-layout-${variant.layout}${visible ? ' is-visible' : ' is-leaving'}`} role="status" aria-live="polite" aria-label="Loading portfolio">
+      <div className="boot-loader-ambience" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </div>
       <div className="boot-loader-card">
         <div className="boot-loader-topline">
           <span className="boot-loader-brand"><span>AY</span> DIGITAL EXPERIENCE</span>
