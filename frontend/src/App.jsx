@@ -217,6 +217,7 @@ const DEFAULT_RESUME_ENTRIES = [{
   url: '/resume/Abhinav-Yadav-Resume.pdf',
   fileName: 'Abhinav-Yadav-Resume.pdf',
   fileType: 'application/pdf',
+  displayMode: 'normal',
 }]
 const DEFAULT_SUN_LINK = 'https://nineplanets.org/solar-system/'
 const LEGACY_DEFAULT_PLANET_LINKS = {
@@ -643,6 +644,647 @@ function ResumeThumbnail({ resume, onView }) {
   )
 }
 
+const RESUME_TEMPLATES = [
+  { id: 'modern', name: 'Professional sidebar', detail: 'Portrait, contacts and skills rail' },
+  { id: 'classic', name: 'Executive classic', detail: 'Centered profile with gold accents' },
+  { id: 'editorial', name: 'Creative cover', detail: 'Photo banner with a clean content grid' },
+  { id: 'minimal', name: 'Navy profile', detail: 'Compact sidebar and experience timeline' },
+]
+
+function isSafeResumeLink(value) {
+  if (typeof value !== 'string' || !value.trim()) return false
+  const link = value.trim()
+  if (link.startsWith('/')) return !link.startsWith('//') && !link.includes('\\')
+  try {
+    return ['http:', 'https:', 'mailto:', 'tel:'].includes(new URL(link).protocol)
+  } catch {
+    return false
+  }
+}
+
+function updateResumeTextField(design, field, value) {
+  const contactMatch = /^contacts\.(\d+)\.(label|text)$/.exec(field)
+  if (contactMatch) {
+    const contactIndex = Number(contactMatch[1])
+    return {
+      ...design,
+      contacts: design.contacts.map((contact, index) => index === contactIndex
+        ? { ...contact, [contactMatch[2]]: value }
+        : contact),
+      links: (design.links || []).filter((link) => link.field !== field),
+    }
+  }
+  const sectionMatch = /^sections\.(\d+)\.items\.(\d+)\.text$/.exec(field)
+  if (sectionMatch) {
+    const sectionIndex = Number(sectionMatch[1])
+    const itemIndex = Number(sectionMatch[2])
+    return {
+      ...design,
+      sections: design.sections.map((section, index) => index === sectionIndex
+        ? {
+            ...section,
+            items: section.items.map((item, lineIndex) => lineIndex === itemIndex ? { ...item, text: value } : item),
+          }
+        : section),
+      links: (design.links || []).filter((link) => link.field !== field),
+    }
+  }
+  const sectionTitleMatch = /^sections\.(\d+)\.title$/.exec(field)
+  if (sectionTitleMatch) {
+    const sectionIndex = Number(sectionTitleMatch[1])
+    return {
+      ...design,
+      sections: design.sections.map((section, index) => index === sectionIndex ? { ...section, title: value } : section),
+      links: (design.links || []).filter((link) => link.field !== field),
+    }
+  }
+  return {
+    ...design,
+    [field]: value,
+    links: (design.links || []).filter((link) => link.field !== field),
+  }
+}
+
+function removeResumeLinksAtIndex(links, collection, removedIndex, parentIndex = -1) {
+  return (links || []).flatMap((link) => {
+    if (collection === 'contacts') {
+      const match = /^contacts\.(\d+)\.(label|text)$/.exec(link.field)
+      if (!match) return [link]
+      const index = Number(match[1])
+      if (index === removedIndex) return []
+      return [index > removedIndex
+        ? { ...link, field: `contacts.${index - 1}.${match[2]}` }
+        : link]
+    }
+
+    const match = /^sections\.(\d+)\.(title|items\.(\d+)\.text)$/.exec(link.field)
+    if (!match) return [link]
+    const sectionIndex = Number(match[1])
+    if (collection === 'sections') {
+      if (sectionIndex === removedIndex) return []
+      return [sectionIndex > removedIndex
+        ? { ...link, field: `sections.${sectionIndex - 1}.${match[2]}` }
+        : link]
+    }
+    if (collection !== 'items' || sectionIndex !== parentIndex || !match[3]) return [link]
+    const itemIndex = Number(match[3])
+    if (itemIndex === removedIndex) return []
+    return [itemIndex > removedIndex
+      ? { ...link, field: `sections.${sectionIndex}.items.${itemIndex - 1}.text` }
+      : link]
+  })
+}
+
+function createDefaultResumeDesign(portfolio) {
+  const profile = portfolio.profile || {}
+  const about = portfolio.about || {}
+  const education = portfolio.educationEntries || []
+  const college = about.colleges?.[0]
+  const educationText = college
+    ? [college.program || college.title, college.title, college.dates].filter(Boolean).join(' — ')
+    : education[0]
+      ? [education[0].title, education[0].institution, education[0].dates].filter(Boolean).join(' — ')
+      : 'Add your education details'
+  const skills = (portfolio.toolkitGroups || [])
+    .flatMap((group) => (group.skills || []).map((skill) => `${skill}`))
+  const experience = (portfolio.experienceEntries || []).slice(0, 2).map((entry) => ({
+    text: [entry.role, entry.company, entry.dates, entry.location, entry.description,
+      ...(entry.achievements || []).slice(0, 2)]
+      .filter(Boolean)
+      .join(' — '),
+    url: '',
+  }))
+  const projects = (portfolio.projects || []).slice(0, 2).map((project) => ({
+    text: [project.title, project.description, (project.tech || []).slice(0, 4).length
+      ? `Tech: ${project.tech.slice(0, 4).join(', ')}`
+      : '']
+      .filter(Boolean)
+      .join(' — '),
+    url: project.website || project.repository || '',
+  }))
+
+  return {
+    template: 'modern',
+    accentColor: '#b18a42',
+    backgroundColor: '#ffffff',
+    textColor: '#263449',
+    surfaceColor: '#20364f',
+    name: profile.name || 'Your Name',
+    headline: profile.title || 'Your professional headline',
+    location: profile.location || '',
+    portraitUrl: about.photo || '/resume/portrait.jpg',
+    summary: about.biography || '',
+    summaryUrl: '',
+    contacts: [
+      ...(profile.email ? [{ label: 'Email', text: profile.email, url: `mailto:${profile.email}` }] : []),
+      ...(profile.phone ? [{ label: 'Mobile', text: profile.phone, url: `tel:${profile.phone.replace(/[^\d+]/g, '')}` }] : []),
+      ...(profile.github ? [{ label: 'GitHub', text: 'GitHub Profile', url: profile.github }] : []),
+      ...(profile.linkedin && profile.linkedin !== 'https://www.linkedin.com' ? [{ label: 'LinkedIn', text: 'LinkedIn Profile', url: profile.linkedin }] : []),
+    ],
+    links: [],
+    sections: [
+      { title: 'Education', items: [{ text: educationText, url: college?.url || '' }] },
+      { title: 'Experience', items: experience },
+      { title: 'Skills', items: skills.slice(0, 10).map((text) => ({ text, url: '' })) },
+      { title: 'Selected Projects', items: projects },
+    ],
+  }
+}
+
+function normalizeResumeDesign(savedDesign, fallback) {
+  if (!savedDesign || typeof savedDesign !== 'object') return fallback
+  const hasLegacyDefaultColors = savedDesign.accentColor === '#c8ff3d'
+    && savedDesign.backgroundColor === '#101a2b'
+    && savedDesign.textColor === '#edf3fa'
+    && savedDesign.surfaceColor === '#18263a'
+  const sections = Array.isArray(savedDesign.sections)
+    ? savedDesign.sections.filter((section) => section && typeof section === 'object').map((section) => ({
+        title: typeof section.title === 'string' ? section.title : '',
+        items: Array.isArray(section.items)
+          ? section.items.filter((item) => item && typeof item === 'object').map((item) => ({
+              text: typeof item.text === 'string' ? item.text : '',
+              url: typeof item.url === 'string' ? item.url : '',
+            }))
+          : [],
+      }))
+    : fallback.sections
+  if (!sections.some((section) => /experience|employment|work history/i.test(section.title))) {
+    const experienceSection = fallback.sections.find((section) => /experience/i.test(section.title))
+    if (experienceSection?.items.length) sections.push(experienceSection)
+  }
+  if (!sections.some((section) => /skill|expertise/i.test(section.title))) {
+    const skillsSection = fallback.sections.find((section) => /skill|expertise/i.test(section.title))
+    if (skillsSection?.items.length) sections.push(skillsSection)
+  }
+  const contacts = Array.isArray(savedDesign.contacts)
+    ? savedDesign.contacts.filter((contact) => contact && typeof contact === 'object').map((contact) => ({
+        label: typeof contact.label === 'string' ? contact.label : '',
+        text: typeof contact.text === 'string' ? contact.text : '',
+        url: typeof contact.url === 'string' ? contact.url : '',
+      }))
+    : fallback.contacts
+  const fallbackMobile = fallback.contacts.find((contact) => /^(mobile|phone)$/i.test(contact.label))
+  if (fallbackMobile && !contacts.some((contact) => /^(mobile|phone)$/i.test(contact.label))) {
+    contacts.push(fallbackMobile)
+  }
+
+  return {
+    ...fallback,
+    ...savedDesign,
+    ...(hasLegacyDefaultColors ? {
+      accentColor: '#b18a42',
+      backgroundColor: '#ffffff',
+      textColor: '#263449',
+      surfaceColor: '#20364f',
+    } : {}),
+    template: RESUME_TEMPLATES.some((template) => template.id === savedDesign.template) ? savedDesign.template : fallback.template,
+    contacts,
+    links: Array.isArray(savedDesign.links)
+      ? savedDesign.links.filter((link) => link && typeof link.field === 'string'
+        && Number.isInteger(link.start) && Number.isInteger(link.end)
+        && link.start >= 0 && link.end > link.start
+        && typeof link.url === 'string' && isSafeResumeLink(link.url)
+        && (link.field === 'name' || link.field === 'headline' || link.field === 'location'
+          || link.field === 'summary'
+          || /^contacts\.\d+\.(label|text)$/.test(link.field)
+          || /^sections\.\d+\.(title|items\.\d+\.text)$/.test(link.field)))
+      : [],
+    sections,
+  }
+}
+
+function ResumeDocument({ design, onOpenLink, editable = false, onDesignChange }) {
+  const [selectedText, setSelectedText] = useState(null)
+  const [isLinkEditorOpen, setIsLinkEditorOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const resumeCanvasRef = useRef(null)
+
+  const openResumeLink = (url, label) => {
+    if (!isSafeResumeLink(url)) return
+    if (/^(mailto:|tel:)/i.test(url)) return
+    onOpenLink(url, label)
+  }
+
+  const measureSelectionOffset = (element, node, offset) => {
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    range.setEnd(node, offset)
+    return range.toString().length
+  }
+
+  const getResumeFieldElement = (node) => {
+    const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+    return element?.closest('[data-resume-field]')
+  }
+
+  const captureTextSelection = () => {
+    if (!editable) return
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) return
+    const range = selection.getRangeAt(0)
+    const startElement = getResumeFieldElement(range.startContainer)
+    const endElement = getResumeFieldElement(range.endContainer)
+    if (!startElement || startElement !== endElement || !resumeCanvasRef.current?.contains(startElement)) return
+    const field = startElement.dataset.resumeField
+    const start = measureSelectionOffset(startElement, range.startContainer, range.startOffset)
+    const end = measureSelectionOffset(startElement, range.endContainer, range.endOffset)
+    if (end <= start) return
+    const existing = (design.links || []).find((link) => (
+      link.field === field && link.start === start && link.end === end
+    ))
+    setSelectedText({ field, start, end, text: range.toString() })
+    setLinkUrl(existing?.url || '')
+    setIsLinkEditorOpen(false)
+  }
+
+  const applySelectionLink = (remove = false) => {
+    if (!selectedText) return
+    if (!remove && !isSafeResumeLink(linkUrl)) return
+    const nextLinks = (design.links || []).flatMap((link) => {
+      if (link.field !== selectedText.field || link.end <= selectedText.start || link.start >= selectedText.end) {
+        return [link]
+      }
+      const retained = []
+      if (link.start < selectedText.start) {
+        const end = selectedText.start
+        retained.push({ ...link, end, text: link.text.slice(0, end - link.start) })
+      }
+      if (link.end > selectedText.end) {
+        const start = selectedText.end
+        retained.push({ ...link, start, text: link.text.slice(start - link.start) })
+      }
+      return retained
+    })
+    if (!remove) {
+      nextLinks.push({ ...selectedText, url: linkUrl.trim() })
+    }
+    onDesignChange?.({ ...design, links: nextLinks })
+    setSelectedText(null)
+    setIsLinkEditorOpen(false)
+    setLinkUrl('')
+    window.getSelection()?.removeAllRanges()
+  }
+
+  const linkedText = (text, fallbackUrl = '', className = '', field = '') => {
+    const inlineLinks = (design.links || [])
+      .filter((link) => link.field === field && link.start < text.length && link.end <= text.length && isSafeResumeLink(link.url))
+      .sort((left, right) => left.start - right.start)
+    const parts = []
+    let cursor = 0
+    inlineLinks.forEach((link, index) => {
+      if (link.start < cursor) return
+      if (link.start > cursor) parts.push({ text: text.slice(cursor, link.start), url: fallbackUrl, key: `text-${cursor}` })
+      parts.push({ text: text.slice(link.start, link.end), url: link.url, key: `link-${index}` })
+      cursor = link.end
+    })
+    if (cursor < text.length || parts.length === 0) {
+      parts.push({ text: text.slice(cursor), url: fallbackUrl, key: `text-${cursor}` })
+    }
+    const rendered = parts.map((part) => {
+      if (!part.text) return null
+      if (!isSafeResumeLink(part.url)) {
+        return <span key={part.key} className={className}>{part.text}</span>
+      }
+      if (/^(mailto:|tel:)/i.test(part.url)) {
+        return <a key={part.key} className={`resume-document-link ${className}`} href={part.url} data-resume-url={part.url}>{part.text}</a>
+      }
+      if (editable) {
+        return <span key={part.key} className={`resume-document-link ${className}`} data-resume-linked-text="true">{part.text}</span>
+      }
+      return (
+        <button
+          key={part.key}
+          type="button"
+          className={`resume-document-link ${className}`}
+          onClick={() => openResumeLink(part.url, part.text || 'Resume link')}
+          data-resume-url={part.url}
+          title={`Open ${part.text || 'resume link'} inside this website`}
+        >
+          {part.text}<ArrowUpRight size={12} aria-hidden="true" />
+        </button>
+      )
+    })
+
+    if (!editable) return rendered
+    const fieldMarkup = parts.map((part) => {
+      if (!part.text) return ''
+      const safeText = part.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      return part.url
+        ? `<span data-resume-linked-text="true">${safeText}</span>`
+        : safeText
+    }).join('')
+
+    return (
+      <span
+        className={className}
+        data-resume-field={field}
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-label={`Edit ${field.split('.').at(-1) || 'resume text'}`}
+        onBlur={(event) => {
+          const nextText = event.currentTarget.textContent || ''
+          if (nextText === text) return
+          if (onDesignChange) onDesignChange(updateResumeTextField(design, field, nextText))
+        }}
+        dangerouslySetInnerHTML={{ __html: fieldMarkup }}
+      />
+    )
+  }
+
+  const selectionToolbar = editable && selectedText ? (
+    <div className="resume-selection-toolbar" role="toolbar" aria-label="Selected resume text actions">
+      <span className="resume-selection-label">Selected: {selectedText.text}</span>
+      {isLinkEditorOpen ? (
+        <form
+          className="resume-selection-link-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            applySelectionLink()
+          }}
+        >
+          <label>
+            <span>Link this selected text</span>
+            <input autoFocus value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https://... or /page" />
+          </label>
+          <button type="submit" className="primary-btn small-btn" disabled={!isSafeResumeLink(linkUrl)}>Apply link</button>
+          <button type="button" className="secondary-btn small-btn" onClick={() => applySelectionLink(true)}>Remove link</button>
+          <button type="button" className="ghost-btn" onClick={() => setIsLinkEditorOpen(false)}>Cancel</button>
+        </form>
+      ) : (
+        <button type="button" className="primary-btn small-btn" onMouseDown={(event) => event.preventDefault()} onClick={() => setIsLinkEditorOpen(true)}>
+          <ArrowUpRight size={14} /> Link
+        </button>
+      )}
+      <button type="button" className="ghost-btn" onClick={() => setSelectedText(null)}>Close</button>
+    </div>
+  ) : null
+
+  return (
+    <div className={`resume-canvas-wrap${editable ? ' is-editable' : ''}`} onMouseUp={captureTextSelection} onKeyUp={captureTextSelection}>
+      {selectionToolbar}
+      {(() => {
+        const template = RESUME_TEMPLATES.some((item) => item.id === design.template) ? design.template : 'modern'
+        const sidebarLayout = template === 'modern' || template === 'minimal'
+        const sidebarSectionPattern = /education|skill|expertise|language|award|certification|interest/i
+        const sidebarSections = sidebarLayout
+          ? (design.sections || []).map((section, index) => ({ section, index }))
+            .filter(({ section }) => sidebarSectionPattern.test(section.title))
+          : []
+        const mainSections = (design.sections || []).map((section, index) => ({ section, index }))
+          .filter(({ section }) => !sidebarLayout || !sidebarSectionPattern.test(section.title))
+        const renderPortrait = (className = '') => design.portraitUrl
+          ? <img className={`resume-document-portrait ${className}`} src={design.portraitUrl} alt={`${design.name || 'Resume'} portrait`} loading="lazy" />
+          : <div className={`resume-document-portrait resume-document-portrait-empty ${className}`} aria-hidden="true">{(design.name || 'AY').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</div>
+        const renderIdentity = (className = '') => (
+          <header className={`resume-document-header ${className}`}>
+          <div className="resume-document-identity">
+            <p className="resume-document-eyebrow">{editable
+              ? linkedText(design.location || 'PROFESSIONAL PROFILE', '', '', 'location')
+              : design.location || 'PROFESSIONAL PROFILE'}</p>
+            <h2>{editable ? linkedText(design.name || 'Your Name', '', '', 'name') : design.name || 'Your Name'}</h2>
+            <p className="resume-document-headline">{editable
+              ? linkedText(design.headline || '', '', '', 'headline')
+              : design.headline}</p>
+          </div>
+        </header>
+        )
+        const renderContacts = (className = '') => design.contacts?.length ? (
+          <nav className={`resume-document-contacts ${className}`} aria-label="Resume contact links">
+            {design.contacts.map((contact, index) => (
+              <span className="resume-document-contact" key={`${contact.label}-${index}`}>
+                <strong>{editable
+                  ? linkedText(contact.label, '', '', `contacts.${index}.label`)
+                  : contact.label}</strong>
+                {linkedText(contact.text, contact.url, '', `contacts.${index}.text`)}
+              </span>
+            ))}
+          </nav>
+        ) : null
+        const renderSummary = () => design.summary ? (
+          <section className="resume-document-summary">
+            <h3>Profile</h3>
+            <p>{linkedText(design.summary, design.summaryUrl, '', 'summary')}</p>
+          </section>
+        ) : null
+        const renderSection = ({ section, index }) => (
+          <section className="resume-document-section" key={`${section.title}-${index}`}>
+            <h3>{editable
+              ? linkedText(section.title, '', '', `sections.${index}.title`)
+              : section.title}</h3>
+            <ul>
+              {(section.items || []).map((item, itemIndex) => (
+                <li key={`${item.text}-${itemIndex}`}>
+                  {linkedText(item.text, item.url, '', `sections.${index}.items.${itemIndex}.text`)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+
+        return (
+          <article
+            ref={resumeCanvasRef}
+            className={`resume-document resume-template-${template}`}
+            style={{
+              '--resume-accent': design.accentColor || '#b18a42',
+              '--resume-background': design.backgroundColor || '#ffffff',
+              '--resume-text': design.textColor || '#263449',
+              '--resume-surface': design.surfaceColor || '#20364f',
+            }}
+          >
+            {template === 'editorial' ? (
+              <div className="resume-document-cover">
+                {design.portraitUrl ? renderPortrait('resume-document-cover-photo') : null}
+              </div>
+            ) : null}
+            {sidebarLayout ? (
+              <div className="resume-document-layout">
+                <aside className="resume-document-sidebar">
+                  {template === 'modern' ? renderPortrait() : null}
+                  {renderContacts('resume-document-contacts-sidebar')}
+                  {sidebarSections.map(renderSection)}
+                </aside>
+                <div className="resume-document-main">
+                  {renderIdentity()}
+                  {renderSummary()}
+                  {mainSections.map(renderSection)}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className={`resume-document-profile resume-document-profile-${template}`}>
+                  {template === 'classic' ? renderPortrait() : null}
+                  {renderIdentity()}
+                  {template === 'editorial' ? renderPortrait('resume-document-editorial-avatar') : null}
+                </div>
+                {renderContacts()}
+                {renderSummary()}
+                <div className="resume-document-sections">
+                  {(design.sections || []).map((section, index) => renderSection({ section, index }))}
+                </div>
+              </>
+            )}
+          </article>
+        )
+      })()}
+    </div>
+  )
+}
+
+function ResumeDesigner({ design, onChange, onReset, onOpenLink }) {
+  const update = (changes) => onChange((current) => ({ ...current, ...changes }))
+  const addResumeSectionItem = (title, titlePattern) => onChange((current) => {
+    const sectionIndex = current.sections.findIndex((section) => titlePattern.test(section.title))
+    if (sectionIndex < 0) {
+      return { ...current, sections: [...current.sections, { title, items: [{ text: '', url: '' }] }] }
+    }
+    return {
+      ...current,
+      sections: current.sections.map((section, index) => index === sectionIndex
+        ? { ...section, items: [...section.items, { text: '', url: '' }] }
+        : section),
+    }
+  })
+  const updateContact = (contactIndex, changes) => update({
+    contacts: design.contacts.map((contact, index) => index === contactIndex ? { ...contact, ...changes } : contact),
+  })
+  const updateSection = (sectionIndex, changes) => update({
+    sections: design.sections.map((section, index) => index === sectionIndex
+      ? (typeof changes === 'function' ? changes(section) : { ...section, ...changes })
+      : section),
+  })
+  const updateItem = (sectionIndex, itemIndex, changes) => updateSection(sectionIndex, (section) => ({
+    ...section,
+    items: section.items.map((item, index) => index === itemIndex ? { ...item, ...changes } : item),
+  }))
+
+  return (
+    <section className="resume-designer-controls" aria-labelledby="resume-designer-title">
+      <div className="resume-designer-title-row">
+        <div>
+          <span className="section-tag">RESUME DESIGNER</span>
+          <h3 id="resume-designer-title">Build your website resume</h3>
+          <p>Choose a template, then click and drag over text in the live canvas to add a link—just like a design editor.</p>
+        </div>
+        <button type="button" className="secondary-btn small-btn" onClick={onReset}>Reset design</button>
+      </div>
+      <div className="resume-template-picker" role="group" aria-label="Resume templates">
+        {RESUME_TEMPLATES.map((template) => (
+          <button
+            type="button"
+            key={template.id}
+            className={`resume-template-choice${design.template === template.id ? ' is-selected' : ''}`}
+            onClick={() => update({ template: template.id })}
+            aria-pressed={design.template === template.id}
+          >
+            <span className={`resume-template-thumb resume-template-thumb-${template.id}`} aria-hidden="true">
+              <i /><i /><i /><i /><i />
+            </span>
+            <strong>{template.name}</strong><span>{template.detail}</span>
+          </button>
+        ))}
+      </div>
+      <p className="resume-editor-hint"><ArrowUpRight size={14} /> Canvas mein kisi bhi text ko select karo; selection toolbar se usi text par URL lagao. Text ko direct click karke edit bhi kar sakte ho.</p>
+      <div className="resume-editor-canvas-stage">
+        <div className="resume-editor-canvas-toolbar">
+          <strong>LIVE CANVAS</strong>
+          <span>A4 DOCUMENT <i /> 100%</span>
+        </div>
+        <ResumeDocument
+          design={design}
+          onOpenLink={onOpenLink}
+          editable
+          onDesignChange={(nextDesign) => onChange(() => nextDesign)}
+        />
+      </div>
+      <div className="field-grid admin-field-grid resume-color-grid">
+        {[
+          ['accentColor', 'Accent'],
+          ['backgroundColor', 'Page background'],
+          ['surfaceColor', 'Section background'],
+          ['textColor', 'Text'],
+        ].map(([key, label]) => (
+          <label className="resume-color-field" key={key}>
+            <span>{label}</span>
+            <input type="color" value={design[key]} onChange={(event) => update({ [key]: event.target.value })} />
+          </label>
+        ))}
+      </div>
+      <div className="field-grid admin-field-grid">
+        <label><span>Name</span><input maxLength={120} value={design.name} onChange={(event) => update({ name: event.target.value })} /></label>
+        <label><span>Professional headline</span><input maxLength={240} value={design.headline} onChange={(event) => update({ headline: event.target.value })} /></label>
+        <label><span>Location / label</span><input maxLength={120} value={design.location} onChange={(event) => update({ location: event.target.value })} /></label>
+        <label><span>Portrait image URL</span><input type="url" maxLength={2000} value={design.portraitUrl} onChange={(event) => update({ portraitUrl: event.target.value })} placeholder="https://..." /></label>
+      </div>
+      <label><span>Profile / summary</span><textarea rows="4" maxLength={5000} value={design.summary} onChange={(event) => update({ summary: event.target.value })} /></label>
+      <label><span>Optional link for summary text</span><input maxLength={2000} value={design.summaryUrl} onChange={(event) => update({ summaryUrl: event.target.value })} placeholder="https://... or /page" /></label>
+
+      <div className="resume-designer-subsection">
+        <div className="resume-designer-subsection-title">
+          <div>
+            <h4>Personal details & contact links</h4>
+            <p>Add phone, email, location, or another contact detail to the resume.</p>
+          </div>
+          <div className="resume-quick-add-actions">
+            <button type="button" className="secondary-btn small-btn" disabled={design.contacts.length >= 20} onClick={() => update({ contacts: [...design.contacts, { label: 'Mobile', text: '', url: '' }] })}>Add mobile</button>
+            <button type="button" className="secondary-btn small-btn" disabled={design.contacts.length >= 20} onClick={() => update({ contacts: [...design.contacts, { label: 'Website', text: '', url: '' }] })}>Add contact</button>
+          </div>
+        </div>
+        {design.contacts.map((contact, index) => (
+          <div className="resume-edit-row" key={`contact-${index}`}>
+            <label><span>Label</span><input maxLength={80} value={contact.label} onChange={(event) => updateContact(index, { label: event.target.value })} /></label>
+            <label><span>Clickable text</span><input maxLength={500} value={contact.text} onChange={(event) => updateContact(index, { text: event.target.value })} /></label>
+            <label><span>URL</span><input maxLength={2000} value={contact.url} onChange={(event) => updateContact(index, { url: event.target.value })} placeholder="https://... / mailto:..." /></label>
+            <button type="button" className="secondary-btn small-btn" onClick={() => update({
+              contacts: design.contacts.filter((_, itemIndex) => itemIndex !== index),
+              links: removeResumeLinksAtIndex(design.links, 'contacts', index),
+            })}>Remove</button>
+          </div>
+        ))}
+      </div>
+
+      <div className="resume-designer-subsection">
+        <div className="resume-designer-subsection-title">
+          <div>
+            <h4>Experience, skills & other sections</h4>
+            <p>Har section ke text ko canvas par edit ya select karke link kar sakte hain.</p>
+          </div>
+          <div className="resume-quick-add-actions">
+            <button type="button" className="secondary-btn small-btn" disabled={design.sections.length >= 20} onClick={() => addResumeSectionItem('Experience', /experience|employment|work history/i)}>Add experience</button>
+            <button type="button" className="secondary-btn small-btn" disabled={design.sections.length >= 20} onClick={() => addResumeSectionItem('Skills', /skill|expertise/i)}>Add skill</button>
+            <button type="button" className="secondary-btn small-btn" disabled={design.sections.length >= 20} onClick={() => update({ sections: [...design.sections, { title: 'New section', items: [{ text: '', url: '' }] }] })}>Add section</button>
+          </div>
+        </div>
+        {design.sections.map((section, sectionIndex) => (
+          <div className="resume-section-editor" key={`resume-section-${sectionIndex}`}>
+            <div className="resume-designer-subsection-title">
+              <label><span>Section title</span><input maxLength={120} value={section.title} onChange={(event) => updateSection(sectionIndex, { title: event.target.value })} /></label>
+              <button type="button" className="secondary-btn small-btn" onClick={() => update({
+                sections: design.sections.filter((_, index) => index !== sectionIndex),
+                links: removeResumeLinksAtIndex(design.links, 'sections', sectionIndex),
+              })}>Remove section</button>
+            </div>
+            {section.items.map((item, itemIndex) => (
+              <div className="resume-edit-row resume-item-edit-row" key={`resume-item-${sectionIndex}-${itemIndex}`}>
+                <label><span>Text to show</span><textarea rows="2" maxLength={2500} value={item.text} onChange={(event) => updateItem(sectionIndex, itemIndex, { text: event.target.value })} /></label>
+                <label><span>Link for this text (optional)</span><input maxLength={2000} value={item.url} onChange={(event) => updateItem(sectionIndex, itemIndex, { url: event.target.value })} placeholder="https://... or /page" /></label>
+                <button type="button" className="secondary-btn small-btn" onClick={() => update({
+                  sections: design.sections.map((current, index) => index === sectionIndex
+                    ? { ...current, items: current.items.filter((_, lineIndex) => lineIndex !== itemIndex) }
+                    : current),
+                  links: removeResumeLinksAtIndex(design.links, 'items', itemIndex, sectionIndex),
+                })}>Remove text</button>
+              </div>
+            ))}
+            <button type="button" className="secondary-btn small-btn" disabled={section.items.length >= 30} onClick={() => updateSection(sectionIndex, (current) => ({ ...current, items: [...current.items, { text: '', url: '' }] }))}>Add text / link</button>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function SiteBootLoader({ visible }) {
   const [isMounted, setIsMounted] = useState(true)
 
@@ -820,11 +1462,29 @@ function App() {
   })
 
   const openLinkPage = (url, title) => {
+    let destination
+    try {
+      destination = new URL(url, window.location.href)
+    } catch {
+      return
+    }
+    if (!['http:', 'https:'].includes(destination.protocol)) return
+
     const availableVariants = LINK_LOADER_VARIANTS.filter((variant) => variant !== previousLinkLoaderVariant.current)
     const variant = availableVariants[Math.floor(Math.random() * availableVariants.length)]
     previousLinkLoaderVariant.current = variant
-    setLinkPage({ url, title, variant })
+    setLinkPage({ url: destination.href, title, variant })
     setIsLinkPageLoading(true)
+  }
+  const openLinkDirectly = (url) => {
+    let destination
+    try {
+      destination = new URL(url, window.location.href)
+    } catch {
+      return
+    }
+    if (!['http:', 'https:'].includes(destination.protocol)) return
+    window.location.assign(destination.href)
   }
 
   useEffect(() => {
@@ -921,6 +1581,7 @@ function App() {
     previewUrl: '',
     linkLabel: '',
     linkUrl: '',
+    design: null,
   })
   const [resumeUploadStatus, setResumeUploadStatus] = useState('')
   const [resumeSaveStatus, setResumeSaveStatus] = useState('')
@@ -1758,16 +2419,28 @@ function App() {
     const savedResume = portfolio.resumeEntries?.[0] || {}
     setResumeDraft({
       title: savedResume.title || 'Abhinav Yadav Resume',
+      displayMode: savedResume.displayMode === 'custom' ? 'custom' : 'normal',
       url: savedResume.url || '',
       fileName: savedResume.fileName || '',
       fileType: savedResume.fileType || '',
       previewUrl: savedResume.previewUrl || '',
       linkLabel: savedResume.linkLabel || '',
       linkUrl: savedResume.linkUrl || '',
+      design: normalizeResumeDesign(savedResume.design, createDefaultResumeDesign(portfolio)),
     })
     setResumeUploadStatus('')
     setResumeSaveStatus('')
     setAdminSection('resume')
+  }
+
+  const updateResumeDesign = (update) => {
+    setResumeDraft((current) => {
+      const design = current.design || createDefaultResumeDesign(portfolio)
+      return {
+        ...current,
+        design: typeof update === 'function' ? update(design) : { ...design, ...update },
+      }
+    })
   }
 
   const handleResumeUpload = async (event, isPreview = false) => {
@@ -1816,6 +2489,7 @@ function App() {
     event.preventDefault()
     const resume = {
       ...resumeDraft,
+      displayMode: resumeDraft.displayMode === 'custom' ? 'custom' : 'normal',
       title: resumeDraft.title.trim() || 'Abhinav Yadav Resume',
       url: resumeDraft.url.trim(),
       fileName: resumeDraft.fileName.trim(),
@@ -1823,21 +2497,28 @@ function App() {
       previewUrl: resumeDraft.previewUrl.trim(),
       linkLabel: resumeDraft.linkLabel.trim(),
       linkUrl: resumeDraft.linkUrl.trim(),
+      design: resumeDraft.design || createDefaultResumeDesign(portfolio),
     }
-    const isValidHttpUrl = (value) => {
+    const isValidResumeLink = (value) => {
       if (!value) return true
+      if (value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')) return true
       try {
-        return ['http:', 'https:'].includes(new URL(value).protocol)
+        return ['http:', 'https:', 'mailto:', 'tel:'].includes(new URL(value).protocol)
       } catch {
         return false
       }
     }
-    if (![resume.url, resume.previewUrl, resume.linkUrl].every(isValidHttpUrl)) {
-      setResumeSaveStatus('File, thumbnail aur attached link ke liye valid http:// ya https:// URL enter karein.')
+    const designLinks = [
+      resume.design.summaryUrl,
+      ...(resume.design.contacts || []).map((contact) => contact.url),
+      ...(resume.design.sections || []).flatMap((section) => (section.items || []).map((item) => item.url)),
+    ]
+    if (![resume.url, resume.previewUrl, resume.linkUrl, ...designLinks].every(isValidResumeLink)) {
+      setResumeSaveStatus('Resume ke links sirf valid website, email, phone ya same-site paths hone chahiye.')
       return
     }
 
-    const hasResumeContent = Boolean(resume.url || resume.previewUrl || resume.linkUrl)
+    const hasResumeContent = Boolean(resume.url || resume.previewUrl || resume.linkUrl || resume.design)
     await savePortfolioCollection('resumeEntries', hasResumeContent ? [resume] : [], setResumeSaveStatus)
   }
 
@@ -2649,6 +3330,7 @@ function App() {
   }, [portfolio.projects, projectFilter, projectSearch])
 
   const activeResume = portfolio.resumeEntries?.[0] || {}
+  const activeResumeDesign = normalizeResumeDesign(activeResume.design, createDefaultResumeDesign(portfolio))
   const getResumeFileName = () => {
     if (activeResume.fileName) return activeResume.fileName
     try {
@@ -2854,6 +3536,150 @@ function App() {
   const openResume = () => {
     if (activeResume.url) openLinkPage(activeResume.url, activeResume.title || 'Resume')
   }
+  const handleResumeDesignPdfDownload = async () => {
+    setResumeActionStatus('Custom resume PDF tayyar ho raha hai...')
+    let stagingContainer
+    try {
+      const resumeElement = document.querySelector('.resume-public-document .resume-document')
+      if (!resumeElement) throw new Error('Displayed custom resume canvas nahi mila.')
+
+      const bounds = resumeElement.getBoundingClientRect()
+      const clone = resumeElement.cloneNode(true)
+      clone.style.width = `${bounds.width}px`
+      clone.style.height = `${bounds.height}px`
+      clone.style.maxWidth = 'none'
+      clone.style.margin = '0'
+      clone.style.position = 'relative'
+      clone.style.aspectRatio = 'auto'
+      stagingContainer = document.createElement('div')
+      Object.assign(stagingContainer.style, {
+        position: 'fixed',
+        left: `${-bounds.width - 16}px`,
+        top: '0',
+        width: `${bounds.width}px`,
+        height: `${bounds.height}px`,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: '-1',
+      })
+      stagingContainer.append(clone)
+      document.body.append(stagingContainer)
+
+      const links = [...clone.querySelectorAll('[data-resume-url]')]
+        .filter((link) => isSafeResumeLink(link.dataset.resumeUrl))
+      if (links.length) {
+        const qrCodeModule = await import('qrcode')
+        const qrCode = qrCodeModule.default || qrCodeModule
+        await Promise.all(links.map(async (link) => {
+          const qrDataUrl = await qrCode.toDataURL(link.dataset.resumeUrl, {
+            errorCorrectionLevel: 'M',
+            margin: 1,
+            width: 180,
+          })
+          const qrImage = document.createElement('img')
+          qrImage.className = 'resume-pdf-qr'
+          qrImage.src = qrDataUrl
+          qrImage.alt = `QR code for ${link.textContent.trim() || 'resume link'}`
+          link.append(qrImage)
+        }))
+      }
+
+      await document.fonts.ready
+      const images = [...clone.querySelectorAll('img')]
+      await Promise.all(images.map(async (image) => {
+        image.loading = 'eager'
+        const imageUrl = new URL(image.src, window.location.href)
+        if (imageUrl.origin !== window.location.origin && imageUrl.protocol !== 'data:') {
+          const response = await fetch(apiUrl(`/api/resume-image?url=${encodeURIComponent(imageUrl.href)}`))
+          if (!response.ok) {
+            let message = 'Resume image could not be prepared for PDF export.'
+            try {
+              message = (await response.json()).error || message
+            } catch {
+              // Keep the explicit fallback when the image endpoint returns a non-JSON error.
+            }
+            throw new Error(message)
+          }
+          const objectUrl = URL.createObjectURL(await response.blob())
+          image.src = objectUrl
+        }
+        await image.decode()
+      }))
+
+      const toRasterColor = (value) => value.replace(
+        /color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/g,
+        (_, red, green, blue, alpha) => {
+          const channels = [red, green, blue].map((channel) => Math.round(Number(channel) * 255))
+          return alpha
+            ? `rgba(${channels.join(', ')}, ${alpha})`
+            : `rgb(${channels.join(', ')})`
+        },
+      )
+      for (const element of [clone, ...clone.querySelectorAll('*')]) {
+        const computedStyle = window.getComputedStyle(element)
+        for (const property of computedStyle) {
+          element.style.setProperty(property, toRasterColor(computedStyle.getPropertyValue(property)), 'important')
+        }
+      }
+
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(clone, {
+        backgroundColor: toRasterColor(window.getComputedStyle(resumeElement).backgroundColor),
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: bounds.width,
+        height: bounds.height,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
+      })
+      const cloneBounds = clone.getBoundingClientRect()
+
+      const { jsPDF } = await import('jspdf')
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: bounds.width > bounds.height ? 'landscape' : 'portrait' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height)
+      const imageWidth = canvas.width * scale
+      const imageHeight = canvas.height * scale
+      const imageX = (pageWidth - imageWidth) / 2
+      const imageY = (pageHeight - imageHeight) / 2
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', imageX, imageY, imageWidth, imageHeight)
+
+      const pdfUrl = (url) => {
+        if (!isSafeResumeLink(url)) return ''
+        if (/^(mailto:|tel:)/i.test(url)) return url
+        return new URL(url, window.location.origin).href
+      }
+      clone.querySelectorAll('.resume-pdf-qr').forEach((qrImage) => {
+        const qrBounds = qrImage.getBoundingClientRect()
+        const x = imageX + ((qrBounds.left - cloneBounds.left) / bounds.width) * imageWidth
+        const y = imageY + ((qrBounds.top - cloneBounds.top) / bounds.height) * imageHeight
+        const width = (qrBounds.width / bounds.width) * imageWidth
+        const height = (qrBounds.height / bounds.height) * imageHeight
+        pdf.addImage(qrImage.src, 'PNG', x, y, width, height)
+      })
+      links.forEach((link) => {
+        const url = pdfUrl(link.dataset.resumeUrl)
+        if (!url) return
+        const linkBounds = link.getBoundingClientRect()
+        const x = imageX + ((linkBounds.left - cloneBounds.left) / bounds.width) * imageWidth
+        const y = imageY + ((linkBounds.top - cloneBounds.top) / bounds.height) * imageHeight
+        const width = (linkBounds.width / bounds.width) * imageWidth
+        const height = (linkBounds.height / bounds.height) * imageHeight
+        pdf.link(x, y, width, height, { url })
+      })
+
+      const safeName = (activeResumeDesign.name || 'resume').replace(/[^\w.-]+/g, '-')
+      downloadBlob(pdf.output('blob'), `${safeName}-Resume.pdf`)
+      setResumeActionStatus('Website par dikh rahe design aur QR codes ke saath PDF download ho gaya.')
+    } catch (error) {
+      setResumeActionStatus(error.message || 'Custom resume PDF generate nahi ho saka.')
+    } finally {
+      stagingContainer?.querySelectorAll('img[src^="blob:"]').forEach((image) => URL.revokeObjectURL(image.src))
+      stagingContainer?.remove()
+    }
+  }
   const renderResumeSection = (professional = false) => (
     <MotionSection
       id="resume"
@@ -2865,7 +3691,20 @@ function App() {
       viewport={{ once: true, amount: 0.2 }}
       variants={motionSettings}
     >
-      <div className={`resume-panel${professional ? ' resume-panel-professional' : ''}`}>
+      {activeResume.displayMode === 'custom' ? (
+        <div className="resume-public-document">
+          <div className="resume-public-heading">
+            <span className="section-tag">CUSTOM DESIGNED RESUME</span>
+            <p>Choose a link in the resume to open it here without leaving this website.</p>
+            <button type="button" className="resume-action-button resume-pdf-button" onClick={handleResumeDesignPdfDownload}>
+              <FileText size={15} /><span>Download custom resume as PDF</span>
+            </button>
+            {resumeActionStatus ? <p className="resume-action-status" role="status">{resumeActionStatus}</p> : null}
+          </div>
+          <ResumeDocument design={activeResumeDesign} onOpenLink={openLinkPage} />
+        </div>
+      ) : (
+        <div className={`resume-panel${professional ? ' resume-panel-professional' : ''}`}>
         <div className="resume-intro">
           <span className="section-tag">10 — RESUME</span>
           <h2>{activeResume.title || 'Want the structured version?'}</h2>
@@ -2893,6 +3732,7 @@ function App() {
           ) : null}
         </div>
       </div>
+      )}
     </MotionSection>
   )
 
@@ -3334,6 +4174,17 @@ function App() {
                         <div className="planet-learn-more-overlay" role="dialog" aria-modal="true" aria-label={`${selectedPlanet.name} details`}>
                           <FloatingBackButton label="Back to planet" onClick={() => setIsPlanetLearnMoreOpen(false)} />
                           {selectedPlanetLearnMoreUrl ? (
+                            <button
+                              type="button"
+                              className="site-link-open-external"
+                              onClick={() => openLinkDirectly(selectedPlanetLearnMoreUrl)}
+                              aria-label={`Open ${selectedPlanet.name} reference directly in this tab`}
+                              title="If this site blocks the in-website view, open it directly in this tab."
+                            >
+                              <span>If blocked: Open in this tab</span><ArrowUpRight size={15} aria-hidden="true" />
+                            </button>
+                          ) : null}
+                          {selectedPlanetLearnMoreUrl ? (
                             <div className="planet-learn-more-viewer">
                               <iframe
                                 key={selectedPlanet.short}
@@ -3342,7 +4193,6 @@ function App() {
                                 title={`${selectedPlanet.name} reference page`}
                                 loading="eager"
                                 referrerPolicy="no-referrer"
-                                sandbox="allow-forms allow-scripts"
                                 onLoad={() => setIsPlanetLearnMoreLoading(false)}
                                 onError={() => setIsPlanetLearnMoreLoading(false)}
                               />
@@ -5057,6 +5907,29 @@ function App() {
                     placeholder="Abhinav Yadav Resume"
                   />
                 </label>
+                <fieldset className="resume-display-mode">
+                  <legend>Website par kaunsa resume dikhayein?</legend>
+                  <label>
+                    <input
+                      type="radio"
+                      name="resumeDisplayMode"
+                      value="normal"
+                      checked={resumeDraft.displayMode !== 'custom'}
+                      onChange={() => setResumeDraft((current) => ({ ...current, displayMode: 'normal' }))}
+                    />
+                    <span><strong>Normal resume</strong><small>Uploaded PDF/image/document aur uske download/share actions.</small></span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="resumeDisplayMode"
+                      value="custom"
+                      checked={resumeDraft.displayMode === 'custom'}
+                      onChange={() => setResumeDraft((current) => ({ ...current, displayMode: 'custom' }))}
+                    />
+                    <span><strong>Custom resume</strong><small>Canva-style designed resume aur custom PDF download.</small></span>
+                  </label>
+                </fieldset>
                 <label>
                   <span>Upload resume file</span>
                   <input
@@ -5069,7 +5942,7 @@ function App() {
                 <label>
                   <span>Ya resume ka direct URL</span>
                   <input
-                    type="url"
+                    type="text"
                     name="url"
                     value={resumeDraft.url}
                     onChange={(event) => setResumeDraft((current) => ({ ...current, url: event.target.value, fileName: '', fileType: '' }))}
@@ -5083,7 +5956,7 @@ function App() {
                 <label>
                   <span>Ya preview image URL</span>
                   <input
-                    type="url"
+                    type="text"
                     name="previewUrl"
                     value={resumeDraft.previewUrl}
                     onChange={(event) => setResumeDraft((current) => ({ ...current, previewUrl: event.target.value }))}
@@ -5112,6 +5985,12 @@ function App() {
                     />
                   </label>
                 </div>
+                <ResumeDesigner
+                  design={resumeDraft.design || createDefaultResumeDesign(portfolio)}
+                  onChange={updateResumeDesign}
+                  onReset={() => updateResumeDesign(createDefaultResumeDesign(portfolio))}
+                  onOpenLink={openLinkPage}
+                />
                 {resumeDraft.fileName ? <p className="form-status">Current file: {resumeDraft.fileName}</p> : null}
                 {resumeUploadStatus ? <p className="form-status" role="status">{resumeUploadStatus}</p> : null}
                 {resumeSaveStatus ? <p className="form-status" role="status">{resumeSaveStatus}</p> : null}
@@ -5121,7 +6000,7 @@ function App() {
                     type="button"
                     className="secondary-btn"
                     onClick={() => {
-                      setResumeDraft({ title: 'Abhinav Yadav Resume', url: '', fileName: '', fileType: '', previewUrl: '', linkLabel: '', linkUrl: '' })
+                      setResumeDraft({ title: 'Abhinav Yadav Resume', displayMode: 'normal', url: '', fileName: '', fileType: '', previewUrl: '', linkLabel: '', linkUrl: '' })
                       setResumeUploadStatus('')
                       void savePortfolioCollection('resumeEntries', [], setResumeSaveStatus)
                     }}
@@ -5339,6 +6218,15 @@ function App() {
               setIsLinkPageLoading(false)
             }}
           />
+          <button
+            type="button"
+            className="site-link-open-external"
+            onClick={() => openLinkDirectly(linkPage.url)}
+            aria-label={`Open ${linkPage.title} directly in this tab`}
+            title="If this site blocks the in-website view, open it directly in this tab."
+          >
+            <span>If blocked: Open in this tab</span><ArrowUpRight size={15} aria-hidden="true" />
+          </button>
           <div className="planet-learn-more-viewer">
             <iframe
               key={linkPage.url}
@@ -5347,7 +6235,9 @@ function App() {
               title={`${linkPage.title} page`}
               loading="eager"
               referrerPolicy="no-referrer"
-              sandbox={new URL(linkPage.url, window.location.href).origin === window.location.origin ? 'allow-forms allow-scripts allow-same-origin' : 'allow-forms allow-scripts'}
+              sandbox={new URL(linkPage.url, window.location.href).origin === window.location.origin
+                ? 'allow-forms allow-scripts allow-same-origin'
+                : undefined}
               onLoad={() => setIsLinkPageLoading(false)}
               onError={() => setIsLinkPageLoading(false)}
             />

@@ -126,6 +126,7 @@ const portfolioData = {
     url: '/resume/Abhinav-Yadav-Resume.pdf',
     fileName: 'Abhinav-Yadav-Resume.pdf',
     fileType: 'application/pdf',
+    displayMode: 'normal',
   }],
   planetLinks: [
     { name: 'Sun', short: 'sun', url: 'https://nineplanets.org/solar-system/' },
@@ -250,6 +251,67 @@ const portfolioData = {
     { label: 'STUDIO', tone: 'wide' }, { label: 'PROCESS', tone: 'normal' }, { label: 'DRAFT', tone: 'normal' },
   ],
 }
+
+const resumeImageHosts = new Set(['cdn.phototourl.com', 'res.cloudinary.com'])
+app.get('/api/resume-image', async (req, res) => {
+  let imageUrl
+  try {
+    imageUrl = new URL(req.query.url)
+  } catch {
+    res.status(400).json({ error: 'A valid resume image URL is required.' })
+    return
+  }
+  if (imageUrl.protocol !== 'https:' || imageUrl.username || imageUrl.password || !resumeImageHosts.has(imageUrl.hostname)) {
+    res.status(400).json({ error: 'This resume image host is not supported for PDF export.' })
+    return
+  }
+
+  try {
+    const response = await fetch(imageUrl, { redirect: 'error', signal: AbortSignal.timeout(10000) })
+    const contentType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase()
+    const supportedImageTypes = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp'])
+    if (!response.ok || !supportedImageTypes.has(contentType)) {
+      res.status(502).json({ error: 'Resume portrait could not be fetched as an image.' })
+      return
+    }
+
+    const maxImageBytes = 8 * 1024 * 1024
+    const contentLength = Number(response.headers.get('content-length'))
+    if (Number.isFinite(contentLength) && contentLength > maxImageBytes) {
+      res.status(413).json({ error: 'Resume portrait is too large to export.' })
+      return
+    }
+    if (!response.body) {
+      res.status(502).json({ error: 'Resume portrait response was empty.' })
+      return
+    }
+    const chunks = []
+    let imageSize = 0
+    const reader = response.body.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      imageSize += value.byteLength
+      if (imageSize > maxImageBytes) {
+        await reader.cancel()
+        res.status(413).json({ error: 'Resume portrait is too large to export.' })
+        return
+      }
+      chunks.push(value)
+    }
+    const image = Buffer.concat(chunks, imageSize)
+
+    res.set({
+      'Cache-Control': 'private, max-age=300',
+      'Content-Length': image.length,
+      'Content-Type': contentType,
+      'X-Content-Type-Options': 'nosniff',
+    }).send(image)
+  } catch (error) {
+    console.error('[resume-image] Failed to load portrait:', error.message)
+    res.status(502).json({ error: 'Resume portrait could not be fetched for PDF export.' })
+  }
+})
 
 app.get('/api/portfolio', async (req, res) => {
   try {
@@ -499,16 +561,91 @@ app.put('/api/portfolio/content/:key', async (req, res) => {
 
   if (key === 'resumeEntries') {
     const [resume] = req.body.entries
-    const isHttpUrl = (value) => typeof value === 'string'
-      && (!value || /^https?:\/\/\S+$/i.test(value.trim()))
+    const isValidResumeLink = (value) => {
+      if (typeof value !== 'string') return false
+      const link = value.trim()
+      if (!link) return true
+      if (link.startsWith('/')) return !link.startsWith('//') && !link.includes('\\')
+      try {
+        return ['http:', 'https:', 'mailto:', 'tel:'].includes(new URL(link).protocol)
+      } catch {
+        return false
+      }
+    }
+    const design = resume?.design
+    const validDesign = design === undefined || (
+      design
+      && typeof design === 'object'
+      && ['modern', 'classic', 'editorial', 'minimal'].includes(design.template)
+      && typeof design.name === 'string' && design.name.length <= 120
+      && typeof design.headline === 'string' && design.headline.length <= 240
+      && typeof design.location === 'string' && design.location.length <= 120
+      && typeof design.portraitUrl === 'string' && design.portraitUrl.length <= 2000
+      && typeof design.summary === 'string' && design.summary.length <= 5000
+      && typeof design.summaryUrl === 'string' && design.summaryUrl.length <= 2000
+      && ['accentColor', 'backgroundColor', 'surfaceColor', 'textColor'].every((key) => /^#[0-9a-f]{6}$/i.test(design[key]))
+      && Array.isArray(design.contacts)
+      && design.contacts.length <= 20
+      && design.contacts.every((contact) => typeof contact?.label === 'string'
+        && contact.label.length <= 80
+        && typeof contact?.text === 'string'
+        && contact.text.length <= 500
+        && typeof contact?.url === 'string'
+        && contact.url.length <= 2000
+        && isValidResumeLink(contact.url))
+      && Array.isArray(design.sections)
+      && design.sections.length <= 20
+      && design.sections.every((section) => typeof section?.title === 'string'
+        && section.title.length <= 120
+        && Array.isArray(section?.items)
+        && section.items.length <= 30
+        && section.items.every((item) => typeof item?.text === 'string'
+          && item.text.length <= 2500
+          && typeof item?.url === 'string'
+          && item.url.length <= 2000
+          && isValidResumeLink(item.url)))
+      && (design.links === undefined || (Array.isArray(design.links)
+      && design.links.length <= 100
+      && design.links.every((link) => {
+        if (!link || typeof link.field !== 'string'
+          || !Number.isInteger(link.start) || !Number.isInteger(link.end)
+          || link.start < 0 || link.end <= link.start
+          || typeof link.text !== 'string' || link.text.length > 2500
+          || typeof link.url !== 'string' || link.url.length > 2000
+          || !isValidResumeLink(link.url)) return false
+
+        let fieldText
+        const contactField = /^contacts\.(\d+)\.(label|text)$/.exec(link.field)
+        const sectionTextField = /^sections\.(\d+)\.items\.(\d+)\.text$/.exec(link.field)
+        const sectionTitleField = /^sections\.(\d+)\.title$/.exec(link.field)
+        if (link.field === 'name' || link.field === 'headline' || link.field === 'location' || link.field === 'summary') {
+          fieldText = design[link.field]
+        } else if (contactField) {
+          fieldText = design.contacts[Number(contactField[1])]?.[contactField[2]]
+        } else if (sectionTextField) {
+          fieldText = design.sections[Number(sectionTextField[1])]?.items[Number(sectionTextField[2])]?.text
+        } else if (sectionTitleField) {
+          fieldText = design.sections[Number(sectionTitleField[1])]?.title
+        } else {
+          return false
+        }
+        return typeof fieldText === 'string'
+          && link.end <= fieldText.length
+          && fieldText.slice(link.start, link.end) === link.text
+      })))
+      && isValidResumeLink(design.summaryUrl)
+      && isValidResumeLink(design.portraitUrl)
+    )
     if (req.body.entries.length > 1
       || (req.body.entries.length === 1 && (!resume || typeof resume !== 'object'
-        || !isHttpUrl(resume.url)
-        || !isHttpUrl(resume.previewUrl)
-        || !isHttpUrl(resume.linkUrl)
+        || !isValidResumeLink(resume.url)
+        || !isValidResumeLink(resume.previewUrl)
+        || !isValidResumeLink(resume.linkUrl)
         || typeof resume.title !== 'string'
         || typeof resume.fileName !== 'string'
-        || typeof resume.fileType !== 'string'))) {
+        || typeof resume.fileType !== 'string'
+        || (resume.displayMode !== undefined && !['normal', 'custom'].includes(resume.displayMode))
+        || !validDesign))) {
       return res.status(400).json({ success: false, message: 'Resume details or links are invalid.' })
     }
   }
