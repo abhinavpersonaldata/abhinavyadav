@@ -1446,6 +1446,7 @@ function App() {
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
   const [activePlanetShort, setActivePlanetShort] = useState(null)
+  const [hoveredPlanetShort, setHoveredPlanetShort] = useState(null)
   const [isPlanetDetailOpen, setIsPlanetDetailOpen] = useState(false)
   const [isPlanetLearnMoreOpen, setIsPlanetLearnMoreOpen] = useState(false)
   const [isPlanetLearnMoreLoading, setIsPlanetLearnMoreLoading] = useState(false)
@@ -4205,7 +4206,7 @@ function App() {
                   {SOLAR_SYSTEM_BODIES.map((planet) => (
                     <div
                       key={planet.short}
-                      className="orbit-planet-track"
+                      className={`orbit-planet-track${hoveredPlanetShort === planet.short ? ' is-hover-paused' : ''}`}
                       style={{
                         '--orbit-size': `${planet.readableOrbit}cqw`,
                         '--planet-radius': `${(planet.readableOrbit / 2).toFixed(1)}cqw`,
@@ -4219,7 +4220,10 @@ function App() {
                       <button
                         type="button"
                         className={`orbit-planet ${activePlanetShort === planet.short ? 'is-selected' : ''}`}
+                        onPointerEnter={() => setHoveredPlanetShort(planet.short)}
+                        onPointerLeave={() => setHoveredPlanetShort(null)}
                         onClick={() => {
+                          setHoveredPlanetShort(null)
                           setActivePlanetShort(planet.short)
                           setIsPlanetDetailOpen(true)
                           setIsPlanetLearnMoreOpen(false)

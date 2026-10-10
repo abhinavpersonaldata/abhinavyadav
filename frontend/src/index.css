@@ -2083,6 +2083,10 @@ a {
   will-change: transform;
 }
 
+.orbit-planet-track.is-hover-paused {
+  animation-play-state: paused;
+}
+
 .orbit-planet {
   position: absolute;
   top: 50%;
