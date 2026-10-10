@@ -545,13 +545,35 @@ function LinkPageLoader({ title, variant }) {
   )
 }
 
+function DirectOpenPrompt({ title, variant, onOpen }) {
+  return (
+    <button
+      type="button"
+      className={`site-link-direct-open-prompt link-loader-${variant}`}
+      onClick={onOpen}
+      aria-label={`Open ${title} directly in this tab`}
+    >
+      <span className="planet-loader-orbit" aria-hidden="true">
+        <i /><i /><i />
+        <span />
+      </span>
+      <span className="planet-loader-kicker">SECURE LINK / READY TO OPEN</span>
+      <strong>{title}<span>_READY</span></strong>
+      <span className="site-link-direct-open-message">This page may not display inside the portfolio.</span>
+      <span className="site-link-direct-open-action">Click anywhere to open it here</span>
+      <span className="planet-loader-status"><span /><span>YOUR LINK WILL OPEN IN THIS TAB</span><b>READY</b></span>
+    </button>
+  )
+}
+
 function FloatingBackButton({ label, onClick }) {
   const [position, setPosition] = useState({ x: 14, y: 14 })
-  const [isDragging, setIsDragging] = useState(false)
   const pointerStart = useRef(null)
   const wasDragged = useRef(false)
+  const suppressClick = useRef(false)
 
   const handlePointerDown = (event) => {
+    if (event.button !== 0) return
     pointerStart.current = {
       pointerId: event.pointerId,
       originX: event.clientX,
@@ -560,36 +582,30 @@ function FloatingBackButton({ label, onClick }) {
       startY: position.y,
     }
     wasDragged.current = false
-    setIsDragging(true)
+    suppressClick.current = false
+    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  useEffect(() => {
-    if (!isDragging) return undefined
-    const handlePointerMove = (event) => {
-      const start = pointerStart.current
-      if (!start || start.pointerId !== event.pointerId) return
-      const deltaX = event.clientX - start.originX
-      const deltaY = event.clientY - start.originY
-      if (Math.abs(deltaX) + Math.abs(deltaY) > 5) wasDragged.current = true
-      setPosition({
-        x: Math.max(4, Math.min(window.innerWidth - 56, start.startX + deltaX)),
-        y: Math.max(4, Math.min(window.innerHeight - 52, start.startY + deltaY)),
-      })
+  const handlePointerMove = (event) => {
+    const start = pointerStart.current
+    if (!start || start.pointerId !== event.pointerId) return
+    const deltaX = event.clientX - start.originX
+    const deltaY = event.clientY - start.originY
+    if (Math.hypot(deltaX, deltaY) > 7) {
+      wasDragged.current = true
+      suppressClick.current = true
     }
-    const handlePointerEnd = (event) => {
-      if (pointerStart.current?.pointerId !== event.pointerId) return
-      pointerStart.current = null
-      setIsDragging(false)
-    }
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerEnd)
-    window.addEventListener('pointercancel', handlePointerEnd)
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerEnd)
-      window.removeEventListener('pointercancel', handlePointerEnd)
-    }
-  }, [isDragging])
+    if (!wasDragged.current) return
+    setPosition({
+      x: Math.max(4, Math.min(window.innerWidth - 56, start.startX + deltaX)),
+      y: Math.max(4, Math.min(window.innerHeight - 52, start.startY + deltaY)),
+    })
+  }
+
+  const handlePointerEnd = (event) => {
+    if (pointerStart.current?.pointerId !== event.pointerId) return
+    pointerStart.current = null
+  }
 
   return (
     <button
@@ -597,10 +613,15 @@ function FloatingBackButton({ label, onClick }) {
       className="floating-viewer-back"
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
       onClick={(event) => {
-        if (wasDragged.current) {
+        if (suppressClick.current) {
+          suppressClick.current = false
           wasDragged.current = false
           event.preventDefault()
+          event.stopPropagation()
           return
         }
         onClick()
@@ -1428,9 +1449,20 @@ function App() {
   const [isPlanetDetailOpen, setIsPlanetDetailOpen] = useState(false)
   const [isPlanetLearnMoreOpen, setIsPlanetLearnMoreOpen] = useState(false)
   const [isPlanetLearnMoreLoading, setIsPlanetLearnMoreLoading] = useState(false)
+  const [showPlanetDirectOpenPrompt, setShowPlanetDirectOpenPrompt] = useState(false)
+  const [planetDirectOpenVariant, setPlanetDirectOpenVariant] = useState('terminal')
   const [linkPage, setLinkPage] = useState(null)
   const [isLinkPageLoading, setIsLinkPageLoading] = useState(false)
+  const [showLinkDirectOpenPrompt, setShowLinkDirectOpenPrompt] = useState(false)
+  const linkFrameStatusRef = useRef({ policy: 'unknown', loaded: false })
+  const planetFrameStatusRef = useRef({ policy: 'unknown', loaded: false })
   const previousLinkLoaderVariant = useRef(null)
+  const getNextLinkLoaderVariant = () => {
+    const variants = LINK_LOADER_VARIANTS.filter((variant) => variant !== previousLinkLoaderVariant.current)
+    const variant = variants[Math.floor(Math.random() * variants.length)]
+    previousLinkLoaderVariant.current = variant
+    return variant
+  }
   const planetDetailRef = useRef(null)
   const [formState, setFormState] = useState({ name: '', email: '', subject: '', message: '' })
   const [formStatus, setFormStatus] = useState('')
@@ -1470,11 +1502,21 @@ function App() {
     }
     if (!['http:', 'https:'].includes(destination.protocol)) return
 
-    const availableVariants = LINK_LOADER_VARIANTS.filter((variant) => variant !== previousLinkLoaderVariant.current)
-    const variant = availableVariants[Math.floor(Math.random() * availableVariants.length)]
-    previousLinkLoaderVariant.current = variant
+    const variant = getNextLinkLoaderVariant()
+    linkFrameStatusRef.current = { policy: 'checking', loaded: false }
     setLinkPage({ url: destination.href, title, variant })
     setIsLinkPageLoading(true)
+    setShowLinkDirectOpenPrompt(false)
+  }
+  const handleLinkFrameLoad = () => {
+    const nextStatus = { ...linkFrameStatusRef.current, loaded: true }
+    linkFrameStatusRef.current = nextStatus
+    if (nextStatus.policy === 'allowed' || nextStatus.policy === 'unknown') setIsLinkPageLoading(false)
+  }
+  const handleLinkFrameError = () => {
+    linkFrameStatusRef.current = { policy: 'blocked', loaded: false }
+    setIsLinkPageLoading(false)
+    setShowLinkDirectOpenPrompt(true)
   }
   const openLinkDirectly = (url) => {
     let destination
@@ -1544,6 +1586,53 @@ function App() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [linkPage])
+
+  useEffect(() => {
+    if (!linkPage) return undefined
+    const controller = new AbortController()
+    let checkTimedOut = false
+    const checkTimeout = window.setTimeout(() => {
+      checkTimedOut = true
+      controller.abort()
+    }, 8000)
+    const fallbackTimer = window.setTimeout(() => {
+      const { loaded } = linkFrameStatusRef.current
+      if (!loaded) {
+        setIsLinkPageLoading(false)
+        setShowLinkDirectOpenPrompt(true)
+      }
+    }, 20000)
+
+    fetch(`/api/frame-policy?url=${encodeURIComponent(linkPage.url)}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Frame policy check failed (${response.status}).`)
+        return response.json()
+      })
+      .then(({ blocked }) => {
+        const nextStatus = { ...linkFrameStatusRef.current, policy: blocked ? 'blocked' : 'allowed' }
+        linkFrameStatusRef.current = nextStatus
+        if (blocked) {
+          setIsLinkPageLoading(false)
+          setShowLinkDirectOpenPrompt(true)
+        } else if (nextStatus.loaded) {
+          setIsLinkPageLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError' || checkTimedOut) {
+          const nextStatus = { ...linkFrameStatusRef.current, policy: 'unknown' }
+          linkFrameStatusRef.current = nextStatus
+          if (nextStatus.loaded) setIsLinkPageLoading(false)
+        }
+      })
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(checkTimeout)
+      window.clearTimeout(fallbackTimer)
+    }
+  }, [linkPage])
+
   const [showSkillForm, setShowSkillForm] = useState(false)
   const [editingSkillIndex, setEditingSkillIndex] = useState(null)
   const [skillDraft, setSkillDraft] = useState({ label: '', skills: '' })
@@ -2165,6 +2254,64 @@ function App() {
       return ''
     }
   }, [portfolio.planetLinks, selectedPlanet])
+
+  useEffect(() => {
+    if (!isPlanetLearnMoreOpen || !selectedPlanetLearnMoreUrl) return undefined
+    const controller = new AbortController()
+    let checkTimedOut = false
+    const checkTimeout = window.setTimeout(() => {
+      checkTimedOut = true
+      controller.abort()
+    }, 8000)
+    const fallbackTimer = window.setTimeout(() => {
+      const { loaded } = planetFrameStatusRef.current
+      if (!loaded) {
+        setIsPlanetLearnMoreLoading(false)
+        setShowPlanetDirectOpenPrompt(true)
+      }
+    }, 20000)
+
+    fetch(`/api/frame-policy?url=${encodeURIComponent(selectedPlanetLearnMoreUrl)}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Frame policy check failed (${response.status}).`)
+        return response.json()
+      })
+      .then(({ blocked }) => {
+        const nextStatus = { ...planetFrameStatusRef.current, policy: blocked ? 'blocked' : 'allowed' }
+        planetFrameStatusRef.current = nextStatus
+        if (blocked) {
+          setIsPlanetLearnMoreLoading(false)
+          setShowPlanetDirectOpenPrompt(true)
+        } else if (nextStatus.loaded) {
+          setIsPlanetLearnMoreLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError' || checkTimedOut) {
+          const nextStatus = { ...planetFrameStatusRef.current, policy: 'unknown' }
+          planetFrameStatusRef.current = nextStatus
+          if (nextStatus.loaded) setIsPlanetLearnMoreLoading(false)
+        }
+      })
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(checkTimeout)
+      window.clearTimeout(fallbackTimer)
+    }
+  }, [isPlanetLearnMoreOpen, selectedPlanetLearnMoreUrl])
+
+  const handlePlanetFrameLoad = () => {
+    const nextStatus = { ...planetFrameStatusRef.current, loaded: true }
+    planetFrameStatusRef.current = nextStatus
+    if (nextStatus.policy === 'allowed' || nextStatus.policy === 'unknown') setIsPlanetLearnMoreLoading(false)
+  }
+
+  const handlePlanetFrameError = () => {
+    planetFrameStatusRef.current = { policy: 'blocked', loaded: false }
+    setIsPlanetLearnMoreLoading(false)
+    setShowPlanetDirectOpenPrompt(true)
+  }
 
   const activeHomepageDesignId = HOMEPAGE_DESIGNS.some((design) => design.id === portfolio.homepageSettings?.activeDesign)
     ? portfolio.homepageSettings.activeDesign
@@ -4172,18 +4319,13 @@ function App() {
                     {isPlanetLearnMoreOpen
                       ? createPortal(
                         <div className="planet-learn-more-overlay" role="dialog" aria-modal="true" aria-label={`${selectedPlanet.name} details`}>
-                          <FloatingBackButton label="Back to planet" onClick={() => setIsPlanetLearnMoreOpen(false)} />
-                          {selectedPlanetLearnMoreUrl ? (
-                            <button
-                              type="button"
-                              className="site-link-open-external"
-                              onClick={() => openLinkDirectly(selectedPlanetLearnMoreUrl)}
-                              aria-label={`Open ${selectedPlanet.name} reference directly in this tab`}
-                              title="If this site blocks the in-website view, open it directly in this tab."
-                            >
-                              <span>If blocked: Open in this tab</span><ArrowUpRight size={15} aria-hidden="true" />
-                            </button>
-                          ) : null}
+                          <FloatingBackButton
+                            label="Back to planet"
+                            onClick={() => {
+                              setIsPlanetLearnMoreOpen(false)
+                              setShowPlanetDirectOpenPrompt(false)
+                            }}
+                          />
                           {selectedPlanetLearnMoreUrl ? (
                             <div className="planet-learn-more-viewer">
                               <iframe
@@ -4193,13 +4335,20 @@ function App() {
                                 title={`${selectedPlanet.name} reference page`}
                                 loading="eager"
                                 referrerPolicy="no-referrer"
-                                onLoad={() => setIsPlanetLearnMoreLoading(false)}
-                                onError={() => setIsPlanetLearnMoreLoading(false)}
+                                onLoad={handlePlanetFrameLoad}
+                                onError={handlePlanetFrameError}
                               />
                               <PlanetPageLoader
                                 planet={selectedPlanet.name}
                                 visible={isPlanetLearnMoreLoading}
                               />
+                              {showPlanetDirectOpenPrompt ? (
+                                <DirectOpenPrompt
+                                  title={selectedPlanet.name}
+                                  variant={planetDirectOpenVariant}
+                                  onOpen={() => openLinkDirectly(selectedPlanetLearnMoreUrl)}
+                                />
+                              ) : null}
                             </div>
                           ) : (
                             <p className="planet-learn-more-error" role="alert">
@@ -4214,7 +4363,10 @@ function App() {
                       type="button"
                       className="planet-source-link"
                       onClick={() => {
+                        planetFrameStatusRef.current = { policy: 'checking', loaded: false }
                         setIsPlanetLearnMoreLoading(true)
+                        setShowPlanetDirectOpenPrompt(false)
+                        setPlanetDirectOpenVariant(getNextLinkLoaderVariant())
                         setIsPlanetLearnMoreOpen(true)
                       }}
                     >
@@ -6216,17 +6368,9 @@ function App() {
             onClick={() => {
               setLinkPage(null)
               setIsLinkPageLoading(false)
+              setShowLinkDirectOpenPrompt(false)
             }}
           />
-          <button
-            type="button"
-            className="site-link-open-external"
-            onClick={() => openLinkDirectly(linkPage.url)}
-            aria-label={`Open ${linkPage.title} directly in this tab`}
-            title="If this site blocks the in-website view, open it directly in this tab."
-          >
-            <span>If blocked: Open in this tab</span><ArrowUpRight size={15} aria-hidden="true" />
-          </button>
           <div className="planet-learn-more-viewer">
             <iframe
               key={linkPage.url}
@@ -6238,10 +6382,17 @@ function App() {
               sandbox={new URL(linkPage.url, window.location.href).origin === window.location.origin
                 ? 'allow-forms allow-scripts allow-same-origin'
                 : undefined}
-              onLoad={() => setIsLinkPageLoading(false)}
-              onError={() => setIsLinkPageLoading(false)}
+              onLoad={handleLinkFrameLoad}
+              onError={handleLinkFrameError}
             />
             {isLinkPageLoading ? <LinkPageLoader title={linkPage.title} variant={linkPage.variant} /> : null}
+            {showLinkDirectOpenPrompt ? (
+              <DirectOpenPrompt
+                title={linkPage.title}
+                variant={linkPage.variant}
+                onOpen={() => openLinkDirectly(linkPage.url)}
+              />
+            ) : null}
           </div>
         </div>,
         document.body,

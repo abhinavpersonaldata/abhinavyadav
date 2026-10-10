@@ -1,6 +1,10 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import { lookup } from 'node:dns/promises'
+import http from 'node:http'
+import https from 'node:https'
+import { isIP } from 'node:net'
 import { v2 as cloudinary } from 'cloudinary'
 import multer from 'multer'
 import mongoose from 'mongoose'
@@ -251,6 +255,154 @@ const portfolioData = {
     { label: 'STUDIO', tone: 'wide' }, { label: 'PROCESS', tone: 'normal' }, { label: 'DRAFT', tone: 'normal' },
   ],
 }
+
+const isPublicAddress = (address) => {
+  if (isIP(address) === 4) {
+    const octets = address.split('.').map(Number)
+    const [first, second] = octets
+    return first !== 0
+      && first !== 10
+      && first !== 127
+      && first < 224
+      && !(first === 100 && second >= 64 && second <= 127)
+      && !(first === 169 && second === 254)
+      && !(first === 172 && second >= 16 && second <= 31)
+      && !(first === 192 && (second === 168 || (second === 0 && [0, 2].includes(octets[2]))))
+      && !(first === 192 && second === 88 && octets[2] === 99)
+      && !(first === 198 && (second === 18 || second === 19 || (second === 51 && octets[2] === 100)))
+      && !(first === 203 && second === 0 && octets[2] === 113)
+  }
+  if (isIP(address) !== 6) return false
+
+  const normalized = address.toLowerCase()
+  const nat64Address = normalized.match(/^64:ff9b::([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
+  if (nat64Address) {
+    const high = Number.parseInt(nat64Address[1], 16)
+    const low = Number.parseInt(nat64Address[2], 16)
+    return isPublicAddress(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`)
+  }
+  return (normalized.startsWith('2') || normalized.startsWith('3'))
+    && !normalized.startsWith('2001:db8:')
+    && !normalized.startsWith('2001:0:')
+    && !normalized.startsWith('2002:')
+    && !normalized.startsWith('3fff:')
+}
+
+const resolvePublicAddresses = async (hostname) => {
+  if (hostname.endsWith('.localhost') || hostname.endsWith('.local')) {
+    throw new Error('Local network hosts are not allowed.')
+  }
+  const addresses = await lookup(hostname, { all: true, verbatim: true })
+  if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address))) {
+    throw new Error('The host does not resolve exclusively to public IP addresses.')
+  }
+  return addresses
+}
+
+const readFrameHeaders = async (inputUrl, referringOrigin, redirectsRemaining = 4) => {
+  const target = new URL(inputUrl)
+  if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) {
+    throw new Error('Only public HTTP(S) URLs are supported.')
+  }
+  if (target.port && target.port !== (target.protocol === 'https:' ? '443' : '80')) {
+    throw new Error('Non-standard ports are not allowed.')
+  }
+
+  const addresses = await resolvePublicAddresses(target.hostname)
+  const requestModule = target.protocol === 'https:' ? https : http
+  const headers = await new Promise((resolve, reject) => {
+    const request = requestModule.request(target, {
+      method: 'HEAD',
+      timeout: 5000,
+      lookup: (hostname, options, callback) => {
+        if (options?.all) {
+          callback(null, addresses)
+          return
+        }
+        callback(null, addresses[0].address, addresses[0].family)
+      },
+    }, (response) => {
+      const responseHeaders = response.headers
+      response.resume()
+      response.destroy()
+      resolve({ status: response.statusCode || 0, headers: responseHeaders })
+    })
+    request.on('timeout', () => request.destroy(new Error('The target host timed out.')))
+    request.on('error', reject)
+    request.end()
+  })
+
+  const redirectLocation = headers.headers.location
+  if ([301, 302, 303, 307, 308].includes(headers.status) && redirectLocation) {
+    if (redirectsRemaining <= 0) throw new Error('The target exceeded the redirect limit.')
+    return readFrameHeaders(new URL(redirectLocation, target).href, referringOrigin, redirectsRemaining - 1)
+  }
+  return { url: target, headers: headers.headers }
+}
+
+const isBlockedByFrameHeaders = (headers, targetOrigin, referringOrigin) => {
+  const policy = headers['content-security-policy']
+  if (policy) {
+    const directive = String(policy).split(';').map((part) => part.trim()).find((part) => /^frame-ancestors(?:\s|$)/i.test(part))
+    if (directive) {
+      const sources = directive.split(/\s+/).slice(1).map((source) => source.replace(/^['"]|['"]$/g, '').toLowerCase())
+      if (sources.includes('none')) return true
+      const isAllowed = sources.some((source) => {
+        if (source === '*' || source === 'https:' || source === 'http:') {
+          return source === '*' || source === `${new URL(referringOrigin).protocol.slice(0, -1)}:`
+        }
+        if (source === 'self') return targetOrigin === referringOrigin
+        try {
+          const wildcard = source.match(/^(https?:\/\/)?\*\.(.+)$/)
+          const sourceUrl = new URL(wildcard
+            ? `${wildcard[1] || 'https://'}${wildcard[2]}`
+            : source.includes('://') ? source : `https://${source}`)
+          const referringUrl = new URL(referringOrigin)
+          const sourceHostMatches = wildcard
+            ? referringUrl.hostname.endsWith(`.${sourceUrl.hostname}`)
+            : referringUrl.hostname === sourceUrl.hostname
+          return sourceHostMatches
+            && (!sourceUrl.port || sourceUrl.port === referringUrl.port)
+            && (!source.includes('://') || sourceUrl.protocol === referringUrl.protocol)
+        } catch {
+          return false
+        }
+      })
+      return !isAllowed
+    }
+  }
+
+  const frameOptions = String(headers['x-frame-options'] || '').toLowerCase()
+    .split(',')
+    .map((value) => value.trim())
+  return frameOptions.includes('deny')
+    || (frameOptions.includes('sameorigin') && targetOrigin !== referringOrigin)
+}
+
+app.get('/api/frame-policy', async (req, res) => {
+  let requestedUrl
+  try {
+    requestedUrl = new URL(req.query.url)
+  } catch {
+    res.status(400).json({ error: 'A valid URL is required.' })
+    return
+  }
+  const referringOrigin = req.get('referer') ? new URL(req.get('referer')).origin : req.get('origin')
+  if (!referringOrigin) {
+    res.status(400).json({ error: 'The portfolio origin could not be determined.' })
+    return
+  }
+
+  try {
+    const response = await readFrameHeaders(requestedUrl.href, referringOrigin)
+    res.set('Cache-Control', 'no-store').json({
+      blocked: isBlockedByFrameHeaders(response.headers, response.url.origin, referringOrigin),
+    })
+  } catch (error) {
+    res.set('Cache-Control', 'no-store').json({ blocked: false, unavailable: true })
+    console.warn(`[frame-policy] Could not inspect ${requestedUrl.hostname}:`, error.message)
+  }
+})
 
 const resumeImageHosts = new Set(['cdn.phototourl.com', 'res.cloudinary.com'])
 app.get('/api/resume-image', async (req, res) => {
