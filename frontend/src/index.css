@@ -155,6 +155,22 @@ html {
 }
 
 .site-boot-loader {
+  --boot-bg: #050912;
+  --boot-grid-color: rgba(98, 208, 255, 0.08);
+  --boot-accent: #72d9ff;
+  --boot-accent-secondary: #c8ff3d;
+  --boot-border: rgba(119, 198, 232, 0.2);
+  --boot-surface-start: rgba(14, 24, 37, 0.96);
+  --boot-surface-end: rgba(7, 13, 23, 0.96);
+  --boot-kicker: #7c9ab3;
+  --boot-code-keyword: #c792ea;
+  --boot-code-name: #82d7ff;
+  --boot-grid-size: 42px;
+  --boot-card-radius: 1.15rem;
+  --boot-motion-duration: 3.6s;
+  --boot-scan-duration: 2.8s;
+  --boot-progress-start: var(--boot-accent-secondary);
+  --boot-code-highlight: #d9f47a;
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -162,7 +178,7 @@ html {
   place-items: center;
   overflow: hidden;
   padding: 1rem;
-  background: #050912;
+  background: var(--boot-bg);
   color: #edf5ff;
   opacity: 1;
   transition: opacity 320ms ease, visibility 320ms ease;
@@ -173,10 +189,11 @@ html {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.15;
-  background-image: linear-gradient(rgba(98, 208, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(98, 208, 255, 0.08) 1px, transparent 1px);
-  background-size: 42px 42px;
+  opacity: 0.2;
+  background-image: linear-gradient(var(--boot-grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--boot-grid-color) 1px, transparent 1px);
+  background-size: var(--boot-grid-size) var(--boot-grid-size);
   mask-image: radial-gradient(ellipse at center, #000 12%, transparent 78%);
+  animation: bootThemePattern var(--boot-motion-duration) linear infinite;
 }
 
 .site-boot-loader.is-leaving {
@@ -189,9 +206,9 @@ html {
   position: relative;
   width: min(100%, 33rem);
   padding: clamp(1rem, 5vw, 2rem);
-  border: 1px solid rgba(119, 198, 232, 0.2);
-  border-radius: 1.15rem;
-  background: linear-gradient(145deg, rgba(14, 24, 37, 0.96), rgba(7, 13, 23, 0.96));
+  border: 1px solid var(--boot-border);
+  border-radius: var(--boot-card-radius);
+  background: linear-gradient(145deg, var(--boot-surface-start), var(--boot-surface-end));
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -225,7 +242,7 @@ html {
   height: 1.8rem;
   place-items: center;
   border-radius: 0.55rem;
-  background: linear-gradient(135deg, #c8ff3d, #62d0ff);
+  background: linear-gradient(135deg, var(--boot-accent-secondary), var(--boot-accent));
   color: #09111a;
   font-size: 0.7rem;
   letter-spacing: -0.06em;
@@ -241,8 +258,8 @@ html {
   width: 0.4rem;
   height: 0.4rem;
   border-radius: 50%;
-  background: #54e59a;
-  box-shadow: 0 0 12px rgba(84, 229, 154, 0.75);
+  background: var(--boot-accent-secondary);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--boot-accent-secondary) 75%, transparent);
   animation: bootLivePulse 1s ease-in-out infinite alternate;
 }
 
@@ -251,7 +268,7 @@ html {
 }
 
 .boot-loader-kicker {
-  color: #7c9ab3;
+  color: var(--boot-kicker);
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -268,7 +285,7 @@ html {
 }
 
 .boot-loader-heading h1 span {
-  color: #72d9ff;
+  color: var(--boot-accent);
 }
 
 .boot-loader-heading p {
@@ -326,14 +343,14 @@ html {
 
 .boot-code-toolbar i {
   margin-left: auto;
-  color: #61cfff;
+  color: var(--boot-accent);
   font-size: 0.55rem;
   font-style: normal;
   font-weight: 700;
 }
 
 .boot-code-stream {
-  animation: bootCodeScroll 3.6s linear infinite;
+  animation: bootCodeScroll var(--boot-motion-duration) linear infinite;
 }
 
 .boot-code-copy {
@@ -353,17 +370,17 @@ html {
 }
 
 .boot-code-number { color: #53677d; }
-.boot-code-keyword { color: #c792ea; }
-.boot-code-name { color: #82d7ff; }
-.boot-code-line:nth-child(3n) .boot-code-name { color: #d9f47a; }
+.boot-code-keyword { color: var(--boot-code-keyword); }
+.boot-code-name { color: var(--boot-code-name); }
+.boot-code-line:nth-child(3n) .boot-code-name { color: var(--boot-code-highlight); }
 
 .boot-code-scanline {
   position: absolute;
   inset: -35% 0 auto;
   height: 25%;
   pointer-events: none;
-  background: linear-gradient(180deg, transparent, rgba(77, 197, 255, 0.08), transparent);
-  animation: bootScan 2.8s linear infinite;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--boot-accent) 12%, transparent), transparent);
+  animation: bootScan var(--boot-scan-duration) linear infinite;
 }
 
 .boot-loader-progress {
@@ -383,9 +400,9 @@ html {
   position: absolute;
   inset: 0 auto 0 -42%;
   width: 42%;
-  background: linear-gradient(90deg, #c8ff3d, #62d0ff);
-  box-shadow: 0 0 12px rgba(98, 208, 255, 0.7);
-  animation: bootProgress 1.15s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--boot-progress-start), var(--boot-accent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--boot-accent) 70%, transparent);
+  animation: bootProgress calc(1.15s * var(--boot-motion-multiplier, 1)) ease-in-out infinite;
 }
 
 .boot-loader-progress b,
@@ -419,7 +436,249 @@ html {
   width: 0.18rem;
   height: 0.18rem;
   border-radius: 50%;
-  background: #62d0ff;
+  background: var(--boot-accent);
+}
+
+.boot-loader-credit {
+  margin-top: 0.85rem;
+  color: rgba(175, 196, 214, 0.62);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-align: right;
+}
+
+.boot-theme-aurora {
+  --boot-bg: #050912;
+  --boot-grid-color: rgba(98, 208, 255, 0.08);
+  --boot-accent: #72d9ff;
+  --boot-accent-secondary: #c8ff3d;
+  --boot-border: rgba(119, 198, 232, 0.2);
+  --boot-surface-start: rgba(14, 24, 37, 0.96);
+  --boot-surface-end: rgba(7, 13, 23, 0.96);
+  --boot-kicker: #7c9ab3;
+  --boot-code-keyword: #c792ea;
+  --boot-code-name: #82d7ff;
+  --boot-code-highlight: #d9f47a;
+  --boot-grid-size: 42px;
+  --boot-card-radius: 1.15rem;
+}
+
+.boot-theme-ember {
+  --boot-bg: #120806;
+  --boot-grid-color: rgba(255, 135, 71, 0.12);
+  --boot-accent: #ff9a62;
+  --boot-accent-secondary: #ffd166;
+  --boot-border: rgba(255, 145, 88, 0.28);
+  --boot-surface-start: rgba(43, 22, 18, 0.97);
+  --boot-surface-end: rgba(20, 11, 12, 0.97);
+  --boot-kicker: #c58f7e;
+  --boot-code-keyword: #ff8b5e;
+  --boot-code-name: #ffd166;
+  --boot-code-highlight: #fff0b3;
+  --boot-grid-size: 34px;
+  --boot-card-radius: 0.75rem;
+  --boot-motion-duration: 3.1s;
+  --boot-scan-duration: 2.2s;
+}
+
+.boot-theme-ocean {
+  --boot-bg: #04131a;
+  --boot-grid-color: rgba(46, 214, 208, 0.11);
+  --boot-accent: #52e0d2;
+  --boot-accent-secondary: #53a8ff;
+  --boot-border: rgba(82, 224, 210, 0.25);
+  --boot-surface-start: rgba(8, 37, 47, 0.97);
+  --boot-surface-end: rgba(4, 19, 29, 0.97);
+  --boot-kicker: #79bcb8;
+  --boot-code-keyword: #64d8cc;
+  --boot-code-name: #72caff;
+  --boot-code-highlight: #b5fff0;
+  --boot-grid-size: 52px;
+  --boot-card-radius: 2rem;
+  --boot-motion-duration: 4.2s;
+}
+
+.boot-theme-violet {
+  --boot-bg: #0d0719;
+  --boot-grid-color: rgba(182, 126, 255, 0.12);
+  --boot-accent: #bd8cff;
+  --boot-accent-secondary: #69d6ff;
+  --boot-border: rgba(182, 126, 255, 0.3);
+  --boot-surface-start: rgba(31, 19, 51, 0.97);
+  --boot-surface-end: rgba(15, 9, 28, 0.97);
+  --boot-kicker: #a992c7;
+  --boot-code-keyword: #df9aff;
+  --boot-code-name: #7fdbff;
+  --boot-code-highlight: #c4ffea;
+  --boot-grid-size: 30px;
+  --boot-card-radius: 0.45rem;
+  --boot-scan-duration: 3.5s;
+}
+
+.boot-theme-rose {
+  --boot-bg: #170812;
+  --boot-grid-color: rgba(255, 105, 164, 0.12);
+  --boot-accent: #ff76b7;
+  --boot-accent-secondary: #ffc0d9;
+  --boot-border: rgba(255, 118, 183, 0.28);
+  --boot-surface-start: rgba(49, 17, 39, 0.97);
+  --boot-surface-end: rgba(24, 9, 23, 0.97);
+  --boot-kicker: #ca91af;
+  --boot-code-keyword: #ff8ac1;
+  --boot-code-name: #ffc0d9;
+  --boot-code-highlight: #ffe8a3;
+  --boot-grid-size: 46px;
+  --boot-card-radius: 1.8rem 0.55rem;
+  --boot-motion-duration: 3.2s;
+}
+
+.boot-theme-mint {
+  --boot-bg: #04130e;
+  --boot-grid-color: rgba(74, 245, 161, 0.12);
+  --boot-accent: #64f2a7;
+  --boot-accent-secondary: #d7ff72;
+  --boot-border: rgba(100, 242, 167, 0.27);
+  --boot-surface-start: rgba(9, 39, 27, 0.97);
+  --boot-surface-end: rgba(4, 20, 16, 0.97);
+  --boot-kicker: #86bda0;
+  --boot-code-keyword: #63e8a4;
+  --boot-code-name: #a4f7d1;
+  --boot-code-highlight: #e4ff8c;
+  --boot-grid-size: 26px;
+  --boot-card-radius: 0.35rem;
+  --boot-motion-duration: 2.9s;
+  --boot-scan-duration: 2s;
+}
+
+.boot-theme-solar {
+  --boot-bg: #171006;
+  --boot-grid-color: rgba(255, 204, 77, 0.12);
+  --boot-accent: #ffd166;
+  --boot-accent-secondary: #ff8c42;
+  --boot-border: rgba(255, 209, 102, 0.3);
+  --boot-surface-start: rgba(48, 34, 13, 0.97);
+  --boot-surface-end: rgba(24, 16, 8, 0.97);
+  --boot-kicker: #c6a971;
+  --boot-code-keyword: #ffb454;
+  --boot-code-name: #ffe08a;
+  --boot-code-highlight: #fff2bc;
+  --boot-grid-size: 58px;
+  --boot-card-radius: 50% 0.65rem 1.3rem;
+  --boot-motion-duration: 4.5s;
+  --boot-scan-duration: 3.4s;
+}
+
+.boot-theme-ice {
+  --boot-bg: #07111c;
+  --boot-grid-color: rgba(160, 221, 255, 0.13);
+  --boot-accent: #a8e5ff;
+  --boot-accent-secondary: #8faeff;
+  --boot-border: rgba(168, 229, 255, 0.3);
+  --boot-surface-start: rgba(21, 39, 59, 0.97);
+  --boot-surface-end: rgba(7, 16, 29, 0.97);
+  --boot-kicker: #99b7d0;
+  --boot-code-keyword: #aac4ff;
+  --boot-code-name: #8cf0ff;
+  --boot-code-highlight: #e8fbff;
+  --boot-grid-size: 38px;
+  --boot-card-radius: 0.25rem 1.8rem;
+  --boot-motion-duration: 3.9s;
+}
+
+.boot-theme-crimson {
+  --boot-bg: #17070a;
+  --boot-grid-color: rgba(255, 84, 100, 0.12);
+  --boot-accent: #ff6678;
+  --boot-accent-secondary: #ffad66;
+  --boot-border: rgba(255, 102, 120, 0.3);
+  --boot-surface-start: rgba(51, 15, 22, 0.97);
+  --boot-surface-end: rgba(23, 8, 14, 0.97);
+  --boot-kicker: #c48991;
+  --boot-code-keyword: #ff7e83;
+  --boot-code-name: #ffb46e;
+  --boot-code-highlight: #ffe1a8;
+  --boot-grid-size: 32px;
+  --boot-card-radius: 0.6rem;
+  --boot-motion-duration: 2.8s;
+  --boot-scan-duration: 1.9s;
+}
+
+.boot-theme-gold {
+  --boot-bg: #151108;
+  --boot-grid-color: rgba(233, 190, 81, 0.12);
+  --boot-accent: #f0cc6b;
+  --boot-accent-secondary: #f4a261;
+  --boot-border: rgba(240, 204, 107, 0.28);
+  --boot-surface-start: rgba(45, 36, 18, 0.97);
+  --boot-surface-end: rgba(21, 17, 10, 0.97);
+  --boot-kicker: #b8a879;
+  --boot-code-keyword: #e7b968;
+  --boot-code-name: #eed88a;
+  --boot-code-highlight: #fff0bd;
+  --boot-grid-size: 48px;
+  --boot-card-radius: 1.4rem 0.4rem;
+  --boot-motion-duration: 4.1s;
+}
+
+.boot-theme-mono {
+  --boot-bg: #090c10;
+  --boot-grid-color: rgba(211, 222, 235, 0.09);
+  --boot-accent: #e2e9f1;
+  --boot-accent-secondary: #9caebe;
+  --boot-border: rgba(211, 222, 235, 0.22);
+  --boot-surface-start: rgba(31, 37, 45, 0.97);
+  --boot-surface-end: rgba(10, 13, 18, 0.97);
+  --boot-kicker: #9ba8b5;
+  --boot-code-keyword: #d0d8e1;
+  --boot-code-name: #a9c5d8;
+  --boot-code-highlight: #ffffff;
+  --boot-grid-size: 24px;
+  --boot-card-radius: 0.2rem;
+  --boot-motion-duration: 3s;
+  --boot-scan-duration: 2.1s;
+}
+
+.boot-theme-lagoon {
+  --boot-bg: #05151a;
+  --boot-grid-color: rgba(79, 221, 208, 0.13);
+  --boot-accent: #5be3d2;
+  --boot-accent-secondary: #a0e879;
+  --boot-border: rgba(91, 227, 210, 0.28);
+  --boot-surface-start: rgba(10, 43, 47, 0.97);
+  --boot-surface-end: rgba(5, 22, 28, 0.97);
+  --boot-kicker: #83bcb6;
+  --boot-code-keyword: #68dbc5;
+  --boot-code-name: #9fe8c2;
+  --boot-code-highlight: #deff9a;
+  --boot-grid-size: 54px;
+  --boot-card-radius: 1.8rem 1.8rem 0.45rem 0.45rem;
+  --boot-motion-duration: 4.4s;
+  --boot-scan-duration: 3.2s;
+}
+
+.boot-theme-ember .boot-loader-card,
+.boot-theme-crimson .boot-loader-card {
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52), 0 0 50px color-mix(in srgb, var(--boot-accent) 9%, transparent);
+}
+
+.boot-theme-violet .boot-code-window,
+.boot-theme-mint .boot-code-window,
+.boot-theme-mono .boot-code-window {
+  border-style: dashed;
+}
+
+.boot-theme-solar .boot-loader-card,
+.boot-theme-rose .boot-loader-card {
+  border-width: 2px;
+}
+
+.boot-theme-ocean::before,
+.boot-theme-lagoon::before {
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 5%, transparent 80%);
+}
+
+@keyframes bootThemePattern {
+  to { background-position: var(--boot-grid-size) var(--boot-grid-size), calc(var(--boot-grid-size) * -1) var(--boot-grid-size); }
 }
 
 .boot-animation-setting {
