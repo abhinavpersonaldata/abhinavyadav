@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640">
+  <rect width="960" height="640" rx="36" fill="#e8f5f3"/>
+  <rect x="72" y="64" width="816" height="512" rx="28" fill="#fff"/>
+  <rect x="72" y="64" width="816" height="88" rx="28" fill="#247f77"/>
+  <text x="122" y="120" fill="#fff" font-family="Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="3">SAMPLE WEBINAR</text>
+  <circle cx="282" cy="315" r="92" fill="#d5eeea"/>
+  <circle cx="282" cy="274" r="18" fill="#247f77"/>
+  <path d="M282 306v72m-45-42h90m-45 42-35 41m35-41 35 41" fill="none" stroke="#247f77" stroke-width="12" stroke-linecap="round"/>
+  <text x="430" y="282" fill="#193b3a" font-family="Arial,sans-serif" font-size="29" font-weight="700">Accessible interfaces</text>
+  <text x="430" y="328" fill="#617574" font-family="Arial,sans-serif" font-size="20">Inclusive design practice</text>
+  <text x="430" y="390" fill="#247f77" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="3">FICTIONAL EVENT CARD</text>
+  <text x="480" y="526" text-anchor="middle" fill="#71817f" font-family="Arial,sans-serif" font-size="16">No attendance or certification is claimed</text>
+</svg>

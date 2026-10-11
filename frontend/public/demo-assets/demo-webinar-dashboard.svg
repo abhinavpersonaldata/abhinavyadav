@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640">
+  <rect width="960" height="640" rx="36" fill="#eef0ff"/>
+  <rect x="72" y="64" width="816" height="512" rx="28" fill="#fff"/>
+  <rect x="72" y="64" width="816" height="88" rx="28" fill="#5c63bf"/>
+  <text x="122" y="120" fill="#fff" font-family="Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="3">SAMPLE WEBINAR</text>
+  <text x="132" y="226" fill="#25294a" font-family="Arial,sans-serif" font-size="30" font-weight="700">Clear dashboard systems</text>
+  <text x="132" y="266" fill="#737894" font-family="Arial,sans-serif" font-size="18">A fictional session preview for interface practice</text>
+  <rect x="132" y="308" width="198" height="152" rx="18" fill="#edf0ff"/>
+  <rect x="352" y="308" width="198" height="152" rx="18" fill="#e8f7f3"/>
+  <rect x="572" y="308" width="250" height="152" rx="18" fill="#fff3df"/>
+  <path d="M164 410v-40m42 40v-68m42 68v-52m136 52v-70m42 70v-42m42 42v-58m136 58v-46m42 46v-82m42 82v-62" stroke="#5c63bf" stroke-width="14" stroke-linecap="round"/>
+  <text x="480" y="522" text-anchor="middle" fill="#5c63bf" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="3">DEMO ONLY · NO EVENT ATTENDANCE CLAIMED</text>
+</svg>

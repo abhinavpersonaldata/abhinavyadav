@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640">
+  <rect width="960" height="640" rx="36" fill="#dff1e8"/>
+  <circle cx="761" cy="132" r="58" fill="#f3cf75"/>
+  <path d="M0 420 230 250l187 154 201-208 342 222v222H0z" fill="#9fc7a9"/>
+  <path d="M0 492 232 344l183 116 196-165 349 187v158H0z" fill="#6a9981"/>
+  <rect x="302" y="256" width="360" height="240" rx="10" fill="#f5ead3"/>
+  <path d="m270 274 212-116 212 116z" fill="#936d4e"/>
+  <rect x="346" y="302" width="72" height="86" rx="8" fill="#a7c7ca"/>
+  <rect x="546" y="302" width="72" height="86" rx="8" fill="#a7c7ca"/>
+  <rect x="440" y="364" width="84" height="132" fill="#79583f"/>
+  <text x="480" y="548" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="19" font-weight="700" letter-spacing="3">CAMPUS ILLUSTRATION · DEMO ONLY</text>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640">
+  <rect width="960" height="640" rx="36" fill="#182a3b"/>
+  <circle cx="795" cy="146" r="86" fill="#67c4bd" fill-opacity=".2"/>
+  <rect x="88" y="88" width="784" height="464" rx="28" fill="#243d50"/>
+  <rect x="128" y="130" width="216" height="380" rx="18" fill="#31556b"/>
+  <rect x="374" y="130" width="458" height="168" rx="18" fill="#31556b"/>
+  <rect x="374" y="322" width="218" height="188" rx="18" fill="#31556b"/>
+  <rect x="614" y="322" width="218" height="188" rx="18" fill="#31556b"/>
+  <circle cx="236" cy="218" r="48" fill="#f0c77d"/>
+  <path d="M168 334h136m-136 34h110m-110 34h126" stroke="#a9d9d4" stroke-width="10" stroke-linecap="round"/>
+  <path d="M420 184h306m-306 40h230" stroke="#d8e6e4" stroke-width="12" stroke-linecap="round"/>
+  <text x="480" y="590" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="3">LEARNING LAB · SAMPLE INTERFACE</text>
+</svg>

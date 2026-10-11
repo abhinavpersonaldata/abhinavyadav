@@ -110,6 +110,7 @@ let adminAccessSettingsStorage = 'default'
 let homepageSettingsStorage = 'default'
 let edgeAnimationSettingsStorage = 'default'
 let motionSettingsStorage = 'default'
+let animationControlsStorage = 'default'
 
 const portfolioData = {
   profile: {
@@ -154,10 +155,35 @@ const portfolioData = {
       { label: 'FOCUS', value: 'Web Development' },
       { label: 'LOCATION', value: 'India' },
     ],
-    colleges: [],
-    webinars: [],
-    certificates: [],
-    images: [],
+    colleges: [{
+      type: 'college',
+      title: 'Government Polytechnic Sahjanwa, Gorakhpur',
+      program: 'Computer Science and Engineering',
+      dates: '2024 - 2027',
+      location: 'Gorakhpur',
+      description: 'Institution and program details from the existing profile. The attached campus artwork is an illustration for layout testing, not an official college photograph.',
+      image: '/demo-assets/demo-campus-life.svg',
+      images: ['/demo-assets/demo-education.svg', '/demo-assets/demo-learning-lab.svg'],
+      linkLabel: 'Institution website',
+      url: '',
+    }],
+    webinars: [
+      { title: 'SAMPLE EVENT - Accessible Interface Basics', organizer: 'DEMO ONLY - fictional event', date: 'Sample listing - attendance not claimed', description: 'Fictional event card for testing this section. It does not represent an event attended or a certificate earned.', image: '/demo-assets/demo-webinar-accessibility.svg', url: '' },
+      { title: 'SAMPLE WEBINAR - Designing Clear Dashboards', organizer: 'DEMO ONLY - fictional event', date: 'Sample listing - attendance not claimed', description: 'Illustrative webinar entry for testing image and text layout.', image: '/demo-assets/demo-webinar-dashboard.svg', url: '' },
+      { title: 'SAMPLE WORKSHOP - Responsive Web Foundations', organizer: 'DEMO ONLY - fictional event', date: 'Sample listing - attendance not claimed', description: 'Illustrative workshop entry for testing image and text layout.', image: '/demo-assets/demo-webinar-responsive.svg', url: '' },
+    ],
+    certificates: [
+      { title: 'SAMPLE - Frontend Foundations', issuer: 'DEMO ONLY - no certificate issuer', date: 'Sample only', credential: 'Not issued - not a real credential', image: '/demo-assets/demo-certificate-foundations.svg', url: '' },
+      { title: 'SAMPLE - Responsive Web Interfaces', issuer: 'DEMO ONLY - no certificate issuer', date: 'Sample only', credential: 'Not issued - not a real credential', image: '/demo-assets/demo-certificate-responsive.svg', url: '' },
+      { title: 'SAMPLE - Interface Design Practice', issuer: 'DEMO ONLY - no certificate issuer', date: 'Sample only', credential: 'Not issued - not a real credential', image: '/demo-assets/demo-certificate-interface.svg', url: '' },
+      { title: 'SAMPLE - Accessibility Review Basics', issuer: 'DEMO ONLY - no certificate issuer', date: 'Sample only', credential: 'Not issued - not a real credential', image: '/demo-assets/demo-certificate-accessibility.svg', url: '' },
+    ],
+    images: [
+      { label: 'DEMO UI CONCEPT - portfolio layout preview', url: '/demo-assets/demo-portfolio.svg' },
+      { label: 'DEMO ILLUSTRATION - campus visual, not an official photograph', url: '/demo-assets/demo-campus-life.svg' },
+      { label: 'DEMO WORKFLOW - fictional project practice', url: '/demo-assets/demo-experience.svg' },
+      { label: 'DEMO PRODUCT CONCEPT - learning dashboard', url: '/demo-assets/demo-dashboard.svg' },
+    ],
     links: [],
   },
   projects: [
@@ -172,8 +198,9 @@ const portfolioData = {
       results: ['Portfolio and admin experience in one app', 'Project data stored through MongoDB when configured', 'Image and video uploads through Cloudinary when configured'],
     },
     {
-      id: 'studio-grid', number: '02', title: 'Studio Grid', category: 'Web Experience', status: 'Live concept', date: '2026',
+      id: 'studio-grid', number: '02', title: 'DEMO — Studio Grid', category: 'Web Experience', status: 'DEMO — fictional concept', date: 'Sample',
       description: 'A curated interface concept that turns personal work into a digital studio archive.', tech: ['React', 'Tailwind', 'Motion'], accent: 'lime',
+      image: '/demo-assets/demo-editorial.svg', gallery: ['/demo-assets/demo-portfolio.svg', '/demo-assets/demo-dashboard.svg'],
       problem: 'The challenge was to make a personal portfolio feel like a premium studio archive instead of a generic card-based listing.',
       approach: 'I structured the experience around editorial rhythm, large typography, and intentional asymmetry so the work reads like a crafted collection.',
       features: ['Editorial hierarchy', 'Smooth motion', 'Responsive layouts', 'Portfolio storytelling'], role: 'Designer + Developer + Researcher',
@@ -182,8 +209,9 @@ const portfolioData = {
       results: ['More polished presentation', 'Clearer narrative', 'Stronger visual identity'],
     },
     {
-      id: 'signal-engine', number: '03', title: 'Signal Engine', category: 'Product Design', status: 'Prototype', date: '2026',
+      id: 'signal-engine', number: '03', title: 'DEMO — Metagram', category: 'Product Design', status: 'DEMO — fictional prototype', date: 'Sample',
       description: 'A concept dashboard for learning projects, milestones, and rapid iteration loops.', tech: ['UI System', 'Components', 'UX'], accent: 'blue',
+      image: '/demo-assets/demo-dashboard.svg', gallery: ['/demo-assets/demo-webinar-dashboard.svg', '/demo-assets/demo-learning-lab.svg'],
       problem: 'There was no clear way to visualize personal learning progress without creating a bloated, dull dashboard.',
       approach: 'I focused the system on summarizing momentum, milestones, and iteration rather than raw metrics alone.',
       features: ['Milestone tracking', 'Project insights', 'Clean data nodes', 'Modular interface'], role: 'Product thinker + Interface builder',
@@ -192,8 +220,9 @@ const portfolioData = {
       results: ['Better storytelling', 'Visual clarity', 'Future-ready structure'],
     },
     {
-      id: 'arc-archive', number: '04', title: 'Arc Archive', category: 'Creative Build', status: 'Concept', date: '2026',
+      id: 'arc-archive', number: '04', title: 'DEMO — Arc Archive', category: 'Creative Build', status: 'DEMO — fictional concept', date: 'Sample',
       description: 'An editorial portfolio concept focused on storytelling, composition, and code craft.', tech: ['CMS Ready', 'Motion', 'Responsive'], accent: 'neutral',
+      image: '/demo-assets/demo-editorial.svg', gallery: ['/demo-assets/demo-campus-life.svg', '/demo-assets/demo-certificate-interface.svg'],
       problem: 'The main challenge was turning a portfolio into a digital archive rather than a static list of past work.',
       approach: 'I built the visual language around rhythm, sequencing, and editorial spacing to feel more like a personal archive.',
       features: ['Archive storytelling', 'Progressive layouts', 'Visual pacing', 'High-contrast typography'], role: 'Creative developer',
@@ -210,6 +239,12 @@ const portfolioData = {
   },
   homepageSettings: {
     activeDesign: 'placement-pro',
+    heroName: '',
+    heroRole: '',
+    availabilityText: 'Available for Frontend / Product / Internship',
+    nameColor: '#123B5B',
+    nameHighlightColor: '#177A56',
+    heroAnimation: 'gradient',
   },
   edgeAnimationSettings: {
     style: 'spectrum',
@@ -221,6 +256,11 @@ const portfolioData = {
     speed: 1,
     brightness: 100,
   },
+  animationControls: {
+    sections: { hero: true, work: true, about: true, gallery: true, journey: true, toolkit: true, contact: true },
+    areas: {},
+    effects: {},
+  },
   toolkitGroups: [
     { label: '01 FRONTEND', skills: ['React', 'Vite', 'Tailwind CSS', 'Framer Motion', 'Responsive UI'] },
     { label: '02 BACKEND', skills: ['Node.js', 'Express', 'REST APIs', 'File uploads'] },
@@ -228,31 +268,37 @@ const portfolioData = {
     { label: '04 TOOLS', skills: ['Git', 'GitHub', 'Cloudinary', 'Vercel'] },
   ],
   journeyEvents: [
-    { year: '2024', title: 'Learning foundations', description: 'Started learning structure, logic, frontend basics, and product thinking.' },
-    { year: '2025', title: 'First builds', description: 'Built early UI experiments, landing pages, and student-focused web work.' },
-    { year: '2026', title: 'Deepening craft', description: 'Focused on web technology, modular systems, and more complete portfolio storytelling.' },
+    { year: '2024', title: 'DEMO — Learning foundations', description: 'Sample timeline entry for testing: foundational programming, web concepts, and interface practice.', image: '/demo-assets/demo-education.svg', images: ['/demo-assets/demo-learning-lab.svg', '/demo-assets/demo-campus-life.svg'] },
+    { year: '2025', title: 'DEMO — First interface builds', description: 'Sample timeline entry for testing: small responsive layouts and early component experiments.', image: '/demo-assets/demo-portfolio.svg', images: ['/demo-assets/demo-study-planner.svg', '/demo-assets/demo-webinar-responsive.svg'] },
+    { year: '2026', title: 'DEMO — Product thinking practice', description: 'Sample timeline entry for testing: organizing a concept into a user flow, dashboard, and reusable interface patterns.', image: '/demo-assets/demo-dashboard.svg', images: ['/demo-assets/demo-marketplace.svg', '/demo-assets/demo-webinar-dashboard.svg'] },
+    { year: 'SAMPLE', title: 'DEMO — Iteration and reflection', description: 'Fictional portfolio milestone for previewing the timeline design; this is not a verified personal achievement.', image: '/demo-assets/demo-experience.svg', images: ['/demo-assets/demo-editorial.svg', '/demo-assets/demo-webinar-accessibility.svg'] },
   ],
   educationEntries: [
-    { title: 'Diploma in Computer Science & Engineering', institution: 'Computer Science & Engineering Diploma Program', dates: '2024 — 2027', location: 'India', description: 'Core curriculum and practical learning focused on software, systems, and web technologies.' },
-    { title: 'Web Technology & UI Practice', institution: 'Independent Learning Path', dates: 'Ongoing', location: 'Remote / Self-directed', description: 'Structured practice in frontend architecture, interface systems, and interactive design.' },
+    { title: 'DEMO — Self-directed Web Practice', institution: 'Illustrative learning outline · not a qualification', dates: 'Sample / ongoing', location: 'Self-directed', description: 'Sample curriculum card for layout testing: HTML and CSS foundations, responsive interface patterns, React components, accessibility checks, and project documentation. This is not a course certificate or formal education record.', image: '/demo-assets/demo-education.svg', images: ['/demo-assets/demo-learning-lab.svg', '/demo-assets/demo-study-planner.svg'] },
   ],
   experienceEntries: [
-    { company: 'Independent Design & Learning Studio', role: 'Frontend Learner / Product Intern', type: 'Learning Internship / Project Experience', dates: '2025 — Present', location: 'Remote', description: 'Supported learning projects, product experimentation, and interface refinement.', achievements: ['UI prototyping', 'Design iteration', 'Workflow learning'] },
-    { company: 'Freelance Web Practice', role: 'Web Development Intern', type: 'Project-Based', dates: '2024 — 2025', location: 'Remote', description: 'Worked on static and dynamic web interfaces while learning reusable systems.', achievements: ['Responsive layouts', 'Component thinking', 'Code organization'] },
+    { company: 'DEMO ONLY — Fictional Product Studio', role: 'Simulated Frontend Practice Sprint', type: 'Sample case study · not employment or an internship', dates: 'Sample timeline', location: 'Fictional / remote', description: 'A fictional experience-card example showing how an interface project could move from a brief to a responsive prototype. No employer, client, or placement is being claimed.', achievements: ['Map a sample user flow', 'Build reusable interface components', 'Review responsive states'], image: '/demo-assets/demo-experience.svg', images: ['/demo-assets/demo-portfolio.svg', '/demo-assets/demo-dashboard.svg'] },
+    { company: 'DEMO ONLY — Fictional Learning Lab', role: 'Simulated UI Design Exercise', type: 'Sample project · not employment or an internship', dates: 'Sample timeline', location: 'Fictional / self-directed', description: 'A fictional dashboard exercise for testing portfolio content and image layouts; all metrics and interface content in the artwork are illustrative.', achievements: ['Organize sample dashboard data', 'Create a visual hierarchy', 'Document iteration steps'], image: '/demo-assets/demo-dashboard.svg', images: ['/demo-assets/demo-learning-lab.svg', '/demo-assets/demo-study-planner.svg'] },
   ],
   certificateEntries: [
-    { title: 'Frontend Fundamentals', issuer: 'Self-Directed Learning', date: '2025', credential: 'Certificate ID — Frontend Fundamentals' },
-    { title: 'Web Development Essentials', issuer: 'Self-Directed Learning', date: '2025', credential: 'Certificate ID — Web Development Essentials' },
-    { title: 'UI / UX Design Practice', issuer: 'Self-Directed Learning', date: '2026', credential: 'Certificate ID — UI / UX Design Practice' },
+    { title: 'SAMPLE — Frontend Foundations', issuer: 'DEMO ONLY — no certificate issuer', date: 'Sample only', credential: 'Not issued · not a real credential', image: '/demo-assets/demo-certificate-foundations.svg' },
+    { title: 'SAMPLE — Responsive Web Interfaces', issuer: 'DEMO ONLY — no certificate issuer', date: 'Sample only', credential: 'Not issued · not a real credential', image: '/demo-assets/demo-certificate-responsive.svg' },
+    { title: 'SAMPLE — Interface Design Practice', issuer: 'DEMO ONLY — no certificate issuer', date: 'Sample only', credential: 'Not issued · not a real credential', image: '/demo-assets/demo-certificate-interface.svg' },
+    { title: 'SAMPLE — Accessibility Review Basics', issuer: 'DEMO ONLY — no certificate issuer', date: 'Sample only', credential: 'Not issued · not a real credential', image: '/demo-assets/demo-certificate-accessibility.svg' },
   ],
   achievements: [
-    { title: 'Project-Based Learning Archive', organization: 'Independent Practice', date: '2025', description: 'A structured series of experiments and builds created while learning web product design.' },
-    { title: 'Interface Experimentation', organization: 'Self-directed Studio', date: '2026', description: 'Designed and refined numerous concepts focused on clarity, interaction, and usability.' },
-    { title: 'Technical Growth Milestone', organization: 'Learning Journey', date: '2026', description: 'Built momentum through repeated iteration, research, and shipping small digital products.' },
+    { title: 'DEMO — Project-Based Learning Archive', organization: 'Sample content · not an award', date: 'Sample', description: 'A fictional milestone card demonstrating how learning notes and project artifacts can appear in this section.', image: '/demo-assets/demo-portfolio.svg', images: ['/demo-assets/demo-learning-lab.svg', '/demo-assets/demo-study-planner.svg'] },
+    { title: 'DEMO — Interface Iteration', organization: 'Sample content · not an award', date: 'Sample', description: 'A sample reflection about reviewing layout, hierarchy, and responsive states; it does not claim a verified award or result.', image: '/demo-assets/demo-editorial.svg', images: ['/demo-assets/demo-campus-life.svg', '/demo-assets/demo-webinar-responsive.svg'] },
+    { title: 'DEMO — Dashboard Prototype', organization: 'Sample content · not an award', date: 'Sample', description: 'An illustrative product concept used to test the achievement image and description layout.', image: '/demo-assets/demo-dashboard.svg', images: ['/demo-assets/demo-webinar-dashboard.svg', '/demo-assets/demo-marketplace.svg'] },
+    { title: 'DEMO — Marketplace Concept', organization: 'Sample content · not an award', date: 'Sample', description: 'A fictional shop concept for practicing product cards, navigation, and responsive composition.', image: '/demo-assets/demo-marketplace.svg', images: ['/demo-assets/demo-experience.svg', '/demo-assets/demo-webinar-accessibility.svg'] },
   ],
   galleryItems: [
-    { label: 'EDITORIAL', tone: 'tall' }, { label: 'WEB', tone: 'wide' }, { label: 'BUILD', tone: 'tall' },
-    { label: 'STUDIO', tone: 'wide' }, { label: 'PROCESS', tone: 'normal' }, { label: 'DRAFT', tone: 'normal' },
+    { label: 'EDITORIAL · DEMO CONCEPT', url: '/demo-assets/demo-editorial.svg', tone: 'tall' },
+    { label: 'PORTFOLIO UI · DEMO SAMPLE', url: '/demo-assets/demo-portfolio.svg', tone: 'wide' },
+    { label: 'LEARNING DASHBOARD · DEMO', url: '/demo-assets/demo-dashboard.svg', tone: 'tall' },
+    { label: 'MARKETPLACE · FICTIONAL', url: '/demo-assets/demo-marketplace.svg', tone: 'wide' },
+    { label: 'CAMPUS ILLUSTRATION · DEMO', url: '/demo-assets/demo-education.svg', tone: 'normal' },
+    { label: 'WORKFLOW MOCKUP · DEMO', url: '/demo-assets/demo-experience.svg', tone: 'normal' },
   ],
 }
 
@@ -485,8 +531,11 @@ app.get('/api/portfolio', async (req, res) => {
     const savedMotionSettings = mongoose.connection.readyState === 1
       ? await PortfolioContent.findOne({ key: 'motionSettings' }).lean()
       : null
+    const savedAnimationControls = mongoose.connection.readyState === 1
+      ? await PortfolioContent.findOne({ key: 'animationControls' }).lean()
+      : null
     const savedCollections = mongoose.connection.readyState === 1
-      ? await PortfolioContent.find({ key: { $in: ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries'] } }).lean()
+      ? await PortfolioContent.find({ key: { $in: ['educationEntries', 'experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries'] } }).lean()
       : []
     const savedCollectionData = new Map(savedCollections.map((collection) => [collection.key, collection.data]))
     const savedById = new Map(savedProjects.map((project) => [project.id, project.data]))
@@ -500,6 +549,7 @@ app.get('/api/portfolio', async (req, res) => {
       ...portfolioData,
       about: savedAbout?.data || portfolioData.about,
       aboutStorage: savedAbout ? 'database' : aboutStorage,
+      projectsStorage: mongoose.connection.readyState === 1 ? 'database' : 'default',
       adminAccessSettings: savedAdminAccess?.data || portfolioData.adminAccessSettings,
       adminAccessSettingsStorage: savedAdminAccess ? 'database' : adminAccessSettingsStorage,
       homepageSettings: savedHomepageSettings?.data || portfolioData.homepageSettings,
@@ -508,9 +558,16 @@ app.get('/api/portfolio', async (req, res) => {
       edgeAnimationSettingsStorage: savedEdgeAnimation ? 'database' : edgeAnimationSettingsStorage,
       motionSettings: savedMotionSettings?.data || portfolioData.motionSettings,
       motionSettingsStorage: savedMotionSettings ? 'database' : motionSettingsStorage,
+      animationControls: savedAnimationControls?.data || portfolioData.animationControls,
+      animationControlsStorage: savedAnimationControls ? 'database' : animationControlsStorage,
+      educationEntries: savedCollectionData.get('educationEntries') || portfolioData.educationEntries,
+      educationStorage: savedCollectionData.has('educationEntries') ? 'database' : 'default',
       experienceEntries: savedCollectionData.get('experienceEntries') || portfolioData.experienceEntries,
+      experienceStorage: savedCollectionData.has('experienceEntries') ? 'database' : 'default',
       achievements: savedCollectionData.get('achievements') || portfolioData.achievements,
+      achievementsStorage: savedCollectionData.has('achievements') ? 'database' : 'default',
       galleryItems: savedCollectionData.get('galleryItems') || portfolioData.galleryItems,
+      galleryStorage: savedCollectionData.has('galleryItems') ? 'database' : 'default',
       contactLinks: savedCollectionData.get('contactLinks') || portfolioData.contactLinks,
       planetLinks: savedCollectionData.get('planetLinks') || portfolioData.planetLinks,
       planetLinksStorage: savedCollectionData.has('planetLinks') ? 'database' : 'default',
@@ -560,6 +617,60 @@ app.put('/api/portfolio/motion-settings', async (req, res) => {
   }
 })
 
+app.put('/api/portfolio/animation-controls', async (req, res) => {
+  const settings = req.body?.settings
+  const allowedKeys = {
+    sections: new Set(['hero', 'work', 'about', 'gallery', 'journey', 'toolkit', 'contact']),
+    areas: new Set(['background', 'header', 'hero', 'content', 'contact', 'footer', 'loaders', 'admin']),
+    effects: new Set([
+      'pageAmbient', 'headerFloat', 'headerColorFlow', 'headerEdge', 'heroColorFlow', 'heroDrift',
+      'planetOrbit', 'planetSignal', 'sunCorona', 'infoFloat', 'sectionColorFlow', 'projectColorFlow',
+      'projectMediaColorFlow', 'projectMediaPulse', 'projectMediaSweep', 'contactSweep',
+      'contactTextShine', 'contactArtworkDrift', 'footerColorFlow', 'footerEdge', 'footerStatusPulse',
+      'bootPattern', 'bootAmbience', 'bootParticles', 'bootOrbit', 'bootTyping', 'bootCodeScroll',
+      'bootScan', 'bootProgress', 'bootLivePulse', 'linkPromptPulse', 'linkPromptStylePulse',
+      'linkLoaderGrid', 'linkLoaderPulse', 'linkLoaderScan', 'planetLoaderOrbit',
+      'planetLoaderCodeScroll', 'planetLoaderPulse', 'adminDashboardDrift', 'effectPreviewOrbs',
+      'effectPreviewDrift', 'effectPreviewPulse', 'effectPreviewOrbit', 'adminLoginDrift',
+      'adminLoginPulse', 'adminLoginFloat',
+    ]),
+  }
+  const isValidBooleanMap = (value, allowed) => value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && Object.entries(value).every(([key, enabled]) => allowed.has(key) && typeof enabled === 'boolean')
+  const validSettings = settings
+    && isValidBooleanMap(settings.sections, allowedKeys.sections)
+    && isValidBooleanMap(settings.areas, allowedKeys.areas)
+    && isValidBooleanMap(settings.effects, allowedKeys.effects)
+
+  if (!validSettings) {
+    return res.status(400).json({ success: false, message: 'Animation control settings are invalid.' })
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    portfolioData.animationControls = settings
+    animationControlsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+
+  try {
+    const savedSettings = await PortfolioContent.findOneAndUpdate(
+      { key: 'animationControls' },
+      { key: 'animationControls', data: settings },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean()
+
+    animationControlsStorage = 'database'
+    return res.json({ success: true, settings: savedSettings.data, storage: 'database' })
+  } catch (error) {
+    console.error('Failed to save animation controls:', error)
+    portfolioData.animationControls = settings
+    animationControlsStorage = 'memory'
+    return res.json({ success: true, settings, storage: 'memory' })
+  }
+})
+
 app.put('/api/portfolio/admin-access', async (req, res) => {
   const settings = req.body?.settings
   const pattern = settings?.unlockPattern
@@ -603,11 +714,42 @@ app.put('/api/portfolio/admin-access', async (req, res) => {
 })
 
 app.put('/api/portfolio/homepage-settings', async (req, res) => {
+  const submittedSettings = req.body?.settings
+  if (!submittedSettings || typeof submittedSettings !== 'object' || Array.isArray(submittedSettings)) {
+    return res.status(400).json({ message: 'Homepage settings are required.' })
+  }
+
   const allowedDesigns = ['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid', 'cosmic-studio']
-  const activeDesign = allowedDesigns.includes(req.body?.settings?.activeDesign)
-    ? req.body.settings.activeDesign
+  const activeDesign = allowedDesigns.includes(submittedSettings.activeDesign)
+    ? submittedSettings.activeDesign
     : 'placement-pro'
+  const textSettings = [
+    ['heroName', 80, ''],
+    ['heroRole', 120, ''],
+    ['availabilityText', 100, 'Available for Frontend / Product / Internship'],
+  ]
   const settings = { activeDesign }
+
+  for (const [key, maxLength, fallback] of textSettings) {
+    const value = submittedSettings[key] === undefined ? fallback : submittedSettings[key]
+    if (typeof value !== 'string' || value.length > maxLength) {
+      return res.status(400).json({ message: `${key} must be text no longer than ${maxLength} characters.` })
+    }
+    settings[key] = value.trim() || fallback
+  }
+
+  for (const [key, fallback] of [['nameColor', '#123B5B'], ['nameHighlightColor', '#177A56']]) {
+    const value = submittedSettings[key] === undefined ? fallback : submittedSettings[key]
+    if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) {
+      return res.status(400).json({ message: `${key} must be a six-digit hexadecimal color.` })
+    }
+    settings[key] = value.toUpperCase()
+  }
+
+  const allowedAnimations = ['none', 'gradient', 'glow', 'float']
+  settings.heroAnimation = allowedAnimations.includes(submittedSettings.heroAnimation)
+    ? submittedSettings.heroAnimation
+    : 'gradient'
 
   if (mongoose.connection.readyState !== 1) {
     portfolioData.homepageSettings = settings
@@ -705,7 +847,7 @@ app.put('/api/portfolio/about', async (req, res) => {
 
 app.put('/api/portfolio/content/:key', async (req, res) => {
   const { key } = req.params
-  const allowedKeys = ['experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries']
+  const allowedKeys = ['educationEntries', 'experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries']
 
   if (!allowedKeys.includes(key) || !Array.isArray(req.body?.entries)) {
     return res.status(400).json({ success: false, message: 'A valid portfolio collection is required.' })
@@ -837,6 +979,29 @@ app.put('/api/portfolio/content/:key', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'portfolio-api' })
+})
+
+app.post('/api/admin/login', (req, res) => {
+  const configuredUsername = process.env.ADMIN_EMAIL || process.env.ADMIN_USERNAME
+  const configuredPassword = process.env.ADMIN_PASSWORD
+
+  if (!configuredUsername || !configuredPassword) {
+    console.error('[admin-login] ADMIN_EMAIL (or ADMIN_USERNAME) and ADMIN_PASSWORD must be configured on the API server.')
+    return res.status(503).json({ success: false, message: 'Admin login is not configured on the backend. Set ADMIN_EMAIL and ADMIN_PASSWORD on the API service.' })
+  }
+
+  const { username, password } = req.body || {}
+  if (typeof username !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ success: false, message: 'Enter your admin username and password.' })
+  }
+
+  const usernameMatches = username.trim().toLowerCase() === configuredUsername.trim().toLowerCase()
+  const passwordMatches = password === configuredPassword
+  if (!usernameMatches || !passwordMatches) {
+    return res.status(401).json({ success: false, message: 'Invalid username or password.' })
+  }
+
+  return res.json({ success: true })
 })
 
 app.get('/', (req, res) => {

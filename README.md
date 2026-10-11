@@ -18,9 +18,9 @@ The frontend is an independent service in `frontend/` and uses `VITE_API_URL` fo
 | `CLIENT_URL` | Allowed frontend origin(s), comma-separated | `http://localhost:5173` |
 | `MONGODB_URI` | Backend MongoDB connection string | backend only |
 | `CLOUDINARY_*` | Backend Cloudinary credentials | backend only |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Backend admin credentials | backend only |
-| `VITE_ADMIN_USERNAME` | Local dashboard username | `admin` |
-| `VITE_ADMIN_PASSWORD` | Local dashboard password | `change-this-password` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Admin login credentials | backend only (Render/API service) |
+
+Admin credentials are checked by the backend at login time. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend service's environment (for example, Render), not as `VITE_*` variables on Vercel. Never expose the password in a frontend environment variable because Vite embeds `VITE_*` values in public browser assets.
 
 The `.env.local` file is ignored by git. Keep real credentials there and do not commit them.
 

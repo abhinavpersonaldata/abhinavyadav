@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Demo editorial archive interface</title><desc id="desc">A fictional editorial portfolio interface for testing project gallery layout.</desc>
+  <defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="#e8e2d6"/><stop offset="1" stop-color="#cfc8bc"/></linearGradient><linearGradient id="photo" x2="1" y2="1"><stop stop-color="#b07d57"/><stop offset=".5" stop-color="#444d48"/><stop offset="1" stop-color="#1f2c30"/></linearGradient></defs>
+  <rect width="1440" height="900" fill="url(#bg)"/><rect x="63" y="48" width="1314" height="804" rx="8" fill="#f5f1e9"/>
+  <text x="110" y="108" fill="#292b27" font-family="Georgia,serif" font-size="23" font-weight="700">FIELD NOTES / STUDIO</text><text x="1067" y="106" fill="#62645d" font-family="Arial,sans-serif" font-size="14" letter-spacing="3">ARCHIVE　 INDEX　 ABOUT</text><path d="M110 136h1220" stroke="#b9b4a9"/>
+  <text x="113" y="199" fill="#8b694d" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="4">DEMO EDITORIAL CONCEPT</text><text x="108" y="277" fill="#262923" font-family="Georgia,serif" font-size="58">A slower kind of digital</text><text x="108" y="345" fill="#262923" font-family="Georgia,serif" font-size="58">archive.</text>
+  <rect x="110" y="386" width="1220" height="280" fill="url(#photo)"/><circle cx="1065" cy="500" r="100" fill="#d8bd91" opacity=".42"/><path d="M110 625 400 430l200 179 170-121 211 178 161-132 188 126v6H110Z" fill="#18272b" opacity=".78"/>
+  <rect x="144" y="417" width="270" height="36" rx="18" fill="#f5f1e9" fill-opacity=".94"/><text x="166" y="441" fill="#393c35" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="2">SAMPLE IMAGE · NOT A CLIENT</text>
+  <text x="112" y="729" fill="#292b27" font-family="Georgia,serif" font-size="30">Issue 01 — Form, rhythm &amp; code</text><text x="113" y="772" fill="#686b63" font-family="Arial,sans-serif" font-size="16">An imaginary archive project built to explore composition and narrative.</text>
+  <text x="113" y="815" fill="#8b694d" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="2">DEMO SAMPLE · FICTIONAL PROJECT PREVIEW</text>
+</svg>

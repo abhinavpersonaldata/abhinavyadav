@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640">
+  <rect width="960" height="640" rx="36" fill="#fff2e9"/>
+  <rect x="72" y="64" width="816" height="512" rx="28" fill="#fff"/>
+  <rect x="72" y="64" width="816" height="88" rx="28" fill="#bd6b47"/>
+  <text x="122" y="120" fill="#fff" font-family="Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="3">SAMPLE WORKSHOP</text>
+  <text x="136" y="244" fill="#42291f" font-family="Arial,sans-serif" font-size="30" font-weight="700">Responsive web foundations</text>
+  <text x="136" y="286" fill="#826c61" font-family="Arial,sans-serif" font-size="18">Layout practice across screen sizes</text>
+  <rect x="136" y="328" width="390" height="152" rx="18" fill="#f9e5d9"/>
+  <rect x="560" y="328" width="118" height="152" rx="18" fill="#f4d7c8"/>
+  <rect x="698" y="328" width="118" height="152" rx="18" fill="#f0c3ad"/>
+  <path d="M170 366h322m-322 34h224m-224 34h272" stroke="#bd6b47" stroke-width="10" stroke-linecap="round"/>
+  <text x="480" y="534" text-anchor="middle" fill="#bd6b47" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="3">FICTIONAL EVENT CARD · DEMO ONLY</text>
+</svg>

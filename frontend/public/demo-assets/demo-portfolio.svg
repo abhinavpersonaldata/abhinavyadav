@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Demo portfolio website preview</title>
+  <desc id="desc">A sample portfolio interface, clearly labeled as demo content.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17243a"/></linearGradient>
+    <linearGradient id="accent"><stop stop-color="#b9f34a"/><stop offset="1" stop-color="#64d8ff"/></linearGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <circle cx="1170" cy="200" r="300" fill="#64d8ff" opacity=".08"/>
+  <rect x="70" y="56" width="1300" height="788" rx="25" fill="#101a2b" stroke="#ffffff" stroke-opacity=".16"/>
+  <rect x="70" y="56" width="1300" height="62" rx="25" fill="#ffffff" fill-opacity=".035"/>
+  <circle cx="108" cy="87" r="9" fill="#b9f34a"/><text x="132" y="95" fill="#f2f6fd" font-family="Arial,sans-serif" font-size="21" font-weight="700">AY / DIGITAL STUDIO</text>
+  <text x="1020" y="94" fill="#aab8cd" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">WORK　 ABOUT　 CONTACT</text>
+  <text x="130" y="203" fill="#b9f34a" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="4">DEMO UI · NOT A CLIENT PROJECT</text>
+  <text x="125" y="315" fill="#f4f7fb" font-family="Arial,sans-serif" font-size="80" font-weight="700">Ideas into</text>
+  <text x="125" y="405" fill="#f4f7fb" font-family="Arial,sans-serif" font-size="80" font-weight="700">digital experiences.</text>
+  <rect x="128" y="452" width="510" height="7" rx="4" fill="url(#accent)"/>
+  <text x="130" y="512" fill="#aab8cd" font-family="Arial,sans-serif" font-size="23">A responsive portfolio concept with selected work,</text>
+  <text x="130" y="550" fill="#aab8cd" font-family="Arial,sans-serif" font-size="23">creative systems and a thoughtful story.</text>
+  <rect x="130" y="600" width="190" height="58" rx="29" fill="url(#accent)"/>
+  <text x="163" y="637" fill="#101a2b" font-family="Arial,sans-serif" font-size="16" font-weight="700">EXPLORE WORK →</text>
+  <rect x="825" y="178" width="465" height="505" rx="20" fill="#18263a" stroke="#ffffff" stroke-opacity=".14"/>
+  <text x="865" y="225" fill="#aab8cd" font-family="Arial,sans-serif" font-size="14" letter-spacing="3">FEATURED PROJECT / 01</text>
+  <rect x="860" y="252" width="395" height="240" rx="13" fill="#273d5a"/>
+  <path d="M875 440 1005 330l82 73 73-96 80 61v109H875Z" fill="url(#accent)" opacity=".7"/>
+  <circle cx="1152" cy="304" r="25" fill="#b9f34a" opacity=".8"/>
+  <text x="865" y="542" fill="#f4f7fb" font-family="Arial,sans-serif" font-size="28" font-weight="700">Studio Grid</text>
+  <text x="865" y="580" fill="#aab8cd" font-family="Arial,sans-serif" font-size="17">Editorial web experience · demo concept</text>
+  <rect x="865" y="612" width="98" height="30" rx="15" fill="#ffffff" fill-opacity=".08"/><text x="884" y="633" fill="#dce5f1" font-family="Arial,sans-serif" font-size="13">REACT</text>
+  <rect x="995" y="612" width="115" height="30" rx="15" fill="#ffffff" fill-opacity=".08"/><text x="1012" y="633" fill="#dce5f1" font-family="Arial,sans-serif" font-size="13">MOTION</text>
+  <rect x="102" y="770" width="312" height="42" rx="21" fill="#151f30" stroke="#ffffff" stroke-opacity=".13"/>
+  <text x="126" y="797" fill="#f4f7fb" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="2">DEMO SAMPLE · FOR LAYOUT TESTING</text>
+</svg>

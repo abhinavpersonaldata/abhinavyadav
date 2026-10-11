@@ -35,7 +35,138 @@ const createFadeInUp = (speed) => ({
   show: { opacity: 1, y: 0, transition: { duration: 0.56 / speed, ease: [0.22, 1, 0.36, 1] } },
 })
 
-const MotionScopeContext = createContext({ enabled: true, group: 'content', scope: 'all' })
+const MotionScopeContext = createContext({ enabled: true, group: 'content', scope: 'all', bootComplete: false })
+const PublicImageViewerContext = createContext(null)
+
+const ZoomableImage = ({ src, alt, className, ...props }) => {
+  const openImageViewer = useContext(PublicImageViewerContext)
+  const label = alt ? `View full image: ${alt}` : 'View full image'
+
+  return (
+    <img
+      {...props}
+      src={src}
+      alt={alt}
+      className={`zoomable-image${className ? ` ${className}` : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-haspopup="dialog"
+      aria-label={label}
+      onClick={(event) => openImageViewer?.(src, alt, event.currentTarget)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openImageViewer?.(src, alt, event.currentTarget)
+        }
+      }}
+    />
+  )
+}
+
+const ImageViewerModal = ({ image, onClose }) => {
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const dragStateRef = useRef(null)
+
+  const updateZoom = (nextZoom) => {
+    const boundedZoom = Math.min(5, Math.max(1, nextZoom))
+    setZoom(boundedZoom)
+    if (boundedZoom === 1) setPan({ x: 0, y: 0 })
+  }
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Tab') {
+      const focusableElements = [...event.currentTarget.querySelectorAll('button:not(:disabled)')]
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement?.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement?.focus()
+      }
+    } else if (event.key === '+' || event.key === '=') {
+      event.preventDefault()
+      updateZoom(zoom + 0.25)
+    } else if (event.key === '-') {
+      event.preventDefault()
+      updateZoom(zoom - 0.25)
+    } else if (event.key === '0') {
+      updateZoom(1)
+    } else if (zoom > 1 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      event.preventDefault()
+      const amount = 40
+      setPan((current) => ({
+        x: current.x + (event.key === 'ArrowLeft' ? amount : event.key === 'ArrowRight' ? -amount : 0),
+        y: current.y + (event.key === 'ArrowUp' ? amount : event.key === 'ArrowDown' ? -amount : 0),
+      }))
+    }
+  }
+
+  const handlePointerDown = (event) => {
+    if (zoom <= 1 || event.button !== 0) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragStateRef.current = { x: event.clientX, y: event.clientY, pan }
+  }
+
+  const handlePointerMove = (event) => {
+    if (!dragStateRef.current) return
+    setPan({
+      x: dragStateRef.current.pan.x + event.clientX - dragStateRef.current.x,
+      y: dragStateRef.current.pan.y + event.clientY - dragStateRef.current.y,
+    })
+  }
+
+  const handlePointerUp = () => {
+    dragStateRef.current = null
+  }
+
+  return (
+    <div
+      className="public-image-viewer"
+      role="dialog"
+      aria-modal="true"
+      aria-label={image.alt ? `Full-size image: ${image.alt}` : 'Full-size image'}
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="public-image-viewer-content" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="public-image-viewer-close" onClick={onClose} autoFocus aria-label="Close image viewer">
+          <X size={20} aria-hidden="true" />
+        </button>
+        <div
+          className={`public-image-viewer-stage${zoom > 1 ? ' is-zoomed' : ''}`}
+          onWheel={(event) => {
+            updateZoom(zoom + (event.deltaY < 0 ? 0.25 : -0.25))
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onLostPointerCapture={handlePointerUp}
+          onDoubleClick={() => updateZoom(zoom > 1 ? 1 : 2)}
+        >
+          <img
+            src={image.src}
+            alt={image.alt}
+            draggable="false"
+            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+          />
+        </div>
+        <div className="public-image-viewer-toolbar" aria-label="Image zoom controls">
+          {image.alt ? <p>{image.alt}</p> : <span />}
+          <div className="public-image-zoom-controls">
+            <button type="button" onClick={() => updateZoom(zoom - 0.25)} disabled={zoom <= 1} aria-label="Zoom out">−</button>
+            <output aria-live="polite">{Math.round(zoom * 100)}%</output>
+            <button type="button" onClick={() => updateZoom(zoom + 0.25)} disabled={zoom >= 5} aria-label="Zoom in">+</button>
+            <button type="button" onClick={() => updateZoom(1)} disabled={zoom === 1} aria-label="Reset zoom">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const useMotionLibrary = () => {
   const [motionLibrary, setMotionLibrary] = useState(null)
@@ -70,6 +201,7 @@ const MotionSection = ({ children, motionEnabled = true, activeMotionScope = 'al
     enabled: motionEnabled && parentMotion.enabled,
     group: motionGroup,
     scope: activeMotionScope,
+    bootComplete: parentMotion.bootComplete,
   }
 
   if (!Component) {
@@ -91,9 +223,9 @@ const MotionSection = ({ children, motionEnabled = true, activeMotionScope = 'al
       data-motion-enabled={motionEnabled ? 'true' : 'false'}
       data-motion-group={motionGroup}
       data-motion-scope-active={shouldAnimate ? 'true' : 'false'}
-      initial={shouldAnimate ? initial : false}
-      animate={shouldAnimate ? animate : undefined}
-      whileInView={shouldAnimate ? whileInView : undefined}
+      initial={shouldAnimate && !parentMotion.bootComplete ? initial : false}
+      animate={shouldAnimate ? (parentMotion.bootComplete ? animate || whileInView || 'show' : animate) : undefined}
+      whileInView={shouldAnimate && !parentMotion.bootComplete ? whileInView : undefined}
       viewport={viewport}
       variants={shouldAnimate ? variants : undefined}
     >
@@ -117,9 +249,9 @@ const MotionDiv = ({ children, motionScopeGroup, ...props }) => {
   return (
     <Component
       {...elementProps}
-      initial={scopeEnabled ? initial : false}
-      animate={scopeEnabled ? animate : undefined}
-      whileInView={scopeEnabled ? whileInView : undefined}
+      initial={scopeEnabled && !parentMotion.bootComplete ? initial : false}
+      animate={scopeEnabled ? (parentMotion.bootComplete ? animate || whileInView || 'show' : animate) : undefined}
+      whileInView={scopeEnabled && !parentMotion.bootComplete ? whileInView : undefined}
       viewport={viewport}
       variants={scopeEnabled ? variants : undefined}
       transition={scopeEnabled ? transition : undefined}
@@ -144,9 +276,9 @@ const MotionArticle = ({ children, motionScopeGroup, ...props }) => {
   return (
     <Component
       {...elementProps}
-      initial={scopeEnabled ? initial : false}
-      animate={scopeEnabled ? animate : undefined}
-      whileInView={scopeEnabled ? whileInView : undefined}
+      initial={scopeEnabled && !parentMotion.bootComplete ? initial : false}
+      animate={scopeEnabled ? (parentMotion.bootComplete ? animate || whileInView || 'show' : animate) : undefined}
+      whileInView={scopeEnabled && !parentMotion.bootComplete ? whileInView : undefined}
       viewport={viewport}
       variants={scopeEnabled ? variants : undefined}
       transition={scopeEnabled ? transition : undefined}
@@ -165,10 +297,6 @@ const AnimatedPresence = ({ children, ...props }) => {
   return <Component {...props}>{children}</Component>
 }
 
-const ADMIN_CREDENTIALS = {
-  username: import.meta.env.VITE_ADMIN_USERNAME || 'yadavabhinav551@gmail.com',
-  password: import.meta.env.VITE_ADMIN_PASSWORD || '12345678',
-}
 const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-auth-v2'
 const DEFAULT_ADMIN_ACCESS_SETTINGS = {
   logoClickCount: 5,
@@ -177,31 +305,43 @@ const DEFAULT_ADMIN_ACCESS_SETTINGS = {
 }
 const DEFAULT_HOMEPAGE_SETTINGS = {
   activeDesign: 'placement-pro',
+  heroName: '',
+  heroRole: '',
+  availabilityText: 'Available for Frontend / Product / Internship',
+  nameColor: '#123B5B',
+  nameHighlightColor: '#177A56',
+  heroAnimation: 'gradient',
 }
+const HOMEPAGE_HERO_ANIMATIONS = [
+  { id: 'none', label: 'No animation' },
+  { id: 'gradient', label: 'Color flow' },
+  { id: 'glow', label: 'Soft glow' },
+  { id: 'float', label: 'Gentle float' },
+]
 const HOMEPAGE_DESIGNS = [
   {
     id: 'placement-pro',
     name: 'Placement Pro',
-    description: 'A recruiter-ready CSE engineer homepage with biodata, skills, projects, and resume actions.',
+    description: 'A recruiter-ready computer science and engineering homepage featuring a professional profile, skills, projects, and resume actions.',
     tone: 'Professional',
   },
   {
     id: 'academic-clean',
     name: 'Academic Clean',
-    description: 'A clear profile-first layout for teachers, mentors, and college submissions.',
+    description: 'A clear, profile-first layout for teachers, mentors, and college applications.',
     tone: 'Academic',
   },
   {
     id: 'recruiter-brief',
     name: 'Recruiter Brief',
-    description: 'A faster placement-facing version focused on quick scan, proof, and contact.',
+    description: 'A concise, recruiter-focused layout that highlights experience, credentials, and contact details.',
     tone: 'Placement',
   },
   {
     id: 'resume-grid',
     name: 'Resume Grid',
-    description: 'A structured biodata grid with compact facts and document-style sections.',
-    tone: 'Biodata',
+    description: 'A structured profile grid with concise details and document-style sections.',
+    tone: 'Profile',
   },
   {
     id: 'cosmic-studio',
@@ -280,9 +420,16 @@ const DEFAULT_ABOUT = {
   images: [],
   links: [],
 }
+const FALLBACK_PORTRAIT_URL = '/resume/portrait.jpg'
+const handlePortraitImageError = (event) => {
+  const image = event.currentTarget
+  if (image.dataset.fallbackApplied === 'true') return
+  image.dataset.fallbackApplied = 'true'
+  image.src = FALLBACK_PORTRAIT_URL
+}
 const ABOUT_COLLECTIONS = [
   { key: 'facts', title: 'Quick details', fields: [{ key: 'label', label: 'Label' }, { key: 'value', label: 'Detail' }] },
-  { key: 'colleges', title: 'Colleges & education', fields: [{ key: 'title', label: 'College / institution' }, { key: 'program', label: 'Course / program' }, { key: 'dates', label: 'Dates' }, { key: 'location', label: 'Location' }, { key: 'description', label: 'Additional detail', multiline: true }, { key: 'image', label: 'College image URL', type: 'url', upload: true }, { key: 'url', label: 'College link', type: 'url' }] },
+  { key: 'colleges', title: 'Colleges & education', fields: [{ key: 'type', label: 'Institution type (school / college / university)' }, { key: 'title', label: 'School / college / institution name' }, { key: 'program', label: 'Course / program' }, { key: 'dates', label: 'Dates' }, { key: 'location', label: 'Location' }, { key: 'description', label: 'Additional detail', multiline: true }, { key: 'image', label: 'Institution image URL', type: 'url', upload: true }, { key: 'images', label: 'Additional image URLs (one per line)', multiline: true }, { key: 'linkLabel', label: 'Institution link label' }, { key: 'url', label: 'School / college website URL', type: 'url' }] },
   { key: 'webinars', title: 'Webinars & events', fields: [{ key: 'title', label: 'Webinar / event title' }, { key: 'organizer', label: 'Organizer' }, { key: 'date', label: 'Date' }, { key: 'description', label: 'Details', multiline: true }, { key: 'image', label: 'Event image URL', type: 'url', upload: true }, { key: 'url', label: 'Recording / event link', type: 'url' }] },
   { key: 'certificates', title: 'Certificates', fields: [{ key: 'title', label: 'Certificate title' }, { key: 'issuer', label: 'Issuer' }, { key: 'date', label: 'Date' }, { key: 'credential', label: 'Credential ID' }, { key: 'image', label: 'Certificate image URL', type: 'url', upload: true }, { key: 'url', label: 'Verification link', type: 'url' }] },
   { key: 'images', title: 'About gallery images', fields: [{ key: 'label', label: 'Image caption' }, { key: 'url', label: 'Image URL', type: 'url', upload: true }] },
@@ -369,6 +516,96 @@ const SECTION_MOTION_DEFAULTS = {
   toolkit: true,
   contact: true,
 }
+const ANIMATION_EFFECT_GROUPS = [
+  { id: 'background', label: 'Background', effects: ['pageAmbient'] },
+  { id: 'header', label: 'Header', effects: ['headerFloat', 'headerColorFlow', 'headerEdge'] },
+  { id: 'hero', label: 'Hero & planets', effects: ['heroColorFlow', 'heroDrift', 'planetOrbit', 'planetSignal', 'sunCorona', 'infoFloat'] },
+  { id: 'content', label: 'Content & projects', effects: ['sectionColorFlow', 'projectColorFlow', 'projectMediaColorFlow', 'projectMediaPulse', 'projectMediaSweep'] },
+  { id: 'contact', label: 'Contact', effects: ['contactSweep', 'contactTextShine', 'contactArtworkDrift'] },
+  { id: 'footer', label: 'Footer', effects: ['footerColorFlow', 'footerEdge', 'footerStatusPulse'] },
+  { id: 'loaders', label: 'Page & link loaders', effects: ['bootPattern', 'bootAmbience', 'bootParticles', 'bootOrbit', 'bootTyping', 'bootCodeScroll', 'bootScan', 'bootProgress', 'bootLivePulse', 'linkPromptPulse', 'linkPromptStylePulse', 'linkLoaderGrid', 'linkLoaderPulse', 'linkLoaderScan', 'planetLoaderOrbit', 'planetLoaderCodeScroll', 'planetLoaderPulse'] },
+  { id: 'admin', label: 'Admin visual previews', effects: ['adminDashboardDrift', 'effectPreviewOrbs', 'effectPreviewDrift', 'effectPreviewPulse', 'effectPreviewOrbit', 'adminLoginDrift', 'adminLoginPulse', 'adminLoginFloat'] },
+]
+const ANIMATION_EFFECT_CONTROLS = [
+  { id: 'pageAmbient', label: 'Page ambient pattern', selectors: ['body::after'] },
+  { id: 'headerFloat', label: 'Header floating motion', selectors: ['.topbar'] },
+  { id: 'headerColorFlow', label: 'Header color flow', selectors: ['.topbar::before'] },
+  { id: 'headerEdge', label: 'Header animated edge', selectors: ['.topbar::after'] },
+  { id: 'heroColorFlow', label: 'Hero color flow', selectors: ['.hero-panel::before', '.pro-hero::after'] },
+  { id: 'heroDrift', label: 'Hero ambient drift', selectors: ['.hero-panel::after'] },
+  { id: 'planetOrbit', label: 'Planet orbit rotation', selectors: ['.orbit-planet-track'] },
+  { id: 'planetSignal', label: 'Planet signal pulse', selectors: ['.planet-marker::after'] },
+  { id: 'sunCorona', label: 'Sun corona pulse', selectors: ['.solar-sun::before'] },
+  { id: 'infoFloat', label: 'Hero info-chip float', selectors: ['.info-strip span'] },
+  { id: 'sectionColorFlow', label: 'Section ambient flow', selectors: ['.content-section::before'] },
+  { id: 'projectColorFlow', label: 'Project-card color flow', selectors: ['.project-panel::before'] },
+  { id: 'projectMediaColorFlow', label: 'Project-media color flow', selectors: ['.project-media::before'] },
+  { id: 'projectMediaPulse', label: 'Project-media pulse', selectors: ['.project-media'] },
+  { id: 'projectMediaSweep', label: 'Project-media light sweep', selectors: ['.project-media::after'] },
+  { id: 'contactSweep', label: 'Contact-panel light sweep', selectors: ['.contact-graphic::after'] },
+  { id: 'contactTextShine', label: 'Contact heading shine', selectors: ['.contact-graphic-title span:last-child'] },
+  { id: 'contactArtworkDrift', label: 'Contact artwork drift', selectors: ['.contact-visual'] },
+  { id: 'footerColorFlow', label: 'Footer color flow', selectors: ['.site-footer::before'] },
+  { id: 'footerEdge', label: 'Footer animated edge', selectors: ['.site-footer::after'] },
+  { id: 'footerStatusPulse', label: 'Footer status pulse', selectors: ['.footer-live-status i'] },
+  { id: 'bootPattern', label: 'Boot-screen grid', selectors: ['.site-boot-loader::before'] },
+  { id: 'bootAmbience', label: 'Boot-screen ambient glow', selectors: ['.boot-loader-ambience::before', '.boot-loader-ambience::after'] },
+  { id: 'bootParticles', label: 'Boot-screen particles', selectors: ['.boot-loader-ambience > i'] },
+  { id: 'bootOrbit', label: 'Boot-screen orbit', selectors: ['.boot-layout-orbit .boot-loader-card::before'] },
+  { id: 'bootTyping', label: 'Boot-screen typing dots', selectors: ['.boot-loader-dots'] },
+  { id: 'bootCodeScroll', label: 'Boot-screen code scroll', selectors: ['.boot-code-stream'] },
+  { id: 'bootScan', label: 'Boot-screen scanline', selectors: ['.boot-code-scanline'] },
+  { id: 'bootProgress', label: 'Boot-screen progress sweep', selectors: ['.boot-loader-progress > span i'] },
+  { id: 'bootLivePulse', label: 'Boot-screen live pulse', selectors: ['.boot-loader-live i'] },
+  { id: 'linkPromptPulse', label: 'Link prompt pulse', selectors: ['.site-link-direct-open-action'] },
+  { id: 'linkPromptStylePulse', label: 'Link prompt theme pulse', selectors: [
+    '.site-link-direct-open-prompt.link-loader-matrix .site-link-direct-open-action',
+    '.site-link-direct-open-prompt.link-loader-signal .site-link-direct-open-action',
+    '.site-link-direct-open-prompt.link-loader-scan .site-link-direct-open-action',
+  ] },
+  { id: 'linkLoaderGrid', label: 'Matrix loader grid', selectors: ['.link-loader-matrix::before'] },
+  { id: 'linkLoaderPulse', label: 'Signal loader pulse', selectors: ['.link-loader-signal .planet-loader-orbit > span'] },
+  { id: 'linkLoaderScan', label: 'Scan loader beam', selectors: ['.link-loader-scan::after'] },
+  { id: 'planetLoaderOrbit', label: 'Planet loader orbit', selectors: ['.planet-loader-orbit::before', '.planet-loader-orbit::after'] },
+  { id: 'planetLoaderCodeScroll', label: 'Planet loader code scroll', selectors: ['.planet-loader-code-track'] },
+  { id: 'planetLoaderPulse', label: 'Planet loader status pulse', selectors: ['.planet-loader-status > span:first-child'] },
+  { id: 'adminDashboardDrift', label: 'Admin dashboard ambience', selectors: ['.admin-dashboard::before'] },
+  { id: 'effectPreviewOrbs', label: 'Effect-preview floating orbs', selectors: ['.effect-orb'] },
+  { id: 'effectPreviewDrift', label: 'Effect-preview aurora / sunrise', selectors: ['.effect-scene-aurora::before', '.effect-scene-sunrise::before'] },
+  { id: 'effectPreviewPulse', label: 'Effect-preview neon pulse', selectors: ['.effect-scene-neon-glow::before'] },
+  { id: 'effectPreviewOrbit', label: 'Effect-preview orbital spin', selectors: ['.effect-scene-orbit::before'] },
+  { id: 'adminLoginDrift', label: 'Admin-login ambient drift', selectors: ['.admin-login-shell::before'] },
+  { id: 'adminLoginPulse', label: 'Admin-login ambient pulse', selectors: ['.admin-login-shell::after'] },
+  { id: 'adminLoginFloat', label: 'Admin-login card float', selectors: ['.admin-login-card'] },
+]
+const ANIMATION_CONTROLS_STORAGE_KEY = 'portfolio-animation-controls-v1'
+const createDefaultAnimationControls = () => ({
+  areas: Object.fromEntries(ANIMATION_EFFECT_GROUPS.map(({ id }) => [id, true])),
+  effects: Object.fromEntries(ANIMATION_EFFECT_CONTROLS.map(({ id }) => [id, true])),
+})
+const SECTION_MOTION_LABELS = {
+  hero: 'Hero',
+  work: 'Work & projects',
+  about: 'About & education',
+  gallery: 'Gallery',
+  journey: 'Journey',
+  toolkit: 'Toolkit',
+  contact: 'Contact',
+}
+const normalizeAnimationControls = (settings = {}) => {
+  const savedSettings = settings && typeof settings === 'object' ? settings : {}
+  const defaults = createDefaultAnimationControls()
+  const validBooleanEntries = (value, fallback) => Object.fromEntries(
+    Object.entries(fallback).map(([key, defaultValue]) => [
+      key,
+      typeof value?.[key] === 'boolean' ? value[key] : defaultValue,
+    ]),
+  )
+  return {
+    areas: validBooleanEntries(savedSettings.areas, defaults.areas),
+    effects: validBooleanEntries(savedSettings.effects, defaults.effects),
+  }
+}
 const CUSTOM_MOTION_THEMES_KEY = 'portfolio-custom-motion-themes-v1'
 const BOOT_ANIMATION_STORAGE_KEY = 'portfolio-boot-animation-enabled-v1'
 const isBootAnimationEnabled = () => {
@@ -384,6 +621,10 @@ const createExperienceDraft = () => ({
 })
 const createAchievementDraft = () => ({
   title: '', organization: '', date: '', description: '', image: '', images: '', links: '',
+})
+const createEducationDraft = () => ({
+  type: 'College', title: '', institution: '', dates: '', location: '', description: '',
+  image: '', images: '', linkLabel: '', url: '',
 })
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
@@ -540,7 +781,7 @@ function LinkPageLoader({ title, variant }) {
           ))}
         </div>
       </div>
-      <div className="planet-loader-status"><span /><span>LOADING PAGE IN THIS WEBSITE</span><b>LIVE</b></div>
+      <div className="planet-loader-status"><span /><span>LOADING INTERNAL PAGE</span><b>LIVE</b></div>
     </div>
   )
 }
@@ -793,7 +1034,9 @@ function createDefaultResumeDesign(portfolio) {
     name: profile.name || 'Your Name',
     headline: profile.title || 'Your professional headline',
     location: profile.location || '',
-    portraitUrl: about.photo || '/resume/portrait.jpg',
+    portraitUrl: about.photo || FALLBACK_PORTRAIT_URL,
+    portraitSource: about.photo ? 'about' : 'custom',
+    bannerUrl: '',
     summary: about.biography || '',
     summaryUrl: '',
     contacts: [
@@ -848,6 +1091,13 @@ function normalizeResumeDesign(savedDesign, fallback) {
   if (fallbackMobile && !contacts.some((contact) => /^(mobile|phone)$/i.test(contact.label))) {
     contacts.push(fallbackMobile)
   }
+  const portraitSource = savedDesign.portraitSource === 'about'
+    ? 'about'
+    : savedDesign.portraitSource === 'custom'
+      ? 'custom'
+      : savedDesign.portraitUrl === fallback.portraitUrl || !savedDesign.portraitUrl
+        ? 'about'
+        : 'custom'
 
   return {
     ...fallback,
@@ -859,6 +1109,8 @@ function normalizeResumeDesign(savedDesign, fallback) {
       surfaceColor: '#20364f',
     } : {}),
     template: RESUME_TEMPLATES.some((template) => template.id === savedDesign.template) ? savedDesign.template : fallback.template,
+    portraitSource,
+    portraitUrl: portraitSource === 'about' ? fallback.portraitUrl : savedDesign.portraitUrl || fallback.portraitUrl,
     contacts,
     links: Array.isArray(savedDesign.links)
       ? savedDesign.links.filter((link) => link && typeof link.field === 'string'
@@ -1055,7 +1307,7 @@ function ResumeDocument({ design, onOpenLink, editable = false, onDesignChange }
         const mainSections = (design.sections || []).map((section, index) => ({ section, index }))
           .filter(({ section }) => !sidebarLayout || !sidebarSectionPattern.test(section.title))
         const renderPortrait = (className = '') => design.portraitUrl
-          ? <img className={`resume-document-portrait ${className}`} src={design.portraitUrl} alt={`${design.name || 'Resume'} portrait`} loading="lazy" />
+          ? <img className={`resume-document-portrait ${className}`} src={design.portraitUrl} alt={`${design.name || 'Resume'} portrait`} loading="lazy" onError={handlePortraitImageError} />
           : <div className={`resume-document-portrait resume-document-portrait-empty ${className}`} aria-hidden="true">{(design.name || 'AY').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</div>
         const renderIdentity = (className = '') => (
           <header className={`resume-document-header ${className}`}>
@@ -1116,13 +1368,13 @@ function ResumeDocument({ design, onOpenLink, editable = false, onDesignChange }
           >
             {template === 'editorial' ? (
               <div className="resume-document-cover">
-                {design.portraitUrl ? renderPortrait('resume-document-cover-photo') : null}
+                {design.bannerUrl ? <img className="resume-document-banner" src={design.bannerUrl} alt="" aria-hidden="true" loading="lazy" /> : null}
               </div>
             ) : null}
             {sidebarLayout ? (
               <div className="resume-document-layout">
                 <aside className="resume-document-sidebar">
-                  {template === 'modern' ? renderPortrait() : null}
+                  {template === 'modern' || template === 'minimal' ? renderPortrait() : null}
                   {renderContacts('resume-document-contacts-sidebar')}
                   {sidebarSections.map(renderSection)}
                 </aside>
@@ -1153,7 +1405,7 @@ function ResumeDocument({ design, onOpenLink, editable = false, onDesignChange }
   )
 }
 
-function ResumeDesigner({ design, onChange, onReset, onOpenLink }) {
+function ResumeDesigner({ design, onChange, onReset, onOpenLink, onImageUpload, aboutPortraitUrl }) {
   const update = (changes) => onChange((current) => ({ ...current, ...changes }))
   const addResumeSectionItem = (title, titlePattern) => onChange((current) => {
     const sectionIndex = current.sections.findIndex((section) => titlePattern.test(section.title))
@@ -1206,7 +1458,7 @@ function ResumeDesigner({ design, onChange, onReset, onOpenLink }) {
           </button>
         ))}
       </div>
-      <p className="resume-editor-hint"><ArrowUpRight size={14} /> Canvas mein kisi bhi text ko select karo; selection toolbar se usi text par URL lagao. Text ko direct click karke edit bhi kar sakte ho.</p>
+      <p className="resume-editor-hint"><ArrowUpRight size={14} /> Select any text on the canvas to add a URL using the selection toolbar. You can also click directly on text to edit it.</p>
       <div className="resume-editor-canvas-stage">
         <div className="resume-editor-canvas-toolbar">
           <strong>LIVE CANVAS</strong>
@@ -1236,7 +1488,29 @@ function ResumeDesigner({ design, onChange, onReset, onOpenLink }) {
         <label><span>Name</span><input maxLength={120} value={design.name} onChange={(event) => update({ name: event.target.value })} /></label>
         <label><span>Professional headline</span><input maxLength={240} value={design.headline} onChange={(event) => update({ headline: event.target.value })} /></label>
         <label><span>Location / label</span><input maxLength={120} value={design.location} onChange={(event) => update({ location: event.target.value })} /></label>
-        <label><span>Portrait image URL</span><input type="url" maxLength={2000} value={design.portraitUrl} onChange={(event) => update({ portraitUrl: event.target.value })} placeholder="https://..." /></label>
+        <label className="resume-image-upload-field">
+          <span>Portrait image</span>
+          <small className="upload-hint">{design.portraitSource === 'about' ? 'Using the portrait from the About section.' : 'Using a custom resume portrait.'}</small>
+          <button
+            type="button"
+            className="secondary-btn small-btn"
+            disabled={!aboutPortraitUrl || design.portraitSource === 'about'}
+            onClick={() => update({ portraitUrl: aboutPortraitUrl, portraitSource: 'about' })}
+          >
+            Use About portrait
+          </button>
+          <input type="file" accept="image/*" onChange={(event) => onImageUpload(event, 'portraitUrl')} />
+          <small className="upload-hint">Upload a portrait for the selected template. Max 50MB.</small>
+          <input aria-label="Portrait image URL" type="url" maxLength={2000} value={design.portraitUrl} onChange={(event) => update({ portraitUrl: event.target.value, portraitSource: 'custom' })} placeholder="Or paste an image URL" />
+        </label>
+        {design.template === 'editorial' ? (
+          <label className="resume-image-upload-field">
+            <span>Editorial banner</span>
+            <input type="file" accept="image/*" onChange={(event) => onImageUpload(event, 'bannerUrl')} />
+            <small className="upload-hint">This image fills the banner at the top of the Editorial template.</small>
+            <input aria-label="Editorial banner URL" type="url" maxLength={2000} value={design.bannerUrl || ''} onChange={(event) => update({ bannerUrl: event.target.value })} placeholder="Or paste a banner image URL" />
+          </label>
+        ) : null}
       </div>
       <label><span>Profile / summary</span><textarea rows="4" maxLength={5000} value={design.summary} onChange={(event) => update({ summary: event.target.value })} /></label>
       <label><span>Optional link for summary text</span><input maxLength={2000} value={design.summaryUrl} onChange={(event) => update({ summaryUrl: event.target.value })} placeholder="https://... or /page" /></label>
@@ -1269,7 +1543,7 @@ function ResumeDesigner({ design, onChange, onReset, onOpenLink }) {
         <div className="resume-designer-subsection-title">
           <div>
             <h4>Experience, skills & other sections</h4>
-            <p>Har section ke text ko canvas par edit ya select karke link kar sakte hain.</p>
+            <p>Edit any section directly on the canvas, or select text to add a link.</p>
           </div>
           <div className="resume-quick-add-actions">
             <button type="button" className="secondary-btn small-btn" disabled={design.sections.length >= 20} onClick={() => addResumeSectionItem('Experience', /experience|employment|work history/i)}>Add experience</button>
@@ -1435,10 +1709,70 @@ function startBootScrollTour(onComplete) {
   }
 }
 
+async function waitForBootMedia() {
+  await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)))
+
+  const images = Array.from(document.querySelectorAll('.site-shell img'))
+  const videos = Array.from(document.querySelectorAll('.site-shell video'))
+  const imagePromises = images.map((image) => new Promise((resolve) => {
+    const finish = () => {
+      image.removeEventListener('load', finish)
+      image.removeEventListener('error', finish)
+      if (image.complete && image.naturalWidth > 0 && typeof image.decode === 'function') {
+        image.decode().catch(() => {}).finally(resolve)
+      } else {
+        resolve()
+      }
+    }
+
+    if (image.complete) {
+      finish()
+      return
+    }
+
+    image.addEventListener('load', finish, { once: true })
+    image.addEventListener('error', finish, { once: true })
+    image.loading = 'eager'
+    image.fetchPriority = 'low'
+    if (image.complete) finish()
+  }))
+  const videoPromises = videos.map((video) => new Promise((resolve) => {
+    const finish = () => {
+      video.removeEventListener('loadeddata', finish)
+      video.removeEventListener('error', finish)
+      resolve()
+    }
+
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      resolve()
+      return
+    }
+
+    video.addEventListener('loadeddata', finish, { once: true })
+    video.addEventListener('error', finish, { once: true })
+    video.preload = 'auto'
+    if (video.readyState === HTMLMediaElement.HAVE_NOTHING) video.load()
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) finish()
+  }))
+
+  let timeoutId
+  await Promise.race([
+    Promise.all([...imagePromises, ...videoPromises]),
+    new Promise((resolve) => {
+      timeoutId = window.setTimeout(resolve, 15000)
+    }),
+  ])
+  window.clearTimeout(timeoutId)
+}
+
 function App() {
   const [isBootAnimationEnabledState, setIsBootAnimationEnabledState] = useState(isBootAnimationEnabled)
   const [isSiteBooting, setIsSiteBooting] = useState(isBootAnimationEnabled)
+  const [isBootTourComplete, setIsBootTourComplete] = useState(false)
   const bootAnimationEnabledAtMount = useRef(isBootAnimationEnabledState)
+  const [expandedPublicLists, setExpandedPublicLists] = useState({})
+  const [imageViewer, setImageViewer] = useState(null)
+  const imageViewerTriggerRef = useRef(null)
   const [theme, setTheme] = useState('dark')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [view, setView] = useState('home')
@@ -1451,6 +1785,7 @@ function App() {
   })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false)
   const [portfolio, setPortfolio] = useState({
     profile: { name: 'Abhinav Yadav', title: 'Frontend Developer • UI Engineer • CSE Diploma Student', location: 'India', email: 'abhinavyadav.contact@gmail.com', github: 'https://github.com/abhinavpersonaldata', linkedin: 'https://www.linkedin.com' },
     contactLinks: DEFAULT_CONTACT_LINKS,
@@ -1473,6 +1808,30 @@ function App() {
     ...DEFAULT_VISUAL_SETTINGS,
   })
   const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
+  const openImageViewer = (src, alt, trigger) => {
+    imageViewerTriggerRef.current = trigger
+    setImageViewer({ src, alt })
+  }
+  const closeImageViewer = () => setImageViewer(null)
+
+  useEffect(() => {
+    if (!imageViewer) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const handleViewerKeyDown = (event) => {
+      if (event.key === 'Escape') setImageViewer(null)
+    }
+
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleViewerKeyDown)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleViewerKeyDown)
+      imageViewerTriggerRef.current?.focus()
+      imageViewerTriggerRef.current = null
+    }
+  }, [imageViewer])
   const [activePlanetShort, setActivePlanetShort] = useState(null)
   const [hoveredPlanetShort, setHoveredPlanetShort] = useState(null)
   const [isPlanetDetailOpen, setIsPlanetDetailOpen] = useState(false)
@@ -1519,7 +1878,7 @@ function App() {
     challenges: '',
     solution: '',
     results: '',
-    gallery: ['', '', '', '', '', ''],
+    gallery: ['', ''],
   })
 
   const openLinkPage = (url, title) => {
@@ -1680,6 +2039,10 @@ function App() {
   const [aboutDraft, setAboutDraft] = useState(DEFAULT_ABOUT)
   const [aboutSaveStatus, setAboutSaveStatus] = useState('')
   const [showExperienceForm, setShowExperienceForm] = useState(false)
+  const [showEducationForm, setShowEducationForm] = useState(false)
+  const [editingEducationIndex, setEditingEducationIndex] = useState(null)
+  const [educationDraft, setEducationDraft] = useState(createEducationDraft)
+  const [educationSaveStatus, setEducationSaveStatus] = useState('')
   const [editingExperienceIndex, setEditingExperienceIndex] = useState(null)
   const [experienceDraft, setExperienceDraft] = useState(createExperienceDraft)
   const [experienceSaveStatus, setExperienceSaveStatus] = useState('')
@@ -1725,11 +2088,19 @@ function App() {
       return SECTION_MOTION_DEFAULTS
     }
   })
+  const [animationControls, setAnimationControls] = useState(() => {
+    try {
+      return normalizeAnimationControls(JSON.parse(localStorage.getItem(ANIMATION_CONTROLS_STORAGE_KEY) || '{}'))
+    } catch {
+      return createDefaultAnimationControls()
+    }
+  })
   const [adminAccessDraft, setAdminAccessDraft] = useState(DEFAULT_ADMIN_ACCESS_SETTINGS)
   const [adminAccessSaveStatus, setAdminAccessSaveStatus] = useState('')
   const [homepageSaveStatus, setHomepageSaveStatus] = useState('')
   const [edgeAnimationSaveStatus, setEdgeAnimationSaveStatus] = useState('')
   const [motionSettingsSaveStatus, setMotionSettingsSaveStatus] = useState('')
+  const [animationControlsSaveStatus, setAnimationControlsSaveStatus] = useState('')
   const [adminUnlockStage, setAdminUnlockStage] = useState('hidden')
   const [unlockProgress, setUnlockProgress] = useState(0)
   const logoClickCountRef = useRef(0)
@@ -2076,6 +2447,31 @@ function App() {
     }
   }
 
+  const saveAnimationControls = async () => {
+    const settings = {
+      ...animationControls,
+      sections: { ...SECTION_MOTION_DEFAULTS, ...sectionMotion },
+    }
+    setAnimationControlsSaveStatus('Saving animation controls...')
+
+    try {
+      const response = await apiFetch('/api/portfolio/animation-controls', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || `Settings could not sync (HTTP ${response.status}).`)
+      }
+      setAnimationControlsSaveStatus(result.storage === 'memory'
+        ? 'Saved for this running server only. Reconnect MongoDB for permanent storage.'
+        : 'Animation controls saved for the website.')
+    } catch (error) {
+      setAnimationControlsSaveStatus(`${error.message || 'Settings could not be saved.'} They remain saved in this browser.`)
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
     let bootCompletionTimer
@@ -2104,12 +2500,49 @@ function App() {
         const hasSavedServerPlanetLinks = data.planetLinksStorage === 'database'
         const hasSavedServerEdgeSettings = ['database', 'memory'].includes(data.edgeAnimationSettingsStorage)
         const hasSavedServerMotionSettings = ['database', 'memory'].includes(data.motionSettingsStorage)
+        const hasSavedServerAnimationControls = ['database', 'memory'].includes(data.animationControlsStorage)
+        const hasSavedServerEducation = data.educationStorage === 'database'
+        const hasSavedServerProjects = data.projectsStorage === 'database'
+        const hasSavedServerExperience = data.experienceStorage === 'database'
+        const hasSavedServerAchievements = data.achievementsStorage === 'database'
+        const hasSavedServerGallery = data.galleryStorage === 'database'
         const hasSavedServerResume = data.resumeStorage === 'database'
+        let localAnimationControls = {}
+        let localSectionMotion = {}
+        try {
+          localAnimationControls = JSON.parse(localStorage.getItem(ANIMATION_CONTROLS_STORAGE_KEY) || '{}')
+          localSectionMotion = JSON.parse(localStorage.getItem('portfolio-section-motion-v1') || '{}')
+        } catch {
+          localAnimationControls = {}
+          localSectionMotion = {}
+        }
+        const loadedAnimationControls = hasSavedServerAnimationControls
+          ? data.animationControls || {}
+          : localAnimationControls
+        setAnimationControls(normalizeAnimationControls(loadedAnimationControls))
+        setSectionMotion({
+          ...SECTION_MOTION_DEFAULTS,
+          ...(loadedAnimationControls.sections || localSectionMotion),
+        })
 
         const hydrated = savedPortfolio && Array.isArray(savedPortfolio.toolkitGroups)
           ? {
               ...data,
               ...savedPortfolio,
+              projects: hasSavedServerProjects ? data.projects || [] : savedPortfolio.projects || data.projects || [],
+              educationEntries: hasSavedServerEducation
+                ? data.educationEntries || []
+                : savedPortfolio.educationEntries || data.educationEntries || [],
+              educationStorage: hasSavedServerEducation ? data.educationStorage : savedPortfolio.educationStorage || data.educationStorage,
+              experienceEntries: hasSavedServerExperience
+                ? data.experienceEntries || []
+                : savedPortfolio.experienceEntries || data.experienceEntries || [],
+              achievements: hasSavedServerAchievements
+                ? data.achievements || []
+                : savedPortfolio.achievements || data.achievements || [],
+              galleryItems: hasSavedServerGallery
+                ? data.galleryItems || []
+                : savedPortfolio.galleryItems || data.galleryItems || [],
               about: hasSavedServerAbout
                 ? data.about || DEFAULT_ABOUT
                 : savedPortfolio.about || data.about || DEFAULT_ABOUT,
@@ -2198,8 +2631,13 @@ function App() {
           const elapsed = currentTime - bootStartedAt
           bootCompletionTimer = window.setTimeout(
             () => {
-              stopBootScrollTour = startBootScrollTour(() => {
-                if (isMounted) setIsSiteBooting(false)
+              const scrollTourComplete = new Promise((resolve) => {
+                stopBootScrollTour = startBootScrollTour(resolve)
+              })
+              Promise.all([scrollTourComplete, waitForBootMedia()]).then(() => {
+                if (!isMounted) return
+                setIsBootTourComplete(true)
+                setIsSiteBooting(false)
               })
             },
             Math.max(0, 900 - elapsed),
@@ -2258,6 +2696,41 @@ function App() {
       // The controls remain active for this page session if browser storage is unavailable.
     }
   }, [portfolio.visualEffect, portfolio.visualScope, portfolio.visualIntensity, portfolio.motionSettings, portfolio.edgeAnimationSettings, sectionMotion])
+
+  useEffect(() => {
+    const disabledEffects = new Set()
+    ANIMATION_EFFECT_GROUPS.forEach((group) => {
+      if (animationControls.areas[group.id] === false) {
+        group.effects.forEach((effectId) => disabledEffects.add(effectId))
+      }
+    })
+    Object.entries(animationControls.effects).forEach(([effectId, enabled]) => {
+      if (!enabled) disabledEffects.add(effectId)
+    })
+    const selectors = new Set(
+      ANIMATION_EFFECT_CONTROLS
+        .filter((effect) => disabledEffects.has(effect.id))
+        .flatMap((effect) => effect.selectors),
+    )
+    const styleElement = document.createElement('style')
+    styleElement.dataset.portfolioAnimationControls = 'true'
+    styleElement.textContent = [...selectors]
+      .map((selector) => `:root[data-theme] ${selector} { animation: none !important; }`)
+      .join('\n')
+    document.head.append(styleElement)
+    return () => styleElement.remove()
+  }, [animationControls])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANIMATION_CONTROLS_STORAGE_KEY, JSON.stringify({
+        ...animationControls,
+        sections: sectionMotion,
+      }))
+    } catch {
+      // The controls remain active for this page session if browser storage is unavailable.
+    }
+  }, [animationControls, sectionMotion])
 
   const selectedProject = useMemo(
     () => portfolio.projects.find((project) => project.id === selectedProjectId) ?? portfolio.projects[0],
@@ -2347,9 +2820,36 @@ function App() {
     : DEFAULT_HOMEPAGE_SETTINGS.activeDesign
   const activeHomepageDesign = HOMEPAGE_DESIGNS.find((design) => design.id === activeHomepageDesignId) || HOMEPAGE_DESIGNS[0]
   const isProfessionalHomepage = PROFESSIONAL_HOMEPAGE_IDS.has(activeHomepageDesignId)
+  const homepageSettings = { ...DEFAULT_HOMEPAGE_SETTINGS, ...portfolio.homepageSettings }
+  const homepageDisplayName = String(homepageSettings.heroName || '').trim() || portfolio.profile.name
+  const homepageNameParts = homepageDisplayName.trim().split(/\s+/)
+  const homepageNameFirst = homepageNameParts.shift() || homepageDisplayName
+  const homepageNameRest = homepageNameParts.join(' ')
+  const homepageAnimation = HOMEPAGE_HERO_ANIMATIONS.some(({ id }) => id === homepageSettings.heroAnimation)
+    ? homepageSettings.heroAnimation
+    : DEFAULT_HOMEPAGE_SETTINGS.heroAnimation
+  const homepageNameColor = /^#[0-9a-f]{6}$/i.test(homepageSettings.nameColor || '')
+    ? homepageSettings.nameColor
+    : DEFAULT_HOMEPAGE_SETTINGS.nameColor
+  const homepageNameHighlightColor = /^#[0-9a-f]{6}$/i.test(homepageSettings.nameHighlightColor || '')
+    ? homepageSettings.nameHighlightColor
+    : DEFAULT_HOMEPAGE_SETTINGS.nameHighlightColor
+  const homepageHeroStyle = {
+    '--hero-name-color': homepageNameColor,
+    '--hero-name-highlight-color': homepageNameHighlightColor,
+  }
+  const homepageRole = String(homepageSettings.heroRole || '').trim() || portfolio.profile.title
+  const homepageAvailability = String(homepageSettings.availabilityText || '').trim() || DEFAULT_HOMEPAGE_SETTINGS.availabilityText
   const publicNavItems = isProfessionalHomepage
-    ? ['PROFILE', 'BIODATA', 'PROJECTS', 'SKILLS', 'EDUCATION', 'CONTACT']
-    : portfolio.navItems
+    ? [
+      { label: 'PROFILE', target: 'profile' },
+      { label: 'ABOUT', target: 'biodata' },
+      { label: 'PROJECTS', target: 'projects' },
+      { label: 'SKILLS', target: 'skills' },
+      { label: 'EDUCATION', target: 'education' },
+      { label: 'CONTACT', target: 'contact' },
+    ]
+    : portfolio.navItems.map((item) => ({ label: item, target: item.toLowerCase() }))
 
   const adminStats = useMemo(
     () => [
@@ -2476,6 +2976,23 @@ function App() {
       ...current,
       [sectionKey]: !current[sectionKey],
     }))
+    setAnimationControlsSaveStatus('')
+  }
+
+  const handleAnimationAreaToggle = (areaId) => {
+    setAnimationControls((current) => ({
+      ...current,
+      areas: { ...current.areas, [areaId]: !current.areas[areaId] },
+    }))
+    setAnimationControlsSaveStatus('')
+  }
+
+  const handleAnimationEffectToggle = (effectId) => {
+    setAnimationControls((current) => ({
+      ...current,
+      effects: { ...current.effects, [effectId]: !current.effects[effectId] },
+    }))
+    setAnimationControlsSaveStatus('')
   }
 
   const toggleBootAnimation = () => {
@@ -2490,10 +3007,37 @@ function App() {
     })
   }
 
-  const saveHomepageSettings = async (designId) => {
+  const updateHomepageSetting = (field, value) => {
+    setPortfolio((current) => ({
+      ...current,
+      homepageSettings: {
+        ...DEFAULT_HOMEPAGE_SETTINGS,
+        ...current.homepageSettings,
+        [field]: value,
+      },
+    }))
+    setHomepageSaveStatus('')
+  }
+
+  const saveHomepageSettings = async (designId = portfolio.homepageSettings?.activeDesign) => {
     const nextSettings = {
       ...DEFAULT_HOMEPAGE_SETTINGS,
-      activeDesign: HOMEPAGE_DESIGNS.some((design) => design.id === designId) ? designId : DEFAULT_HOMEPAGE_SETTINGS.activeDesign,
+      ...portfolio.homepageSettings,
+      activeDesign: HOMEPAGE_DESIGNS.some((design) => design.id === designId)
+        ? designId
+        : DEFAULT_HOMEPAGE_SETTINGS.activeDesign,
+      heroName: String(portfolio.homepageSettings?.heroName || '').trim().slice(0, 80),
+      heroRole: String(portfolio.homepageSettings?.heroRole || '').trim().slice(0, 120),
+      availabilityText: String(portfolio.homepageSettings?.availabilityText || '').trim().slice(0, 100),
+      nameColor: /^#[0-9a-f]{6}$/i.test(portfolio.homepageSettings?.nameColor || '')
+        ? portfolio.homepageSettings.nameColor
+        : DEFAULT_HOMEPAGE_SETTINGS.nameColor,
+      nameHighlightColor: /^#[0-9a-f]{6}$/i.test(portfolio.homepageSettings?.nameHighlightColor || '')
+        ? portfolio.homepageSettings.nameHighlightColor
+        : DEFAULT_HOMEPAGE_SETTINGS.nameHighlightColor,
+      heroAnimation: HOMEPAGE_HERO_ANIMATIONS.some(({ id }) => id === portfolio.homepageSettings?.heroAnimation)
+        ? portfolio.homepageSettings.heroAnimation
+        : DEFAULT_HOMEPAGE_SETTINGS.heroAnimation,
     }
 
     setPortfolio((current) => {
@@ -2521,7 +3065,7 @@ function App() {
       })
       setHomepageSaveStatus(result.storage === 'memory'
         ? 'Homepage selected for this running server only. Reconnect MongoDB for permanent storage.'
-        : 'Homepage design updated.')
+        : 'Homepage settings saved.')
     } catch (error) {
       setHomepageSaveStatus(`${error.message || 'Homepage design could not be saved.'} Selection remains saved in this browser.`)
     }
@@ -2569,20 +3113,31 @@ function App() {
     setLoginForm((current) => ({ ...current, [name]: value }))
   }
 
-  const handleLoginSubmit = (event) => {
+  const handleLoginSubmit = async (event) => {
     event.preventDefault()
+    setIsLoginSubmitting(true)
 
-    if (
-      loginForm.username.trim() === ADMIN_CREDENTIALS.username &&
-      loginForm.password === ADMIN_CREDENTIALS.password
-    ) {
+    try {
+      const response = await apiFetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: loginForm.username.trim(),
+          password: loginForm.password,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || 'Admin login could not be verified.')
+      }
       setIsAdminAuthenticated(true)
       setLoginError('')
       setView('admin')
-      return
+    } catch (error) {
+      setLoginError(error.message || 'Unable to reach the admin login service.')
+    } finally {
+      setIsLoginSubmitting(false)
     }
-
-    setLoginError('Invalid username or password.')
   }
 
   const handleLogout = () => {
@@ -2624,12 +3179,12 @@ function App() {
     if (!file) return
 
     if (isPreview && !file.type.startsWith('image/')) {
-      setResumeUploadStatus('Resume thumbnail ke liye image file select karein.')
+      setResumeUploadStatus('Select an image file for the resume thumbnail.')
       event.target.value = ''
       return
     }
     if (file.size > 50 * 1024 * 1024) {
-      setResumeUploadStatus('Resume file 50MB ya usse chhoti honi chahiye.')
+      setResumeUploadStatus('The resume file must be 50 MB or smaller.')
       event.target.value = ''
       return
     }
@@ -2641,7 +3196,7 @@ function App() {
       formData.append('category', 'resume')
       const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.message || 'Resume upload nahi ho saka.')
+      if (!response.ok) throw new Error(result.message || 'The resume could not be uploaded.')
 
       if (isPreview) {
         setResumeDraft((current) => ({ ...current, previewUrl: result.url }))
@@ -2654,9 +3209,44 @@ function App() {
           title: current.title || file.name.replace(/\.[^.]+$/, ''),
         }))
       }
-      setResumeUploadStatus(isPreview ? 'Thumbnail upload ho gaya.' : 'Resume upload ho gaya. Ab Save Resume dabayein.')
+      setResumeUploadStatus(isPreview ? 'Thumbnail uploaded successfully.' : 'Resume uploaded. Select Save Resume to continue.')
     } catch (error) {
-      setResumeUploadStatus(error.message || 'Resume upload nahi ho saka.')
+      setResumeUploadStatus(error.message || 'The resume could not be uploaded.')
+      event.target.value = ''
+    }
+  }
+
+  const handleResumeDesignImageUpload = async (event, field) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setResumeUploadStatus('Select an image file for the resume design.')
+      event.target.value = ''
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setResumeUploadStatus('The resume image must be 50 MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    setResumeUploadStatus(`Uploading ${field === 'bannerUrl' ? 'banner' : 'portrait'}...`)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('category', 'resume')
+      const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'The resume image could not be uploaded.')
+
+      updateResumeDesign((current) => ({
+        ...current,
+        [field]: result.url,
+        ...(field === 'portraitUrl' ? { portraitSource: 'custom' } : {}),
+      }))
+      setResumeUploadStatus(`${field === 'bannerUrl' ? 'Banner' : 'Portrait'} uploaded. Select Save Resume to continue.`)
+    } catch (error) {
+      setResumeUploadStatus(error.message || 'The resume image could not be uploaded.')
       event.target.value = ''
     }
   }
@@ -2686,11 +3276,13 @@ function App() {
     }
     const designLinks = [
       resume.design.summaryUrl,
+      resume.design.portraitUrl,
+      resume.design.bannerUrl,
       ...(resume.design.contacts || []).map((contact) => contact.url),
       ...(resume.design.sections || []).flatMap((section) => (section.items || []).map((item) => item.url)),
     ]
     if (![resume.url, resume.previewUrl, resume.linkUrl, ...designLinks].every(isValidResumeLink)) {
-      setResumeSaveStatus('Resume ke links sirf valid website, email, phone ya same-site paths hone chahiye.')
+      setResumeSaveStatus('Resume links must use a valid website URL, email address, phone number, or same-site path.')
       return
     }
 
@@ -2725,7 +3317,7 @@ function App() {
   }
 
   const resetProjectDraft = () => {
-    setProjectDraft({ title: '', category: 'Web Experience', description: '', tech: '', status: 'Draft', date: new Date().getFullYear().toString(), website: '', repository: '', image: '', video: '', problem: '', approach: '', features: '', role: '', challenges: '', solution: '', results: '', gallery: ['', '', '', '', '', ''] })
+    setProjectDraft({ title: '', category: 'Web Experience', description: '', tech: '', status: 'Draft', date: new Date().getFullYear().toString(), website: '', repository: '', image: '', video: '', problem: '', approach: '', features: '', role: '', challenges: '', solution: '', results: '', gallery: ['', ''] })
     setEditingProjectId(null)
     setMediaUploadStatus('')
   }
@@ -2810,7 +3402,10 @@ function App() {
       challenges: projectDraft.challenges.split(',').map((item) => item.trim()).filter(Boolean),
       solution: projectDraft.solution.trim(),
       results: projectDraft.results.split(',').map((item) => item.trim()).filter(Boolean),
-      gallery: projectDraft.gallery.filter(Boolean).map((url, index) => ({ label: ['EDITORIAL', 'WEB', 'BUILD', 'STUDIO', 'PROCESS', 'DRAFT'][index], url })),
+      gallery: projectDraft.gallery
+        .filter(Boolean)
+        .slice(0, Math.max(0, 2 - (projectDraft.image ? 1 : 0)))
+        .map((url, index) => ({ label: `IMAGE ${index + 1}`, url })),
     }
 
     try {
@@ -2874,7 +3469,10 @@ function App() {
       challenges: (project.challenges || []).join(', '),
       solution: project.solution || '',
       results: (project.results || []).join(', '),
-      gallery: (project.gallery || []).map((item) => item.url || item).concat(['', '', '', '', '', '']).slice(0, 6),
+      gallery: (project.gallery || [])
+        .map((item) => item.url || item)
+        .concat(['', ''])
+        .slice(0, project.image ? 1 : 2),
     })
     setShowProjectForm(true)
     setAdminSection('projects')
@@ -3049,7 +3647,10 @@ function App() {
       ...DEFAULT_ABOUT,
       ...about,
       facts: Array.isArray(about.facts) ? about.facts.map((record) => ({ ...record })) : [],
-      colleges: Array.isArray(about.colleges) ? about.colleges.map((record) => ({ ...record })) : [],
+      colleges: Array.isArray(about.colleges) ? about.colleges.map((record) => ({
+        ...record,
+        images: Array.isArray(record.images) ? record.images.join('\n') : record.images || '',
+      })) : [],
       webinars: Array.isArray(about.webinars) ? about.webinars.map((record) => ({ ...record })) : [],
       certificates: Array.isArray(about.certificates) ? about.certificates.map((record) => ({ ...record })) : [],
       images: Array.isArray(about.images) ? about.images.map((record) => ({ ...record })) : [],
@@ -3133,16 +3734,21 @@ function App() {
       return
     }
 
-    const trimRecords = (records) => records
+    const trimRecords = (records, collection = '') => records
       .filter((record) => Object.values(record).some((value) => String(value || '').trim()))
-      .map((record) => Object.fromEntries(Object.entries(record).map(([key, value]) => [key, String(value || '').trim()])))
+      .map((record) => Object.fromEntries(Object.entries(record).map(([key, value]) => [
+        key,
+        collection === 'colleges' && key === 'images'
+          ? parseJourneyImages(Array.isArray(value) ? value.join('\n') : String(value || ''))
+          : String(value || '').trim(),
+      ])))
     const about = {
       heading: aboutDraft.heading.trim(),
       biography: aboutDraft.biography.trim(),
       homepageIntro,
       photo: aboutDraft.photo.trim(),
       facts: trimRecords(aboutDraft.facts),
-      colleges: trimRecords(aboutDraft.colleges),
+      colleges: trimRecords(aboutDraft.colleges, 'colleges'),
       webinars: trimRecords(aboutDraft.webinars),
       certificates: trimRecords(aboutDraft.certificates),
       images: trimRecords(aboutDraft.images),
@@ -3205,6 +3811,7 @@ function App() {
           ...current,
           [key]: savedEntries,
           ...(key === 'planetLinks' ? { planetLinksStorage: result.storage || 'database' } : {}),
+          ...(key === 'educationEntries' ? { educationStorage: result.storage || 'database' } : {}),
           ...(key === 'resumeEntries' ? { resumeStorage: result.storage || 'database' } : {}),
         }
         savePortfolioToStorage(nextPortfolio)
@@ -3214,6 +3821,111 @@ function App() {
     } catch (error) {
       setStatus(`${error.message || 'Changes could not be saved.'} Changes remain saved in this browser.`)
     }
+  }
+
+  const handleEducationDraftChange = (event) => {
+    const { name, value } = event.target
+    setEducationDraft((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetEducationDraft = () => {
+    setEducationDraft(createEducationDraft())
+    setEditingEducationIndex(null)
+  }
+
+  const handleEducationImageUpload = async (event, target) => {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+    if (files.some((file) => !file.type.startsWith('image/'))) {
+      setEducationSaveStatus('Please select image files only.')
+      event.target.value = ''
+      return
+    }
+    if (files.some((file) => file.size > 20 * 1024 * 1024)) {
+      setEducationSaveStatus('Images must be 20MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    setEducationSaveStatus('Uploading image' + (files.length > 1 ? 's...' : '...'))
+    try {
+      const uploadedUrls = []
+      for (const file of files) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await apiFetch('/api/uploads', { method: 'POST', body: formData })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.message || 'Education image upload failed.')
+        if (typeof result.url !== 'string' || !result.url) throw new Error('The uploaded image did not return a usable URL.')
+        uploadedUrls.push(result.url)
+
+        if (target === 'image') {
+          setEducationDraft((current) => ({ ...current, image: result.url }))
+        } else {
+          setEducationDraft((current) => {
+            const currentImages = parseJourneyImages(current.images)
+            return { ...current, images: [...new Set([...currentImages, result.url])].join('\n') }
+          })
+        }
+      }
+      setEducationSaveStatus(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? '' : 's'} uploaded. Save this education entry to publish them.`)
+    } catch (error) {
+      setEducationSaveStatus(error.message || 'Education image upload failed.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleSaveEducation = async (event) => {
+    event.preventDefault()
+    if (!educationDraft.title.trim() || !educationDraft.institution.trim()) {
+      setEducationSaveStatus('Enter the course or qualification and the school / college name.')
+      return
+    }
+
+    const education = {
+      type: educationDraft.type.trim(),
+      title: educationDraft.title.trim(),
+      institution: educationDraft.institution.trim(),
+      dates: educationDraft.dates.trim(),
+      location: educationDraft.location.trim(),
+      description: educationDraft.description.trim(),
+      image: educationDraft.image.trim(),
+      images: parseJourneyImages(educationDraft.images),
+      linkLabel: educationDraft.linkLabel.trim(),
+      url: educationDraft.url.trim(),
+    }
+    const entries = editingEducationIndex === null
+      ? [education, ...portfolio.educationEntries]
+      : portfolio.educationEntries.map((item, index) => index === editingEducationIndex ? education : item)
+
+    await savePortfolioCollection('educationEntries', entries, setEducationSaveStatus)
+    setShowEducationForm(false)
+    resetEducationDraft()
+  }
+
+  const beginEditEducation = (entry, index) => {
+    setEditingEducationIndex(index)
+    setEducationDraft({
+      type: entry.type || 'College',
+      title: entry.title || '',
+      institution: entry.institution || '',
+      dates: entry.dates || '',
+      location: entry.location || '',
+      description: entry.description || '',
+      image: entry.image || '',
+      images: Array.isArray(entry.images) ? entry.images.join('\n') : '',
+      linkLabel: entry.linkLabel || '',
+      url: entry.url || '',
+    })
+    setEducationSaveStatus('')
+    setShowEducationForm(true)
+    setAdminSection('education')
+  }
+
+  const handleDeleteEducation = async (index) => {
+    const entries = portfolio.educationEntries.filter((_, itemIndex) => itemIndex !== index)
+    await savePortfolioCollection('educationEntries', entries, setEducationSaveStatus)
   }
 
   const handleEntryImageUpload = async (event, editor) => {
@@ -3488,7 +4200,7 @@ function App() {
   const handleSavePlanetLinks = async () => {
     const hasInvalidUrl = planetLinksDraft.some((link) => !/^https?:\/\/\S+$/i.test(link.url.trim()))
     if (hasInvalidUrl) {
-      setPlanetLinksSaveStatus('Sun aur har planet ke liye valid http:// ya https:// link enter karein.')
+      setPlanetLinksSaveStatus('Enter a valid http:// or https:// link for the Sun and each planet.')
       return
     }
 
@@ -3504,6 +4216,41 @@ function App() {
       return matchesFilter && matchesSearch
     })
   }, [portfolio.projects, projectFilter, projectSearch])
+  const publicEducationItems = useMemo(() => [
+    ...portfolio.educationEntries,
+    ...(portfolio.about?.colleges || []).map((item) => ({
+      type: item.type || '',
+      title: item.program || item.title,
+      institution: item.title,
+      dates: item.dates || '',
+      location: item.location || '',
+      description: item.description || '',
+      image: item.image || '',
+      images: Array.isArray(item.images) ? item.images : [],
+      linkLabel: item.linkLabel || '',
+      url: item.url || '',
+    })),
+  ], [portfolio.about?.colleges, portfolio.educationEntries])
+  const publicCertificateItems = useMemo(() => [
+    ...portfolio.certificateEntries,
+    ...(portfolio.about?.certificates || []),
+  ], [portfolio.about?.certificates, portfolio.certificateEntries])
+  const getVisiblePublicItems = (key, items, limit = 4) => (
+    expandedPublicLists[key] ? items : items.slice(0, limit)
+  )
+  const renderPublicListToggle = (key, items, label, limit = 4) => items.length > limit ? (
+    <div className="public-list-actions">
+      <button
+        type="button"
+        className="secondary-btn see-all-btn"
+        aria-expanded={Boolean(expandedPublicLists[key])}
+        onClick={() => setExpandedPublicLists((current) => ({ ...current, [key]: !current[key] }))}
+      >
+        {expandedPublicLists[key] ? `Show fewer ${label}` : `See all ${items.length} ${label}`}
+        <ArrowRight size={15} aria-hidden="true" />
+      </button>
+    </div>
+  ) : null
 
   const activeResume = portfolio.resumeEntries?.[0] || {}
   const activeResumeDesign = normalizeResumeDesign(activeResume.design, createDefaultResumeDesign(portfolio))
@@ -3516,7 +4263,7 @@ function App() {
     }
   }
   const fetchResumeFile = async () => {
-    if (!activeResume.url) throw new Error('Admin panel se pehle resume upload ya link karein.')
+    if (!activeResume.url) throw new Error('Upload or link a resume in the Admin panel first.')
     const response = await fetch(activeResume.url)
     if (!response.ok) throw new Error(`Resume download failed (HTTP ${response.status}).`)
     return response.blob()
@@ -3545,11 +4292,11 @@ function App() {
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
   }
   const handleResumeDownload = async () => {
-    setResumeActionStatus('Resume download ho raha hai...')
+    setResumeActionStatus('Downloading resume...')
     try {
       const blob = await fetchResumeFile()
       downloadBlob(blob, getResumeFileName())
-      setResumeActionStatus('Resume original uploaded format mein download ho gaya.')
+      setResumeActionStatus('The resume was downloaded in its original format.')
     } catch (error) {
       const attachmentUrl = getCloudinaryAttachmentUrl(activeResume.url, getResumeFileName())
       if (attachmentUrl) {
@@ -3559,15 +4306,15 @@ function App() {
         document.body.append(anchor)
         anchor.click()
         anchor.remove()
-        setResumeActionStatus('Original resume download start ho gaya.')
+        setResumeActionStatus('The original resume download has started.')
         return
       }
-      setResumeActionStatus(`${error.message || 'Resume download nahi ho saka.'} Direct URL ka download access check karein.`)
+      setResumeActionStatus(`${error.message || 'The resume could not be downloaded.'} Check that the direct URL allows downloads.`)
     }
   }
   const handleResumeShare = async () => {
     if (!activeResume.url) {
-      setResumeActionStatus('Share karne se pehle Admin panel mein resume upload ya link karein.')
+      setResumeActionStatus('Upload or link a resume in the Admin panel before sharing it.')
       return
     }
 
@@ -3585,7 +4332,7 @@ function App() {
             const file = new File([blob], getResumeFileName(), { type: blob.type || activeResume.fileType || 'application/octet-stream' })
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({ title: shareData.title, text: shareData.text, files: [file] })
-              setResumeActionStatus('Uploaded resume file original format mein share ho gaya.')
+              setResumeActionStatus('The resume file was shared in its original format.')
               return
             }
           } catch (error) {
@@ -3593,24 +4340,24 @@ function App() {
           }
         }
         await navigator.share(shareData)
-        setResumeActionStatus('Resume link share ho gaya.')
+        setResumeActionStatus('The resume link was shared.')
         return
       }
 
       await navigator.clipboard.writeText(resumeUrl)
-      setResumeActionStatus('Resume link clipboard mein copy ho gaya.')
+      setResumeActionStatus('The resume link was copied to the clipboard.')
     } catch (error) {
       if (error.name === 'AbortError') return
-      setResumeActionStatus(error.message || 'Resume share nahi ho saka.')
+      setResumeActionStatus(error.message || 'The resume could not be shared.')
     }
   }
   const handleResumePdfDownload = async () => {
     if (!activeResume.url) {
-      setResumeActionStatus('PDF banane se pehle Admin panel mein resume upload ya link karein.')
+      setResumeActionStatus('Upload or link a resume in the Admin panel before creating a PDF.')
       return
     }
 
-    setResumeActionStatus('PDF tayyar ho raha hai...')
+    setResumeActionStatus('Preparing PDF...')
     try {
       const blob = await fetchResumeFile()
       const fileName = getResumeFileName()
@@ -3618,7 +4365,7 @@ function App() {
       const isPdf = extension === 'pdf' || blob.type === 'application/pdf'
       if (isPdf) {
         downloadBlob(blob, `${fileName.replace(/\.[^.]+$/, '')}.pdf`)
-        setResumeActionStatus('Resume PDF mein download ho gaya.')
+        setResumeActionStatus('The resume PDF has been downloaded.')
         return
       }
 
@@ -3640,7 +4387,7 @@ function App() {
           canvas.width = image.naturalWidth
           canvas.height = image.naturalHeight
           const context = canvas.getContext('2d')
-          if (!context) throw new Error('Image ko PDF mein convert nahi kiya ja saka.')
+          if (!context) throw new Error('The image could not be converted to PDF.')
           context.fillStyle = '#ffffff'
           context.fillRect(0, 0, canvas.width, canvas.height)
           context.drawImage(image, 0, 0)
@@ -3657,7 +4404,7 @@ function App() {
         const JSZip = (await import('jszip')).default
         const archive = await JSZip.loadAsync(await blob.arrayBuffer())
         const content = await archive.file('content.xml')?.async('text')
-        if (!content) throw new Error('ODT file se resume text read nahi ho saka.')
+        if (!content) throw new Error('Resume text could not be read from the ODT file.')
         text = new DOMParser().parseFromString(content, 'text/xml').documentElement.textContent || ''
       } else if (extension === 'html' || extension === 'htm' || blob.type.includes('html')) {
         const html = await blob.text()
@@ -3674,7 +4421,7 @@ function App() {
             .replace(/[{}]/g, '')
         }
       } else {
-        throw new Error('PDF export PDF, image, DOCX, ODT, HTML, RTF aur TXT resume ke liye available hai. Legacy DOC files ko original format mein download/share karein.')
+        throw new Error('PDF export supports PDF, image, DOCX, ODT, HTML, RTF, and TXT resumes. Download or share legacy DOC files in their original format.')
       }
 
       if (text) {
@@ -3704,20 +4451,21 @@ function App() {
       }
 
       pdf.save(`${fileName.replace(/\.[^.]+$/, '')}.pdf`)
-      setResumeActionStatus('PDF download ho gaya.')
+      setResumeActionStatus('The PDF has been downloaded.')
     } catch (error) {
-      setResumeActionStatus(error.message || 'Is resume ko PDF mein convert nahi kiya ja saka.')
+      setResumeActionStatus(error.message || 'This resume could not be converted to PDF.')
     }
   }
   const openResume = () => {
     if (activeResume.url) openLinkPage(activeResume.url, activeResume.title || 'Resume')
   }
   const handleResumeDesignPdfDownload = async () => {
-    setResumeActionStatus('Custom resume PDF tayyar ho raha hai...')
+    setResumeActionStatus('Preparing PDF...')
     let stagingContainer
+    const imageObjectUrls = []
     try {
       const resumeElement = document.querySelector('.resume-public-document .resume-document')
-      if (!resumeElement) throw new Error('Displayed custom resume canvas nahi mila.')
+      if (!resumeElement) throw new Error('The displayed resume canvas could not be found.')
 
       const bounds = resumeElement.getBoundingClientRect()
       const clone = resumeElement.cloneNode(true)
@@ -3762,24 +4510,43 @@ function App() {
 
       await document.fonts.ready
       const images = [...clone.querySelectorAll('img')]
+      const replacePortraitWithPlaceholder = (image) => {
+        const placeholder = document.createElement('div')
+        placeholder.className = `${image.className} resume-document-portrait-empty`
+        placeholder.setAttribute('aria-hidden', 'true')
+        placeholder.textContent = (activeResumeDesign.name || 'AY')
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((part) => part[0])
+          .join('')
+        image.replaceWith(placeholder)
+      }
       await Promise.all(images.map(async (image) => {
         image.loading = 'eager'
-        const imageUrl = new URL(image.src, window.location.href)
-        if (imageUrl.origin !== window.location.origin && imageUrl.protocol !== 'data:') {
-          const response = await fetch(apiUrl(`/api/resume-image?url=${encodeURIComponent(imageUrl.href)}`))
-          if (!response.ok) {
-            let message = 'Resume image could not be prepared for PDF export.'
-            try {
-              message = (await response.json()).error || message
-            } catch {
-              // Keep the explicit fallback when the image endpoint returns a non-JSON error.
+        try {
+          const imageUrl = new URL(image.src, window.location.href)
+          if (imageUrl.origin !== window.location.origin && imageUrl.protocol !== 'data:') {
+            const response = await fetch(apiUrl(`/api/resume-image?url=${encodeURIComponent(imageUrl.href)}`))
+            if (!response.ok) {
+              let message = 'Resume image could not be prepared for PDF export.'
+              try {
+                message = (await response.json()).error || message
+              } catch {
+                // Keep the explicit fallback when the image endpoint returns a non-JSON error.
+              }
+              throw new Error(message)
             }
-            throw new Error(message)
+            const objectUrl = URL.createObjectURL(await response.blob())
+            imageObjectUrls.push(objectUrl)
+            image.src = objectUrl
           }
-          const objectUrl = URL.createObjectURL(await response.blob())
-          image.src = objectUrl
+          await image.decode()
+        } catch (error) {
+          if (!image.classList.contains('resume-document-portrait')) {
+            throw error
+          }
+          replacePortraitWithPlaceholder(image)
         }
-        await image.decode()
       }))
 
       const toRasterColor = (value) => value.replace(
@@ -3848,11 +4615,11 @@ function App() {
 
       const safeName = (activeResumeDesign.name || 'resume').replace(/[^\w.-]+/g, '-')
       downloadBlob(pdf.output('blob'), `${safeName}-Resume.pdf`)
-      setResumeActionStatus('Website par dikh rahe design aur QR codes ke saath PDF download ho gaya.')
+      setResumeActionStatus('The resume PDF has been downloaded.')
     } catch (error) {
-      setResumeActionStatus(error.message || 'Custom resume PDF generate nahi ho saka.')
+      setResumeActionStatus(error.message || 'The resume PDF could not be generated.')
     } finally {
-      stagingContainer?.querySelectorAll('img[src^="blob:"]').forEach((image) => URL.revokeObjectURL(image.src))
+      imageObjectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl))
       stagingContainer?.remove()
     }
   }
@@ -3870,10 +4637,11 @@ function App() {
       {activeResume.displayMode === 'custom' ? (
         <div className="resume-public-document">
           <div className="resume-public-heading">
-            <span className="section-tag">CUSTOM DESIGNED RESUME</span>
+            <span className="section-tag">10 — RESUME</span>
+            <h2>{activeResume.title || 'Abhinav Yadav Resume'}</h2>
             <p>Choose a link in the resume to open it here without leaving this website.</p>
             <button type="button" className="resume-action-button resume-pdf-button" onClick={handleResumeDesignPdfDownload}>
-              <FileText size={15} /><span>Download custom resume as PDF</span>
+              <FileText size={15} /><span>Download Resume as PDF</span>
             </button>
             {resumeActionStatus ? <p className="resume-action-status" role="status">{resumeActionStatus}</p> : null}
           </div>
@@ -3884,7 +4652,7 @@ function App() {
         <div className="resume-intro">
           <span className="section-tag">10 — RESUME</span>
           <h2>{activeResume.title || 'Want the structured version?'}</h2>
-          <p>{activeResume.fileName || (activeResume.url ? 'Open the latest resume in this website.' : 'Resume preview will appear here when it is added by the site admin.')}</p>
+          <p>{activeResume.fileName || (activeResume.url ? 'Open the latest resume on this website.' : 'The resume preview will appear here once the site administrator adds a resume.')}</p>
           <div className="resume-actions">
             <button type="button" className="resume-action-button resume-download-button" onClick={handleResumeDownload} disabled={!activeResume.url}>
               <Download size={15} /><span>Download Resume</span>
@@ -3914,34 +4682,25 @@ function App() {
 
   const renderProfessionalHomepageContent = () => {
     const allSkills = portfolio.toolkitGroups.flatMap((group) => group.skills).slice(0, 12)
-    const educationItems = [
-      ...portfolio.educationEntries,
-      ...(portfolio.about?.colleges || []).map((item) => ({
-        title: item.program || item.title,
-        institution: item.title,
-        dates: item.dates || '',
-        location: item.location || '',
-        description: item.description || '',
-      })),
-    ].slice(0, 4)
+    const educationItems = publicEducationItems
     const proofItems = [
       ...portfolio.certificateEntries.map((item) => ({ label: item.title, meta: item.issuer || item.date })),
       ...portfolio.achievements.map((item) => ({ label: item.title, meta: item.organization || item.date })),
-    ].slice(0, 6)
+    ]
 
     return (
       <>
         <MotionSection id="profile" className={`pro-hero pro-home-${activeHomepageDesignId}`} motionEnabled={sectionMotion.hero} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" animate="show" variants={motionSettings}>
           <div className="pro-hero-copy">
-            <p className="section-tag">COMPUTER SCIENCE ENGINEER PROFILE</p>
-            <h1>{portfolio.profile.name}</h1>
-            <p className="pro-title">{portfolio.profile.title}</p>
+            <p className="section-tag">COMPUTER SCIENCE &amp; ENGINEERING PROFILE</p>
+            <h1 className={`homepage-hero-name homepage-hero-name-${homepageAnimation}`} style={homepageHeroStyle}>{homepageDisplayName}</h1>
+            <p className="pro-title">{homepageRole}</p>
             <p className="pro-lede">
-              A placement-ready digital biodata built for teachers, recruiters, and mentors. It brings my projects, learning record, technical stack, certificates, and contact details into one clear professional website.
+              A professional profile for teachers, recruiters, and mentors. It brings together my projects, learning journey, technical skills, certificates, and contact details in one clear, accessible website.
             </p>
             <div className="pro-action-row">
               <a href="#biodata" className="primary-btn">
-                <span>View Biodata</span>
+                <span>View Profile</span>
                 <ArrowRight size={15} />
               </a>
               <a href="#resume" className="secondary-btn">
@@ -3952,23 +4711,23 @@ function App() {
           </div>
 
           <div className="pro-profile-panel" aria-label="Profile summary">
-            <div className="pro-avatar">{portfolio.profile.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div>
+            <div className="pro-avatar">{homepageDisplayName.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div>
             <div>
               <span>Candidate</span>
-              <strong>{portfolio.profile.name}</strong>
+              <strong>{homepageDisplayName}</strong>
             </div>
             <div className="pro-status-grid">
               <span>CSE Diploma</span>
               <span>Frontend</span>
               <span>India</span>
-              <span>Open to Internship</span>
+              <span>{homepageAvailability}</span>
             </div>
           </div>
         </MotionSection>
 
         <MotionSection id="biodata" className="pro-section pro-biodata" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
-            <span className="section-tag">01 - BIODATA</span>
+            <span className="section-tag">01 - PROFILE</span>
             <h2>Profile details for teachers and placement review.</h2>
           </div>
           <div className="pro-biodata-grid">
@@ -3993,10 +4752,10 @@ function App() {
         <MotionSection id="projects" className="pro-section" motionEnabled={sectionMotion.work} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">02 - PROJECTS</span>
-            <h2>Selected work that shows practical skills.</h2>
+            <h2>Selected work demonstrating practical skills.</h2>
           </div>
           <div className="pro-project-grid">
-            {portfolio.projects.slice(0, 3).map((project) => (
+            {getVisiblePublicItems('professional-projects', portfolio.projects, 3).map((project) => (
               <article key={project.id} className="pro-project-card">
                 <span>{project.category}</span>
                 <h3>{project.title}</h3>
@@ -4010,12 +4769,13 @@ function App() {
               </article>
             ))}
           </div>
+          {renderPublicListToggle('professional-projects', portfolio.projects, 'projects', 3)}
         </MotionSection>
 
         <MotionSection id="skills" className="pro-section pro-skills" motionEnabled={sectionMotion.toolkit} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">03 - SKILLS</span>
-            <h2>Technical stack and learning focus.</h2>
+            <h2>Tools and technologies I use to build for the web.</h2>
           </div>
           <div className="pro-skill-cloud">
             {allSkills.map((skill, index) => <span key={`${skill}-${index}`}>{skill}</span>)}
@@ -4025,10 +4785,10 @@ function App() {
         <MotionSection id="education" className="pro-section" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="section-header">
             <span className="section-tag">04 - EDUCATION</span>
-            <h2>Academic background and verified progress.</h2>
+            <h2>Academic background and learning milestones.</h2>
           </div>
           <div className="pro-timeline-list">
-            {educationItems.map((item, index) => (
+            {getVisiblePublicItems('professional-education', educationItems).map((item, index) => (
               <article key={`${item.title}-${index}`} className="pro-timeline-item">
                 <span>{item.dates || 'Ongoing'}</span>
                 <div>
@@ -4039,15 +4799,16 @@ function App() {
               </article>
             ))}
           </div>
+          {renderPublicListToggle('professional-education', educationItems, 'education entries')}
         </MotionSection>
 
         <MotionSection className="pro-section pro-proof" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">05 - PROOF</span>
-            <h2>Certificates and achievements for quick review.</h2>
+            <h2>Credentials and achievements, clearly presented.</h2>
           </div>
           <div className="pro-proof-list">
-            {proofItems.map((item, index) => (
+            {getVisiblePublicItems('professional-proof', proofItems).map((item, index) => (
               <div key={`${item.label}-${index}`}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <strong>{item.label}</strong>
@@ -4055,6 +4816,7 @@ function App() {
               </div>
             ))}
           </div>
+          {renderPublicListToggle('professional-proof', proofItems, 'proof items')}
         </MotionSection>
 
         {renderResumeSection(true)}
@@ -4062,7 +4824,7 @@ function App() {
         <MotionSection id="contact" className="pro-section pro-contact" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
             <span className="section-tag">06 - CONTACT</span>
-            <h2>Share this website as my biodata and portfolio.</h2>
+            <h2>Let&apos;s discuss a project, internship, or collaboration.</h2>
             <div className="contact-meta">
               {(portfolio.contactLinks || DEFAULT_CONTACT_LINKS).filter((item) => item.value).map((item, index) => (
                 <a
@@ -4151,8 +4913,8 @@ function App() {
 
         <nav id="site-navigation" className={`main-nav${isMobileMenuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
           {publicNavItems.map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsMobileMenuOpen(false)}>
-              {item}
+            <a key={item.target} href={`#${item.target}`} onClick={() => setIsMobileMenuOpen(false)}>
+              {item.label}
             </a>
           ))}
         </nav>
@@ -4186,15 +4948,15 @@ function App() {
       <main className={`page-content ${isProfessionalHomepage ? `pro-home-page pro-home-page-${activeHomepageDesignId}` : 'classic-home-page'}`}>
         {isProfessionalHomepage ? renderProfessionalHomepageContent() : (
           <>
-        <MotionSection className="hero-panel" motionEnabled={sectionMotion.hero} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" animate="show" variants={motionSettings}>
-          <div className="status-line">AVAILABLE FOR FRONTEND / PRODUCT / INTERNSHIP</div>
+        <MotionSection className="hero-panel" style={homepageHeroStyle} motionEnabled={sectionMotion.hero} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" animate="show" variants={motionSettings}>
+          <div className="status-line">{homepageAvailability}</div>
 
           <div className="hero-grid">
             <div className="hero-copy">
-              <p className="eyebrow">Frontend developer & UI-focused learner</p>
-              <h1>
-                ABHINAV
-                <span>YADAV</span>
+              <p className="eyebrow">{homepageRole}</p>
+              <h1 className={`homepage-hero-name homepage-hero-name-${homepageAnimation}`}>
+                {homepageNameFirst}
+                {homepageNameRest ? <span>{homepageNameRest}</span> : null}
               </h1>
               <p className="lede">
                 {portfolio.about?.homepageIntro || DEFAULT_ABOUT.homepageIntro}
@@ -4381,6 +5143,13 @@ function App() {
                                   onOpen={() => openLinkDirectly(selectedPlanetLearnMoreUrl)}
                                 />
                               ) : null}
+                              {collection.key === 'colleges' && field.key === 'images' && parseJourneyImages(Array.isArray(record.images) ? record.images.join('\n') : record.images || '').length ? (
+                                <div className="entry-image-gallery">
+                                  {parseJourneyImages(Array.isArray(record.images) ? record.images.join('\n') : record.images || '').map((image, imageIndex) => (
+                                    <img key={`${image}-${imageIndex}`} src={image} alt={`Institution image preview ${imageIndex + 1}`} loading="lazy" decoding="async" />
+                                  ))}
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <p className="planet-learn-more-error" role="alert">
@@ -4447,7 +5216,7 @@ function App() {
           </div>
 
           <MotionDiv className="project-stack" motionScopeGroup="cards" variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.12 }}>
-            {visibleProjects.length ? visibleProjects.map((project, index) => (
+            {visibleProjects.length ? getVisiblePublicItems('projects', visibleProjects).map((project, index) => (
               <MotionArticle
                 key={project.title}
                 className={`project-panel ${index % 2 === 1 ? 'reverse' : ''}`}
@@ -4461,7 +5230,7 @@ function App() {
                   {project.video ? (
                     <ProjectVideoPlayer src={project.video} poster={project.image} title={project.title} />
                   ) : project.image ? (
-                    <img
+                    <ZoomableImage
                       className="project-image"
                       src={project.image}
                       alt={project.title}
@@ -4519,6 +5288,7 @@ function App() {
               <MotionDiv className="empty-state" variants={fadeInUp}>No projects match your current search or filter.</MotionDiv>
             )}
           </MotionDiv>
+          {renderPublicListToggle('projects', visibleProjects, 'projects')}
         </MotionSection>
 
         <MotionSection id="about" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4531,7 +5301,7 @@ function App() {
             <div className="about-index">02</div>
 
               <div className={`about-copy ${portfolio.about?.photo ? 'about-copy-with-photo' : ''}`}>
-                {portfolio.about?.photo ? <img className="about-photo" src={portfolio.about.photo} alt={`${portfolio.profile.name} portrait`} loading="lazy" decoding="async" /> : null}
+                {portfolio.about?.photo ? <ZoomableImage className="about-photo" src={portfolio.about.photo} alt={`${portfolio.profile.name} portrait`} loading="lazy" decoding="async" onError={handlePortraitImageError} /> : null}
                 <p>{portfolio.about?.biography || DEFAULT_ABOUT.biography}</p>
             </div>
 
@@ -4549,17 +5319,23 @@ function App() {
               <div className="about-collection">
                 <h3 className="section-tag">EDUCATION & COLLEGES</h3>
                 <div className="about-record-grid">
-                  {portfolio.about.colleges.map((item, index) => (
+                  {getVisiblePublicItems('about-colleges', portfolio.about.colleges).map((item, index) => (
                     <article className="about-record-card" key={`${item.title}-${index}`}>
-                      {item.image ? <img className="about-record-image" src={item.image} alt={item.title || 'College'} loading="lazy" decoding="async" /> : null}
+                      {item.image ? <ZoomableImage className="about-record-image" src={item.image} alt={item.title || 'College'} loading="lazy" decoding="async" /> : null}
                       <h4>{item.title}</h4>
                       {item.program ? <strong>{item.program}</strong> : null}
-                      {(item.dates || item.location) ? <span className="about-record-meta">{[item.dates, item.location].filter(Boolean).join(' / ')}</span> : null}
+                      {(item.type || item.dates || item.location) ? <span className="about-record-meta">{[item.type, item.dates, item.location].filter(Boolean).join(' / ')}</span> : null}
                       {item.description ? <p>{item.description}</p> : null}
-                      {item.url ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">COLLEGE DETAILS <ArrowUpRight size={14} /></a> : null}
+                      {Array.isArray(item.images) && item.images.length ? (
+                        <div className="entry-image-gallery">
+                          {item.images.map((image, imageIndex) => <ZoomableImage key={`${image}-${imageIndex}`} src={image} alt={`${item.title || 'Institution'} ${imageIndex + 2}`} loading="lazy" decoding="async" />)}
+                        </div>
+                      ) : null}
+                      {/^https?:\/\//i.test(item.url || '') ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">{item.linkLabel || `${item.type || 'INSTITUTION'} DETAILS`} <ArrowUpRight size={14} /></a> : null}
                     </article>
                   ))}
                 </div>
+                {renderPublicListToggle('about-colleges', portfolio.about.colleges, 'institutions')}
               </div>
             ) : null}
 
@@ -4567,9 +5343,9 @@ function App() {
               <div className="about-collection">
                 <h3 className="section-tag">WEBINARS & EVENTS</h3>
                 <div className="about-record-grid">
-                  {portfolio.about.webinars.map((item, index) => (
+                  {getVisiblePublicItems('webinars', portfolio.about.webinars).map((item, index) => (
                     <article className="about-record-card" key={`${item.title}-${index}`}>
-                      {item.image ? <img className="about-record-image" src={item.image} alt={item.title || 'Webinar'} loading="lazy" decoding="async" /> : null}
+                      {item.image ? <ZoomableImage className="about-record-image" src={item.image} alt={item.title || 'Webinar'} loading="lazy" decoding="async" /> : null}
                       <h4>{item.title}</h4>
                       {item.organizer ? <strong>{item.organizer}</strong> : null}
                       {item.date ? <span className="about-record-meta">{item.date}</span> : null}
@@ -4578,6 +5354,7 @@ function App() {
                     </article>
                   ))}
                 </div>
+                {renderPublicListToggle('webinars', portfolio.about.webinars, 'events')}
               </div>
             ) : null}
 
@@ -4585,13 +5362,14 @@ function App() {
               <div className="about-collection">
                 <h3 className="section-tag">ABOUT GALLERY</h3>
                 <div className="about-image-grid">
-                  {portfolio.about.images.map((image, index) => (
+                  {getVisiblePublicItems('about-gallery', portfolio.about.images).map((image, index) => (
                     <figure className="about-gallery-item" key={`${image.url}-${index}`}>
-                      <img src={image.url} alt={image.label || 'About gallery'} loading="lazy" decoding="async" />
+                      <ZoomableImage src={image.url} alt={image.label || 'About gallery'} loading="lazy" decoding="async" />
                       {image.label ? <figcaption>{image.label}</figcaption> : null}
                     </figure>
                   ))}
                 </div>
+                {renderPublicListToggle('about-gallery', portfolio.about.images, 'images')}
               </div>
             ) : null}
 
@@ -4611,7 +5389,7 @@ function App() {
           </div>
 
           <div className="toolkit-grid">
-            {portfolio.toolkitGroups.map((group) => (
+            {getVisiblePublicItems('toolkit', portfolio.toolkitGroups).map((group) => (
               <div key={group.label} className="toolkit-row">
                 <div className="toolkit-label">{group.label}</div>
                 <div className="toolkit-skills">
@@ -4622,6 +5400,7 @@ function App() {
               </div>
             ))}
           </div>
+          {renderPublicListToggle('toolkit', portfolio.toolkitGroups, 'skill groups')}
         </MotionSection>
 
         <MotionSection id="journey" className="content-section spaced" motionEnabled={sectionMotion.journey} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4631,7 +5410,7 @@ function App() {
           </div>
 
           <div className="timeline">
-            {portfolio.journeyEvents.map((event, index) => (
+            {getVisiblePublicItems('journey', portfolio.journeyEvents).map((event, index) => (
               <div key={`${event.year}-${event.title}-${index}`} className="timeline-item">
                 <div className="timeline-year">{event.year}</div>
                 <div className="timeline-line" aria-hidden="true" />
@@ -4641,12 +5420,12 @@ function App() {
                   <p>{event.description}</p>
                   {event.detail ? <p className="journey-detail">{event.detail}</p> : null}
                   {event.image ? (
-                    <img className="journey-image" src={event.image} alt={event.title} loading="lazy" decoding="async" />
+                    <ZoomableImage className="journey-image" src={event.image} alt={event.title} loading="lazy" decoding="async" />
                   ) : null}
                   {event.images?.length ? (
                     <div className="journey-gallery">
                       {event.images.map((image, imageIndex) => (
-                        <img key={`${image}-${imageIndex}`} src={image} alt={`${event.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />
+                        <ZoomableImage key={`${image}-${imageIndex}`} src={image} alt={`${event.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />
                       ))}
                     </div>
                   ) : null}
@@ -4663,6 +5442,7 @@ function App() {
               </div>
             ))}
           </div>
+          {renderPublicListToggle('journey', portfolio.journeyEvents, 'journey entries')}
         </MotionSection>
 
         <MotionSection id="education" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4672,33 +5452,29 @@ function App() {
           </div>
 
           <div className="list-archive">
-            {[
-              ...portfolio.educationEntries,
-              ...(portfolio.about?.colleges || []).map((item) => ({
-                title: item.program || item.title,
-                institution: item.title,
-                dates: item.dates || '',
-                location: item.location || '',
-                description: item.description || '',
-                image: item.image || '',
-                url: item.url || '',
-              })),
-            ].map((item, index) => (
+            {getVisiblePublicItems('education', publicEducationItems).map((item, index) => (
               <article key={`${item.title}-${item.institution}-${index}`} className="archive-row">
                 <div className="archive-meta">
                   <span>{item.dates}</span>
                   <span>{item.location}</span>
                 </div>
                 <div className="archive-content">
-                  {item.image ? <img className="education-image" src={item.image} alt={item.institution || item.title} loading="lazy" decoding="async" /> : null}
+                  {[...new Set([item.image, ...(Array.isArray(item.images) ? item.images : [])].filter(Boolean))].length ? (
+                    <div className="entry-image-gallery education-image-gallery">
+                      {[...new Set([item.image, ...(Array.isArray(item.images) ? item.images : [])].filter(Boolean))].map((image, imageIndex) => (
+                        <ZoomableImage key={`${image}-${imageIndex}`} className="education-image" src={image} alt={`${item.institution || item.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />
+                      ))}
+                    </div>
+                  ) : null}
                   <h3>{item.title}</h3>
-                  <p className="archive-institution">{item.institution}</p>
+                  <p className="archive-institution">{[item.type, item.institution].filter(Boolean).join(' · ')}</p>
                   <p>{item.description}</p>
-                  {item.url ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">COLLEGE DETAILS <ArrowUpRight size={14} /></a> : null}
+                  {/^https?:\/\//i.test(item.url || '') ? <a className="inline-link" href={item.url} target="_blank" rel="noreferrer">{item.linkLabel || `${item.type || 'INSTITUTION'} DETAILS`} <ArrowUpRight size={14} /></a> : null}
                 </div>
               </article>
             ))}
           </div>
+          {renderPublicListToggle('education', publicEducationItems, 'education entries')}
         </MotionSection>
 
         <MotionSection id="experience" className="content-section spaced" motionEnabled={sectionMotion.journey} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4708,9 +5484,9 @@ function App() {
           </div>
 
           <div className="experience-grid">
-            {portfolio.experienceEntries.map((item, index) => (
+            {getVisiblePublicItems('experience', portfolio.experienceEntries).map((item, index) => (
               <article key={`${item.company}-${item.role}-${index}`} className="experience-card">
-                {item.image ? <img className="experience-image" src={item.image} alt={`${item.company} experience`} loading="lazy" decoding="async" /> : null}
+                {item.image ? <ZoomableImage className="experience-image" src={item.image} alt={`${item.company} experience`} loading="lazy" decoding="async" /> : null}
                 <div className="experience-header">
                   <span>{item.company}</span>
                   <strong>{item.role}</strong>
@@ -4727,7 +5503,7 @@ function App() {
                   ))}
                 </ul> : null}
                 {item.images?.length ? <div className="entry-image-gallery">
-                  {item.images.map((image, imageIndex) => <img key={`${image}-${imageIndex}`} src={image} alt={`${item.company} ${imageIndex + 1}`} loading="lazy" decoding="async" />)}
+                  {item.images.map((image, imageIndex) => <ZoomableImage key={`${image}-${imageIndex}`} src={image} alt={`${item.company} ${imageIndex + 1}`} loading="lazy" decoding="async" />)}
                 </div> : null}
                 {item.links?.length ? <div className="entry-links">
                   {item.links.map((link, linkIndex) => <a key={`${link.url}-${linkIndex}`} href={link.url} target="_blank" rel="noreferrer">{link.label || 'View details'} <ArrowUpRight size={14} /></a>)}
@@ -4735,6 +5511,7 @@ function App() {
               </article>
             ))}
           </div>
+          {renderPublicListToggle('experience', portfolio.experienceEntries, 'experience entries')}
         </MotionSection>
 
         <MotionSection id="certificates" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4744,15 +5521,12 @@ function App() {
           </div>
 
           <div className="certificate-list">
-            {[
-              ...portfolio.certificateEntries,
-              ...(portfolio.about?.certificates || []),
-            ].map((item, index) => (
+            {getVisiblePublicItems('certificates', publicCertificateItems).map((item, index) => (
               <article key={`${item.title}-${item.issuer}-${index}`} className="certificate-row">
                 <div>
                   <span className="certificate-label">Certificate</span>
                   <h3>{item.title}</h3>
-                  {item.image ? <img className="certificate-image" src={item.image} alt={item.title || 'Certificate'} loading="lazy" decoding="async" /> : null}
+                  {item.image ? <ZoomableImage className="certificate-image" src={item.image} alt={item.title || 'Certificate'} loading="lazy" decoding="async" /> : null}
                 </div>
                 <div>
                   <span className="certificate-label">Issuer</span>
@@ -4772,6 +5546,7 @@ function App() {
               </article>
             ))}
           </div>
+          {renderPublicListToggle('certificates', publicCertificateItems, 'certificates')}
         </MotionSection>
 
         <MotionSection id="achievements" className="content-section spaced" motionEnabled={sectionMotion.about} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4781,7 +5556,7 @@ function App() {
           </div>
 
           <div className="achievement-list">
-            {portfolio.achievements.map((item, index) => (
+            {getVisiblePublicItems('achievements', portfolio.achievements).map((item, index) => (
               <article key={`${item.title}-${index}`} className="achievement-row">
                 <div className="achievement-index">{String(index + 1).padStart(2, '0')}</div>
                 <div className="achievement-copy">
@@ -4791,9 +5566,9 @@ function App() {
                     <span>{item.date}</span>
                   </div>
                   <p>{item.description}</p>
-                  {item.image ? <img className="achievement-image" src={item.image} alt={item.title} loading="lazy" decoding="async" /> : null}
+                  {item.image ? <ZoomableImage className="achievement-image" src={item.image} alt={item.title} loading="lazy" decoding="async" /> : null}
                   {item.images?.length ? <div className="entry-image-gallery">
-                    {item.images.map((image, imageIndex) => <img key={`${image}-${imageIndex}`} src={image} alt={`${item.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />)}
+                    {item.images.map((image, imageIndex) => <ZoomableImage key={`${image}-${imageIndex}`} src={image} alt={`${item.title} ${imageIndex + 1}`} loading="lazy" decoding="async" />)}
                   </div> : null}
                   {item.links?.length ? <div className="entry-links">
                     {item.links.map((link, linkIndex) => <a key={`${link.url}-${linkIndex}`} href={link.url} target="_blank" rel="noreferrer">{link.label || 'View details'} <ArrowUpRight size={14} /></a>)}
@@ -4802,6 +5577,7 @@ function App() {
               </article>
             ))}
           </div>
+          {renderPublicListToggle('achievements', portfolio.achievements, 'achievements')}
         </MotionSection>
 
         <MotionSection id="gallery" className="content-section spaced" motionEnabled={sectionMotion.gallery} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
@@ -4811,13 +5587,14 @@ function App() {
           </div>
 
           <div className="gallery-grid">
-            {portfolio.galleryItems.map((item, index) => (
+            {getVisiblePublicItems('gallery', portfolio.galleryItems).map((item, index) => (
               <div key={`${item.label}-${index}`} className={`gallery-item ${item.tone || 'normal'}`}>
-                {(item.url || item.image) ? <img src={item.url || item.image} alt={item.label || 'Portfolio gallery image'} loading="lazy" decoding="async" /> : null}
+                {(item.url || item.image) ? <ZoomableImage src={item.url || item.image} alt={item.label || 'Portfolio gallery image'} loading="lazy" decoding="async" /> : null}
                 <span>{item.label}</span>
               </div>
             ))}
           </div>
+          {renderPublicListToggle('gallery', portfolio.galleryItems, 'gallery images')}
         </MotionSection>
 
         {renderResumeSection()}
@@ -4897,7 +5674,7 @@ function App() {
 
         <div className="footer-links">
           {publicNavItems.map((item) => (
-            <a key={`footer-${item}`} href={`#${item.toLowerCase()}`}>{item}</a>
+            <a key={`footer-${item.target}`} href={`#${item.target}`}>{item.label}</a>
           ))}
         </div>
 
@@ -4916,146 +5693,191 @@ function App() {
     </>
   )
 
-  const renderProjectDetail = () => (
-    <div className="project-detail-page">
-      <header className="detail-header">
-        <div className="detail-breadcrumbs">
-          <button type="button" className="text-link" onClick={() => setView('home')}>
-            ← Back to home
+  const renderProjectDetail = () => {
+    const currentProjectIndex = portfolio.projects.findIndex((item) => item.id === selectedProject.id)
+    const nextProject = portfolio.projects[(currentProjectIndex + 1) % portfolio.projects.length]
+    const projectGalleryImages = (selectedProject.gallery || [])
+      .map((item) => typeof item === 'string' ? { url: item } : item)
+      .filter((item) => item?.url)
+      .slice(0, 2)
+    const coverImage = selectedProject.image
+      ? { url: selectedProject.image, label: `${selectedProject.title} cover image` }
+      : null
+    const detailImages = projectGalleryImages.length
+      ? [...projectGalleryImages, ...(projectGalleryImages.length < 2 && coverImage
+        && !projectGalleryImages.some((item) => item.url === coverImage.url) ? [coverImage] : [])]
+      : coverImage ? [coverImage] : []
+
+    return (
+      <article className="project-detail-page">
+        <nav className="project-detail-topbar" aria-label="Project navigation">
+          <button type="button" className="project-back-link" onClick={() => setView('home')}>
+            <ArrowRight size={15} aria-hidden="true" />
+            <span>All projects</span>
           </button>
-          <span>{selectedProject.number} / PROJECT PAGE</span>
-        </div>
-        <div className="detail-meta-row">
-          <div>
-            <p className="section-tag">{selectedProject.number} — {selectedProject.category}</p>
-            <h1>{selectedProject.title}</h1>
+          <span className="project-index-label">SELECTED WORK <i /> {selectedProject.number}</span>
+        </nav>
+
+        <header className="project-detail-heading">
+          <p className="project-detail-eyebrow">{selectedProject.category}</p>
+          <h1>{selectedProject.title}</h1>
+          {selectedProject.description ? <p className="project-detail-lede">{selectedProject.description}</p> : null}
+          <div className="project-detail-meta">
+            {selectedProject.status ? <span className="project-status"><i />{selectedProject.status}</span> : null}
+            {selectedProject.date ? <span>{selectedProject.date}</span> : null}
+            {selectedProject.role ? <span>{selectedProject.role}</span> : null}
           </div>
-          <div className="detail-status">
-            <span>{selectedProject.status}</span>
-            <span>{selectedProject.date}</span>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <section className="project-hero-media">
-        {selectedProject.video ? (
-          <ProjectVideoPlayer src={selectedProject.video} poster={selectedProject.image} title={selectedProject.title} controls detail />
-        ) : selectedProject.image ? (
-          <img
-            className="project-hero-image"
-            src={selectedProject.image}
-            alt={`${selectedProject.title} cover`}
-            loading="eager"
-            decoding="async"
-          />
-        ) : null}
-        {!selectedProject.video && !selectedProject.image ? (
-          <div className="project-hero-visual media-lime">
-            <div className="media-surface" />
-          </div>
-        ) : null}
-      </section>
-
-      {(selectedProject.description || selectedProject.title) ? <section className="detail-grid two-col">
-        <div>
-          <p className="section-tag">Overview</p>
-          <h2>{selectedProject.title}</h2>
-        </div>
-        {selectedProject.description ? <p className="detail-copy">{selectedProject.description}</p> : null}
-      </section> : null}
-
-      {(selectedProject.problem || selectedProject.approach || selectedProject.features?.length) ? <section className="detail-grid three-up">
-        {selectedProject.problem ? <div className="detail-card">
-          <p className="section-tag">The Problem</p>
-          <p>{selectedProject.problem}</p>
-        </div> : null}
-        {selectedProject.approach ? <div className="detail-card">
-          <p className="section-tag">The Approach</p>
-          <p>{selectedProject.approach}</p>
-        </div> : null}
-        {selectedProject.features?.length ? <div className="detail-card">
-          <p className="section-tag">Key Features</p>
-          <ul>
-            {selectedProject.features.map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-        </div> : null}
-      </section> : null}
-
-      {(selectedProject.tech?.length || selectedProject.role || selectedProject.challenges?.length) ? <section className="detail-grid sidebar-row">
-        {selectedProject.tech?.length ? <div className="detail-card metadata-card">
-          <p className="section-tag">Technology</p>
-          <div className="tag-list">
-            {selectedProject.tech.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
-        </div> : null}
-
-        {selectedProject.role ? <div className="detail-card metadata-card">
-          <p className="section-tag">My Role</p>
-          <p>{selectedProject.role}</p>
-        </div> : null}
-
-        {selectedProject.challenges?.length ? <div className="detail-card metadata-card">
-          <p className="section-tag">Challenges</p>
-          <ul>
-            {selectedProject.challenges.map((challenge) => (
-              <li key={challenge}>{challenge}</li>
-            ))}
-          </ul>
-        </div> : null}
-      </section> : null}
-
-      {(selectedProject.solution || selectedProject.results?.length) ? <section className="detail-grid text-split">
-        {selectedProject.solution ? <div className="detail-card">
-          <p className="section-tag">Solution</p>
-          <p>{selectedProject.solution}</p>
-        </div> : null}
-        {selectedProject.results?.length ? <div className="detail-card">
-          <p className="section-tag">Result</p>
-          <ul>
-            {selectedProject.results.map((result) => (
-              <li key={result}>{result}</li>
-            ))}
-          </ul>
-        </div> : null}
-      </section> : null}
-
-      {selectedProject.gallery?.length ? <section className="detail-gallery">
-        <p className="section-tag">Project Gallery</p>
-        <div className="gallery-grid detail-gallery-grid">
-          {selectedProject.gallery.map((item) => (
-            <div key={item.url || item.label} className={`gallery-item ${item.tone || 'normal'}`}>
-              {item.url ? <img src={item.url} alt={item.label || 'Project gallery'} /> : <span>{item.label}</span>}
+        <section className="project-featured-media" aria-label={`${selectedProject.title} preview`}>
+          {selectedProject.video ? (
+            <ProjectVideoPlayer src={selectedProject.video} poster={selectedProject.image} title={selectedProject.title} controls detail />
+          ) : selectedProject.image ? (
+            <ZoomableImage
+              className="project-hero-image"
+              src={selectedProject.image}
+              alt={`${selectedProject.title} project preview`}
+              loading="eager"
+              decoding="async"
+            />
+          ) : (
+            <div className="project-featured-placeholder">
+              <span>{selectedProject.category}</span>
+              <strong>{selectedProject.title}</strong>
             </div>
-          ))}
-        </div>
-      </section> : null}
+          )}
+          <span className="project-media-caption">PROJECT PREVIEW <i /> {selectedProject.number}</span>
+        </section>
 
-      <section className="project-links">
-        {selectedProject.website ? (
-          <a href={selectedProject.website} target="_blank" rel="noreferrer" className="primary-btn">
-            <span>Live Link</span>
-            <ArrowUpRight size={15} />
-          </a>
+        {detailImages.length ? (
+          <section className="project-detail-gallery">
+            <div className="project-gallery-heading">
+              <div><p className="project-section-label">PROJECT IMAGES</p><h2>A closer look</h2></div>
+              <span>{String(detailImages.length).padStart(2, '0')} IMAGES</span>
+            </div>
+            <div className="gallery-grid detail-gallery-grid">
+              {detailImages.map((item, index) => (
+                <div key={item.url || index} className={`gallery-item ${item.tone || 'normal'}`}>
+                  <ZoomableImage src={item.url} alt={item.label || `${selectedProject.title} detail ${index + 1}`} loading="lazy" />
+                </div>
+              ))}
+            </div>
+          </section>
         ) : null}
-        {selectedProject.repository ? <a href={selectedProject.repository} target="_blank" rel="noreferrer" className="secondary-btn">
-          <span>Repository</span>
-          <ArrowUpRight size={15} />
-        </a> : null}
-      </section>
 
-      <section className="next-project-row">
-        <span>Next Project</span>
-        <button type="button" className="inline-link" onClick={() => openProject(portfolio.projects[(portfolio.projects.findIndex((item) => item.id === selectedProject.id) + 1) % portfolio.projects.length].id)}>
-          {portfolio.projects[(portfolio.projects.findIndex((item) => item.id === selectedProject.id) + 1) % portfolio.projects.length].title}
-          <ArrowRight size={15} />
-        </button>
-      </section>
-    </div>
-  )
+        <div className="project-detail-layout">
+          <div className="project-story">
+            {(selectedProject.problem || selectedProject.approach) ? (
+              <section className="project-story-section">
+                <p className="project-section-label"><span>01</span> THE BRIEF</p>
+                <div className="project-story-columns">
+                  {selectedProject.problem ? (
+                    <div>
+                      <h2>The challenge</h2>
+                      <p>{selectedProject.problem}</p>
+                    </div>
+                  ) : null}
+                  {selectedProject.approach ? (
+                    <div>
+                      <h2>The approach</h2>
+                      <p>{selectedProject.approach}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            {selectedProject.features?.length ? (
+              <section className="project-story-section">
+                <p className="project-section-label"><span>02</span> WHAT IT INCLUDES</p>
+                <h2>Designed to work end to end.</h2>
+                <ul className="project-feature-list">
+                  {selectedProject.features.map((feature, index) => (
+                    <li key={`${feature}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span>{feature}</li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {(selectedProject.solution || selectedProject.results?.length) ? (
+              <section className="project-outcome">
+                <p className="project-section-label"><span>03</span> THE OUTCOME</p>
+                {selectedProject.solution ? (
+                  <div>
+                    <h2>Built around a clear solution.</h2>
+                    <p>{selectedProject.solution}</p>
+                  </div>
+                ) : null}
+                {selectedProject.results?.length ? (
+                  <ul>
+                    {selectedProject.results.map((result, index) => <li key={`${result}-${index}`}>{result}</li>)}
+                  </ul>
+                ) : null}
+              </section>
+            ) : null}
+
+            {selectedProject.challenges?.length ? (
+              <section className="project-story-section project-challenges">
+                <p className="project-section-label"><span>04</span> CONSIDERATIONS</p>
+                <h2>Complexity, made manageable.</h2>
+                <ul>
+                  {selectedProject.challenges.map((challenge, index) => <li key={`${challenge}-${index}`}>{challenge}</li>)}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+
+          <aside className="project-info-sidebar">
+            {(selectedProject.website || selectedProject.repository) ? (
+              <div className="project-action-panel">
+                <p className="project-section-label">EXPLORE THE PROJECT</p>
+                {selectedProject.website ? (
+                  <a href={selectedProject.website} target="_blank" rel="noreferrer" className="primary-btn">
+                    <span>Visit live project</span><ArrowUpRight size={15} />
+                  </a>
+                ) : null}
+                {selectedProject.repository ? (
+                  <a href={selectedProject.repository} target="_blank" rel="noreferrer" className="secondary-btn">
+                    <span>View source code</span><ArrowUpRight size={15} />
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+
+            {(selectedProject.role || selectedProject.date || selectedProject.status) ? (
+              <div className="project-info-block">
+                <p className="project-section-label">PROJECT DETAILS</p>
+                {selectedProject.role ? <div><span>My role</span><strong>{selectedProject.role}</strong></div> : null}
+                {selectedProject.date ? <div><span>Year</span><strong>{selectedProject.date}</strong></div> : null}
+                {selectedProject.status ? <div><span>Status</span><strong>{selectedProject.status}</strong></div> : null}
+              </div>
+            ) : null}
+
+            {selectedProject.tech?.length ? (
+              <div className="project-info-block">
+                <p className="project-section-label">BUILT WITH</p>
+                <div className="project-tech-list">
+                  {selectedProject.tech.map((item) => <span key={item}>{item}</span>)}
+                </div>
+              </div>
+            ) : null}
+          </aside>
+        </div>
+
+        <footer className="project-detail-footer">
+          <button type="button" className="project-back-link" onClick={() => setView('home')}>
+            <ArrowRight size={15} aria-hidden="true" /><span>Back to all projects</span>
+          </button>
+          {nextProject ? (
+            <button type="button" className="project-next-link" onClick={() => openProject(nextProject.id)}>
+              <span>NEXT PROJECT <strong>{nextProject.title}</strong></span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          ) : null}
+        </footer>
+      </article>
+    )
+  }
 
   const renderAdmin = () => {
     if (!isAdminAuthenticated) {
@@ -5079,7 +5901,9 @@ function App() {
 
               {loginError ? <p className="login-error">{loginError}</p> : null}
 
-              <button type="submit" className="primary-btn full-width">Login to dashboard</button>
+              <button type="submit" className="primary-btn full-width" disabled={isLoginSubmitting}>
+                {isLoginSubmitting ? 'Checking credentials…' : 'Login to dashboard'}
+              </button>
               <button type="button" className="secondary-btn full-width" onClick={() => setView('home')}>Back to public site</button>
             </form>
           </div>
@@ -5098,6 +5922,7 @@ function App() {
           <button type="button" className={`nav-button ${adminSection === 'projects' ? 'active' : ''}`} onClick={() => handleAdminAction('projects')}>Projects</button>
           <button type="button" className={`nav-button ${adminSection === 'resume' ? 'active' : ''}`} onClick={beginEditResume}>Resume</button>
           <button type="button" className={`nav-button ${adminSection === 'about' ? 'active' : ''}`} onClick={beginEditAbout}>About</button>
+          <button type="button" className={`nav-button ${adminSection === 'education' ? 'active' : ''}`} onClick={() => handleAdminAction('education')}>Education</button>
           <button type="button" className={`nav-button ${adminSection === 'experience' ? 'active' : ''}`} onClick={() => handleAdminAction('experience')}>Experience</button>
           <button type="button" className={`nav-button ${adminSection === 'achievements' ? 'active' : ''}`} onClick={() => handleAdminAction('achievements')}>Achievements</button>
           <button type="button" className={`nav-button ${adminSection === 'gallery' ? 'active' : ''}`} onClick={() => handleAdminAction('gallery')}>Gallery Images</button>
@@ -5145,6 +5970,94 @@ function App() {
               <span className="status-badge">{activeHomepageDesign.name}</span>
             </div>
 
+            <form
+              className="homepage-hero-editor"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void saveHomepageSettings()
+              }}
+            >
+              <div className="panel-header">
+                <div>
+                  <span className="section-tag">HERO PERSONALIZATION</span>
+                  <h2>Customize your homepage introduction</h2>
+                  <p>These settings update the name, role, and availability badge shown in the homepage hero.</p>
+                </div>
+              </div>
+              <div className="field-grid admin-field-grid">
+                <label>
+                  <span>Display name</span>
+                  <input
+                    type="text"
+                    value={String(homepageSettings.heroName || '')}
+                    onChange={(event) => updateHomepageSetting('heroName', event.target.value)}
+                    maxLength={80}
+                    placeholder={portfolio.profile.name}
+                  />
+                </label>
+                <label>
+                  <span>Role or headline</span>
+                  <input
+                    type="text"
+                    value={String(homepageSettings.heroRole || '')}
+                    onChange={(event) => updateHomepageSetting('heroRole', event.target.value)}
+                    maxLength={120}
+                    placeholder={portfolio.profile.title}
+                  />
+                </label>
+                <label>
+                  <span>Availability badge</span>
+                  <input
+                    type="text"
+                    value={String(homepageSettings.availabilityText || '')}
+                    onChange={(event) => updateHomepageSetting('availabilityText', event.target.value)}
+                    maxLength={100}
+                    placeholder="Available for Frontend / Product / Internship"
+                    required
+                  />
+                </label>
+                <label>
+                  <span>Name animation</span>
+                  <select
+                    value={homepageAnimation}
+                    onChange={(event) => updateHomepageSetting('heroAnimation', event.target.value)}
+                  >
+                    {HOMEPAGE_HERO_ANIMATIONS.map((animation) => (
+                      <option key={animation.id} value={animation.id}>{animation.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="homepage-hero-colors">
+                <label>
+                  <span>Name color</span>
+                  <input
+                    type="color"
+                    value={homepageNameColor}
+                    onChange={(event) => updateHomepageSetting('nameColor', event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Highlight color</span>
+                  <input
+                    type="color"
+                    value={homepageNameHighlightColor}
+                    onChange={(event) => updateHomepageSetting('nameHighlightColor', event.target.value)}
+                  />
+                </label>
+                <div className="homepage-hero-live-preview" style={homepageHeroStyle}>
+                  <span>{homepageAvailability}</span>
+                  <strong className={`homepage-hero-name homepage-hero-name-${homepageAnimation}`}>
+                    {homepageDisplayName}
+                  </strong>
+                  <small>{homepageRole}</small>
+                </div>
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="primary-btn">Save homepage introduction</button>
+              </div>
+            </form>
+
             <div className="homepage-design-grid">
               {HOMEPAGE_DESIGNS.map((design) => (
                 <article key={design.id} className={`homepage-design-card ${activeHomepageDesignId === design.id ? 'active' : ''}`}>
@@ -5174,7 +6087,7 @@ function App() {
               <div>
                 <span className="section-tag">SOLAR SYSTEM</span>
                 <h2>Sun &amp; planet reference links</h2>
-                <p>Visitor ka Learn more button yahan set kiya gaya page isi website ke andar kholta hai; naya tab nahi khulta aur URL page par text ke roop mein nahi dikhaya jata.</p>
+                <p>The Learn more button opens this page within the website. It does not open a new tab or display the URL as text.</p>
               </div>
             </div>
             <div className="contact-editor-list">
@@ -5269,6 +6182,83 @@ function App() {
           </section>
         ) : null}
 
+        {adminSection === 'education' ? (
+          <section className="panel-card admin-list-panel">
+            {showEducationForm ? (
+              <form className="admin-form" onSubmit={handleSaveEducation}>
+                <div className="panel-header">
+                  <h2>{editingEducationIndex === null ? 'Add education entry' : 'Edit education entry'}</h2>
+                  <button type="button" className="text-link" onClick={() => { setShowEducationForm(false); resetEducationDraft() }}>Close</button>
+                </div>
+                <div className="field-grid admin-field-grid">
+                  <label>
+                    <span>Institution type</span>
+                    <select name="type" value={educationDraft.type} onChange={handleEducationDraftChange}>
+                      <option>School</option>
+                      <option>College</option>
+                      <option>University</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <label><span>Course / qualification</span><input name="title" value={educationDraft.title} onChange={handleEducationDraftChange} required /></label>
+                  <label><span>School / college / institution name</span><input name="institution" value={educationDraft.institution} onChange={handleEducationDraftChange} required /></label>
+                  <label><span>Dates</span><input name="dates" value={educationDraft.dates} onChange={handleEducationDraftChange} placeholder="2024 — 2027" /></label>
+                  <label><span>Location</span><input name="location" value={educationDraft.location} onChange={handleEducationDraftChange} placeholder="City / State" /></label>
+                  <label><span>Institution website link label</span><input name="linkLabel" value={educationDraft.linkLabel} onChange={handleEducationDraftChange} placeholder="Visit school / college website" /></label>
+                  <label><span>School / college website URL</span><input type="url" name="url" value={educationDraft.url} onChange={handleEducationDraftChange} placeholder="https://..." /></label>
+                  <label><span>Featured image URL</span><input type="url" name="image" value={educationDraft.image} onChange={handleEducationDraftChange} placeholder="https://..." /></label>
+                </div>
+                <label>
+                  <span>Upload featured image</span>
+                  <input type="file" accept="image/*" onChange={(event) => handleEducationImageUpload(event, 'image')} />
+                  {educationDraft.image ? <img className="entry-upload-preview" src={educationDraft.image} alt="Education featured image preview" /> : null}
+                </label>
+                <label>
+                  <span>Additional image URLs (one per line)</span>
+                  <textarea name="images" value={educationDraft.images} onChange={handleEducationDraftChange} rows="3" placeholder="https://..." />
+                </label>
+                <label>
+                  <span>Upload additional images</span>
+                  <input type="file" accept="image/*" multiple onChange={(event) => handleEducationImageUpload(event, 'images')} />
+                  {parseJourneyImages(educationDraft.images).length ? (
+                    <div className="entry-image-gallery">
+                      {parseJourneyImages(educationDraft.images).map((image, index) => (
+                        <img key={`${image}-${index}`} src={image} alt={`Education image preview ${index + 1}`} />
+                      ))}
+                    </div>
+                  ) : null}
+                </label>
+                <label><span>Additional details</span><textarea name="description" value={educationDraft.description} onChange={handleEducationDraftChange} rows="4" /></label>
+                {educationSaveStatus ? <p className="form-status" role="status">{educationSaveStatus}</p> : null}
+                <div className="form-actions">
+                  <button type="submit" className="primary-btn">{editingEducationIndex === null ? 'Save education' : 'Update education'}</button>
+                  <button type="button" className="secondary-btn" onClick={() => { setShowEducationForm(false); resetEducationDraft() }}>Cancel</button>
+                </div>
+              </form>
+            ) : null}
+            <div className="panel-header">
+              <h2>Education and institutions</h2>
+              <button type="button" className="primary-btn small-btn" onClick={() => { resetEducationDraft(); setEducationSaveStatus(''); setShowEducationForm(true) }}>Add school / college</button>
+            </div>
+            {!showEducationForm && educationSaveStatus ? <p className="form-status" role="status">{educationSaveStatus}</p> : null}
+            <div className="list-stack">
+              {portfolio.educationEntries.length ? portfolio.educationEntries.map((item, index) => (
+                <div className="mini-list-row" key={`${item.institution}-${item.title}-${index}`}>
+                  <div className="timeline-copy">
+                    <strong>{item.title}</strong>
+                    <span className="journey-location">{[item.type, item.institution, item.dates].filter(Boolean).join(' / ')}</span>
+                    <p>{item.description}</p>
+                  </div>
+                  <div className="mini-list-actions compact-actions">
+                    <button type="button" className="ghost-btn" onClick={() => beginEditEducation(item, index)}>Edit</button>
+                    <button type="button" className="danger-btn" onClick={() => handleDeleteEducation(index)}>Delete</button>
+                  </div>
+                </div>
+              )) : <p className="empty-state">No education entries yet.</p>}
+            </div>
+          </section>
+        ) : null}
+
         {adminSection === 'about' ? (
           <form className="panel-card admin-form about-admin-form" onSubmit={handleSaveAbout}>
             <div className="panel-header">
@@ -5292,7 +6282,7 @@ function App() {
             <label>
               <span>Upload professional photo</span>
               <input type="file" accept="image/*" onChange={(event) => handleAboutImageUpload(event, 'photo', 0)} />
-              {aboutDraft.photo ? <img className="about-upload-preview" src={aboutDraft.photo} alt="Professional photo preview" /> : <span className="upload-hint">Choose a portrait image</span>}
+              {aboutDraft.photo ? <img className="about-upload-preview" src={aboutDraft.photo} alt="Professional photo preview" onError={handlePortraitImageError} /> : <span className="upload-hint">Choose a portrait image</span>}
             </label>
             <label>
               <span>About biography</span>
@@ -5326,6 +6316,15 @@ function App() {
                             <input type={field.type || 'text'} value={record[field.key] || ''} onChange={(event) => updateAboutRecord(collection.key, index, field.key, event.target.value)} />
                           )}
                           {field.upload ? <input type="file" accept="image/*" onChange={(event) => handleAboutImageUpload(event, collection.key, index)} /> : null}
+                          {field.upload && (collection.key === 'images' ? record.url : record.image) ? (
+                            <img
+                              className="entry-upload-preview"
+                              src={collection.key === 'images' ? record.url : record.image}
+                              alt={`${field.label} preview`}
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : null}
                         </label>
                       ))}
                     </div>
@@ -5805,19 +6804,81 @@ function App() {
               </div>
             </div>
 
-            <div className="section-toggle-grid">
-              {Object.keys(SECTION_MOTION_DEFAULTS).map((sectionKey) => (
-                <button
-                  key={sectionKey}
-                  type="button"
-                  className={`section-toggle ${sectionMotion[sectionKey] ? 'enabled' : 'disabled'}`}
-                  onClick={() => handleSectionMotionToggle(sectionKey)}
-                >
-                  <span>{sectionKey}</span>
-                  <strong>{sectionMotion[sectionKey] ? 'On' : 'Off'}</strong>
-                </button>
-              ))}
-            </div>
+            <section className="section-animation-controls">
+              <div className="panel-header">
+                <div>
+                  <span className="section-tag">SECTION REVEALS</span>
+                  <h3>Choose which page sections animate into view</h3>
+                </div>
+              </div>
+              <div className="section-toggle-grid">
+                {Object.keys(SECTION_MOTION_DEFAULTS).map((sectionKey) => (
+                  <button
+                    key={sectionKey}
+                    type="button"
+                    className={`section-toggle ${sectionMotion[sectionKey] ? 'enabled' : 'disabled'}`}
+                    aria-pressed={sectionMotion[sectionKey]}
+                    onClick={() => handleSectionMotionToggle(sectionKey)}
+                  >
+                    <span>{SECTION_MOTION_LABELS[sectionKey]}</span>
+                    <strong>{sectionMotion[sectionKey] ? 'On' : 'Off'}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="animation-effects-controls">
+              <div className="panel-header">
+                <div>
+                  <span className="section-tag">INDIVIDUAL EFFECTS</span>
+                  <h3>Control animation areas and individual effects</h3>
+                  <p>Turning an area off pauses all its effects. Individual switches work when their area is on.</p>
+                </div>
+              </div>
+              <div className="animation-area-grid">
+                {ANIMATION_EFFECT_GROUPS.map((group) => {
+                  const groupEffects = ANIMATION_EFFECT_CONTROLS.filter((effect) => group.effects.includes(effect.id))
+                  const isEnabled = animationControls.areas[group.id] !== false
+                  return (
+                    <section key={group.id} className="animation-area-card">
+                      <div className="animation-area-header">
+                        <h4>{group.label}</h4>
+                        <button
+                          type="button"
+                          className={`section-toggle ${isEnabled ? 'enabled' : 'disabled'}`}
+                          aria-pressed={isEnabled}
+                          onClick={() => handleAnimationAreaToggle(group.id)}
+                        >
+                          <span>Area</span>
+                          <strong>{isEnabled ? 'On' : 'Off'}</strong>
+                        </button>
+                      </div>
+                      <div className="animation-effect-list">
+                        {groupEffects.map((effect) => {
+                          const effectEnabled = animationControls.effects[effect.id] !== false
+                          return (
+                            <button
+                              key={effect.id}
+                              type="button"
+                              className={`animation-effect-toggle ${effectEnabled && isEnabled ? 'enabled' : 'disabled'}`}
+                              aria-pressed={effectEnabled}
+                              onClick={() => handleAnimationEffectToggle(effect.id)}
+                            >
+                              <span>{effect.label}</span>
+                              <strong>{effectEnabled ? 'On' : 'Off'}</strong>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  )
+                })}
+              </div>
+              {animationControlsSaveStatus ? <p className="form-status" role="status">{animationControlsSaveStatus}</p> : null}
+              <div className="form-actions">
+                <button type="button" className="primary-btn" onClick={saveAnimationControls}>Save animation controls</button>
+              </div>
+            </section>
 
             {customThemes.length ? (
               <div className="custom-theme-list">
@@ -5929,7 +6990,7 @@ function App() {
 
             <div className="field-grid admin-field-grid media-upload-grid">
               <label>
-                <span>Project image</span>
+                <span>Project image (counts toward 2-image limit)</span>
                 <input type="file" accept="image/*" onChange={(event) => handleProjectMediaUpload(event, 'image')} />
                 {projectDraft.image ? <img className="upload-preview" src={projectDraft.image} alt="Project preview" /> : <span className="upload-hint">Upload a cover image</span>}
               </label>
@@ -5955,13 +7016,17 @@ function App() {
             </div>
             {mediaUploadStatus ? <p className="form-status" role="status">{mediaUploadStatus}</p> : null}
             <div className="field-grid admin-field-grid media-upload-grid">
-              {['Editorial', 'Web', 'Build', 'Studio', 'Process', 'Draft'].map((label, index) => (
-                <label key={label}>
-                  <span>Gallery: {label}</span>
-                  <input type="file" accept="image/*" onChange={(event) => handleProjectMediaUpload(event, `gallery-${index}`)} />
-                  {projectDraft.gallery[index] ? <img className="upload-preview" src={projectDraft.gallery[index]} alt={`${label} gallery preview`} /> : <span className="upload-hint">Upload {label.toLowerCase()} image</span>}
-                </label>
-              ))}
+              {Array.from({ length: Math.max(0, 2 - (projectDraft.image ? 1 : 0)) }, (_, index) => {
+                const imageNumber = index + (projectDraft.image ? 2 : 1)
+                const label = `Image ${imageNumber}`
+                return (
+                  <label key={label}>
+                    <span>Project gallery: {label} of 2 (optional)</span>
+                    <input type="file" accept="image/*" onChange={(event) => handleProjectMediaUpload(event, `gallery-${index}`)} />
+                    {projectDraft.gallery[index] ? <img className="upload-preview" src={projectDraft.gallery[index]} alt={`${label} gallery preview`} /> : <span className="upload-hint">Upload {label.toLowerCase()} image</span>}
+                  </label>
+                )
+              })}
             </div>
             <div className="detail-editor-grid">
               <label>
@@ -6092,7 +7157,7 @@ function App() {
                   />
                 </label>
                 <fieldset className="resume-display-mode">
-                  <legend>Website par kaunsa resume dikhayein?</legend>
+                  <legend>Choose which resume to display on the website</legend>
                   <label>
                     <input
                       type="radio"
@@ -6101,7 +7166,7 @@ function App() {
                       checked={resumeDraft.displayMode !== 'custom'}
                       onChange={() => setResumeDraft((current) => ({ ...current, displayMode: 'normal' }))}
                     />
-                    <span><strong>Normal resume</strong><small>Uploaded PDF/image/document aur uske download/share actions.</small></span>
+                    <span><strong>Uploaded resume</strong><small>Display an uploaded PDF, image, or document with download and sharing options.</small></span>
                   </label>
                   <label>
                     <input
@@ -6111,7 +7176,7 @@ function App() {
                       checked={resumeDraft.displayMode === 'custom'}
                       onChange={() => setResumeDraft((current) => ({ ...current, displayMode: 'custom' }))}
                     />
-                    <span><strong>Custom resume</strong><small>Canva-style designed resume aur custom PDF download.</small></span>
+                    <span><strong>Designed resume</strong><small>Display your designed resume and let visitors download it as a PDF.</small></span>
                   </label>
                 </fieldset>
                 <label>
@@ -6121,10 +7186,10 @@ function App() {
                     accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.html,.htm,image/*"
                     onChange={(event) => handleResumeUpload(event)}
                   />
-                  <small className="upload-hint">PDF, image, Word, OpenDocument, RTF, text, ya HTML • max 50MB</small>
+                  <small className="upload-hint">PDF, image, Word, OpenDocument, RTF, text, or HTML • maximum 50 MB</small>
                 </label>
                 <label>
-                  <span>Ya resume ka direct URL</span>
+                  <span>Or enter a direct resume URL</span>
                   <input
                     type="text"
                     name="url"
@@ -6138,7 +7203,7 @@ function App() {
                   <input type="file" accept="image/*" onChange={(event) => handleResumeUpload(event, true)} />
                 </label>
                 <label>
-                  <span>Ya preview image URL</span>
+                  <span>Or enter a preview image URL</span>
                   <input
                     type="text"
                     name="previewUrl"
@@ -6174,6 +7239,8 @@ function App() {
                   onChange={updateResumeDesign}
                   onReset={() => updateResumeDesign(createDefaultResumeDesign(portfolio))}
                   onOpenLink={openLinkPage}
+                  onImageUpload={handleResumeDesignImageUpload}
+                  aboutPortraitUrl={portfolio.about?.photo || ''}
                 />
                 {resumeDraft.fileName ? <p className="form-status">Current file: {resumeDraft.fileName}</p> : null}
                 {resumeUploadStatus ? <p className="form-status" role="status">{resumeUploadStatus}</p> : null}
@@ -6392,7 +7459,15 @@ function App() {
   return (
     <>
       <SiteBootLoader visible={isSiteBooting} />
-      <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+      <PublicImageViewerContext.Provider value={openImageViewer}>
+        <MotionScopeContext.Provider value={{ enabled: true, group: 'content', scope: 'all', bootComplete: isBootTourComplete }}>
+          <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+        </MotionScopeContext.Provider>
+        {imageViewer ? createPortal(
+          <ImageViewerModal image={imageViewer} onClose={closeImageViewer} />,
+          document.body,
+        ) : null}
+      </PublicImageViewerContext.Provider>
       {linkPage ? createPortal(
         <div className="planet-learn-more-overlay site-link-page-overlay" role="dialog" aria-modal="true" aria-label={`${linkPage.title} page`}>
           <FloatingBackButton

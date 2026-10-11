@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Sample education record visual</title><desc id="desc">An illustrative education card marked as sample, for testing portfolio layout.</desc>
+  <defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#bed9e7"/><stop offset="1" stop-color="#f2ead6"/></linearGradient></defs>
+  <rect width="1200" height="760" fill="url(#sky)"/><circle cx="1000" cy="140" r="74" fill="#f8d88d"/>
+  <path d="M0 490 220 405l190 75 210-135 230 143 170-93 180 90v275H0Z" fill="#829a85"/><path d="M0 563 300 468l180 83 200-112 240 123 160-79 120 49v228H0Z" fill="#536f67"/>
+  <rect x="355" y="220" width="495" height="345" fill="#f7f3e9" stroke="#7a6750" stroke-width="7"/><path d="m310 240 292-166 292 166Z" fill="#8b6250"/><rect x="550" y="400" width="105" height="165" fill="#778d93"/>
+  <g fill="#79949a"><rect x="403" y="290" width="90" height="95"/><rect x="712" y="290" width="90" height="95"/></g><g fill="#f4d68f"><rect x="423" y="309" width="50" height="58"/><rect x="732" y="309" width="50" height="58"/></g>
+  <rect x="75" y="67" width="467" height="44" rx="22" fill="#fff" fill-opacity=".88"/><text x="105" y="96" fill="#25384b" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="3">ILLUSTRATIVE CAMPUS ART · DEMO</text>
+  <rect x="740" y="620" width="390" height="66" rx="12" fill="#152337" fill-opacity=".92"/><text x="770" y="660" fill="#fff" font-family="Arial,sans-serif" font-size="17" font-weight="700">SAMPLE VISUAL · NOT AN OFFICIAL PHOTO</text>
+</svg>
