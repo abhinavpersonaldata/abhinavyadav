@@ -5143,13 +5143,6 @@ function App() {
                                   onOpen={() => openLinkDirectly(selectedPlanetLearnMoreUrl)}
                                 />
                               ) : null}
-                              {collection.key === 'colleges' && field.key === 'images' && parseJourneyImages(Array.isArray(record.images) ? record.images.join('\n') : record.images || '').length ? (
-                                <div className="entry-image-gallery">
-                                  {parseJourneyImages(Array.isArray(record.images) ? record.images.join('\n') : record.images || '').map((image, imageIndex) => (
-                                    <img key={`${image}-${imageIndex}`} src={image} alt={`Institution image preview ${imageIndex + 1}`} loading="lazy" decoding="async" />
-                                  ))}
-                                </div>
-                              ) : null}
                             </div>
                           ) : (
                             <p className="planet-learn-more-error" role="alert">

@@ -10745,6 +10745,71 @@ a:focus-visible {
   color: var(--hero-name-highlight-color-display);
 }
 
+@media (max-width: 720px) {
+  body::before,
+  body::after,
+  .topbar::before,
+  .topbar::after,
+  .hero-panel::before,
+  .hero-panel::after,
+  .pro-hero::after,
+  .pro-section::after,
+  .content-section::before,
+  .project-panel::before,
+  .project-media::before,
+  .project-media::after,
+  .toolkit-row::before,
+  .contact-graphic::after,
+  .contact-visual,
+  .site-footer::before,
+  .site-footer::after,
+  .homepage-hero-name-gradient,
+  .homepage-hero-name-glow,
+  .planet-marker::after,
+  .solar-sun::before,
+  .footer-live-status i {
+    animation: none !important;
+  }
+
+  .topbar,
+  .pro-profile-panel,
+  .planet-details-panel,
+  .project-panel,
+  .project-media,
+  .project-preview,
+  .toolkit-row,
+  .content-section,
+  .pro-section,
+  .resume-panel,
+  .resume-public-document,
+  .contact-graphic,
+  .site-footer,
+  .panel-card,
+  .gallery-item,
+  .experience-card,
+  .achievement-row,
+  .floating-viewer-back {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .homepage-hero-name-float {
+    animation-duration: 6s;
+  }
+
+  .planet-details-panel {
+    background: var(--color-surface);
+  }
+
+  .project-panel,
+  .project-media,
+  .content-section,
+  .pro-section,
+  .site-footer {
+    contain: layout style;
+  }
+}
+
 @media (max-width: 700px) {
   .homepage-hero-colors {
     grid-template-columns: repeat(2, minmax(0, 1fr));
