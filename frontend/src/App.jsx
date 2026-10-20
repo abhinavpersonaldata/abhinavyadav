@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import heroGraphic from './assets/hero.png'
+import ExperienceHome from './experience/ExperienceHome.jsx'
 import {
   ArrowLeft,
   ArrowRight,
@@ -1775,7 +1776,13 @@ function App() {
   const imageViewerTriggerRef = useRef(null)
   const [theme, setTheme] = useState('dark')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [view, setView] = useState('home')
+  const [isExperienceRoute, setIsExperienceRoute] = useState(
+    () => window.location.pathname.replace(/\/+$/, '') === '/experience',
+  )
+  const [view, setView] = useState(() => {
+    const isExperience = window.location.pathname.replace(/\/+$/, '') === '/experience'
+    return isExperience && new URLSearchParams(window.location.search).has('project') ? 'project' : 'home'
+  })
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     try {
       return localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
@@ -1807,12 +1814,33 @@ function App() {
     motionSettings: DEFAULT_SITE_MOTION_SETTINGS,
     ...DEFAULT_VISUAL_SETTINGS,
   })
-  const [selectedProjectId, setSelectedProjectId] = useState('studio-grid')
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    () => new URLSearchParams(window.location.search).get('project') || 'studio-grid',
+  )
   const openImageViewer = (src, alt, trigger) => {
     imageViewerTriggerRef.current = trigger
     setImageViewer({ src, alt })
   }
   const closeImageViewer = () => setImageViewer(null)
+
+  useEffect(() => {
+    const syncExperienceRoute = () => {
+      const isExperience = window.location.pathname.replace(/\/+$/, '') === '/experience'
+      const projectId = isExperience ? new URLSearchParams(window.location.search).get('project') : null
+
+      setIsExperienceRoute(isExperience)
+      setIsMobileMenuOpen(false)
+      if (projectId) {
+        setSelectedProjectId(projectId)
+        setView('project')
+      } else {
+        setView('home')
+      }
+    }
+
+    window.addEventListener('popstate', syncExperienceRoute)
+    return () => window.removeEventListener('popstate', syncExperienceRoute)
+  }, [])
 
   useEffect(() => {
     if (!imageViewer) return undefined
@@ -2620,7 +2648,7 @@ function App() {
         setPortfolio(hydrated)
         setAdminAccessDraft(hydrated.adminAccessSettings)
         savePortfolioToStorage(hydrated)
-        if (hydrated.projects?.length) {
+        if (hydrated.projects?.length && !new URLSearchParams(window.location.search).has('project')) {
           setSelectedProjectId(hydrated.projects[0].id)
         }
       } catch (error) {
@@ -2868,8 +2896,35 @@ function App() {
   }
 
   const openProject = (projectId) => {
+    if (isExperienceRoute) {
+      const hasProjectInHistory = new URLSearchParams(window.location.search).has('project')
+      const nextUrl = `/experience?project=${encodeURIComponent(projectId)}`
+      window.history[hasProjectInHistory ? 'replaceState' : 'pushState']({}, '', nextUrl)
+    }
     setSelectedProjectId(projectId)
     setView('project')
+  }
+
+  const closeProjectDetail = () => {
+    if (isExperienceRoute && new URLSearchParams(window.location.search).has('project')) {
+      window.history.replaceState({}, '', '/experience')
+    }
+    setView('home')
+  }
+
+  const navigateToExperience = () => {
+    if (!isExperienceRoute) window.history.pushState({}, '', '/experience')
+    setIsExperienceRoute(true)
+    setIsMobileMenuOpen(false)
+    setView('home')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const navigateToPortfolio = () => {
+    if (isExperienceRoute) window.history.pushState({}, '', '/')
+    setIsExperienceRoute(false)
+    setView('home')
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleEffectSelection = (effectId) => {
@@ -4917,6 +4972,9 @@ function App() {
               {item.label}
             </a>
           ))}
+          <a href="/experience" onClick={(event) => { event.preventDefault(); navigateToExperience() }}>
+            EXPERIENCE
+          </a>
         </nav>
 
         <div className="nav-actions">
@@ -5704,7 +5762,7 @@ function App() {
     return (
       <article className="project-detail-page">
         <nav className="project-detail-topbar" aria-label="Project navigation">
-          <button type="button" className="project-back-link" onClick={() => setView('home')}>
+          <button type="button" className="project-back-link" onClick={closeProjectDetail}>
             <ArrowRight size={15} aria-hidden="true" />
             <span>All projects</span>
           </button>
@@ -5858,7 +5916,7 @@ function App() {
         </div>
 
         <footer className="project-detail-footer">
-          <button type="button" className="project-back-link" onClick={() => setView('home')}>
+          <button type="button" className="project-back-link" onClick={closeProjectDetail}>
             <ArrowRight size={15} aria-hidden="true" /><span>Back to all projects</span>
           </button>
           {nextProject ? (
@@ -7449,12 +7507,36 @@ function App() {
     )
   }
 
+  const experienceProjectId = isExperienceRoute
+    ? new URLSearchParams(window.location.search).get('project')
+    : null
+  const showExperienceHome = isExperienceRoute
+    && (view !== 'project' || !experienceProjectId || selectedProject?.id !== experienceProjectId)
+
   return (
     <>
       <SiteBootLoader visible={isSiteBooting} />
       <PublicImageViewerContext.Provider value={openImageViewer}>
         <MotionScopeContext.Provider value={{ enabled: true, group: 'content', scope: 'all', bootComplete: isBootTourComplete }}>
-          <div id="page-top" className="site-shell">{view === 'home' ? renderHome() : view === 'project' ? renderProjectDetail() : renderAdmin()}</div>
+          <div id="page-top" className="site-shell">
+            {showExperienceHome
+              ? (
+                <ExperienceHome
+                  portfolio={portfolio}
+                  formState={formState}
+                  formStatus={formStatus}
+                  onFormChange={handleFormChange}
+                  onFormSubmit={handleSubmit}
+                  onOpenProject={openProject}
+                  onReturnToPortfolio={navigateToPortfolio}
+                />
+              )
+              : view === 'home'
+                ? renderHome()
+                : view === 'project'
+                  ? renderProjectDetail()
+                  : renderAdmin()}
+          </div>
         </MotionScopeContext.Provider>
         {imageViewer ? createPortal(
           <ImageViewerModal image={imageViewer} onClose={closeImageViewer} />,
