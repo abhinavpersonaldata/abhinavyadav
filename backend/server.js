@@ -719,10 +719,11 @@ app.put('/api/portfolio/homepage-settings', async (req, res) => {
     return res.status(400).json({ message: 'Homepage settings are required.' })
   }
 
-  const allowedDesigns = ['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid', 'cosmic-studio']
-  const activeDesign = allowedDesigns.includes(submittedSettings.activeDesign)
-    ? submittedSettings.activeDesign
-    : 'placement-pro'
+  const allowedDesigns = ['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid', 'cosmic-studio', 'interactive-experience']
+  if (!allowedDesigns.includes(submittedSettings.activeDesign)) {
+    return res.status(400).json({ message: 'The selected homepage design is not supported.' })
+  }
+  const activeDesign = submittedSettings.activeDesign
   const textSettings = [
     ['heroName', 80, ''],
     ['heroRole', 120, ''],

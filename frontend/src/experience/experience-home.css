@@ -88,12 +88,26 @@
   gap: clamp(16px, 2.5vw, 34px);
 }
 
+.experience-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
 .experience-nav a,
 .experience-back-link {
   color: var(--experience-muted);
   font-size: 12px;
   text-decoration: none;
   transition: color 180ms ease;
+}
+
+.experience-back-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .experience-nav a:hover,
@@ -819,6 +833,14 @@
 
   .experience-back-link {
     display: none;
+  }
+
+  .experience-header-actions {
+    gap: 0;
+  }
+
+  .experience-header-actions .experience-back-link:first-child {
+    display: inline-flex;
   }
 
   .experience-main {

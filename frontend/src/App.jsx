@@ -350,6 +350,12 @@ const HOMEPAGE_DESIGNS = [
     description: 'The previous animated portfolio homepage, preserved as the original default UI.',
     tone: 'Original',
   },
+  {
+    id: 'interactive-experience',
+    name: 'Interactive Experience',
+    description: 'A premium, editorial portfolio with selected projects, skills, experience, Ask ABHI, and contact.',
+    tone: 'Interactive',
+  },
 ]
 const PROFESSIONAL_HOMEPAGE_IDS = new Set(['placement-pro', 'academic-clean', 'recruiter-brief', 'resume-grid'])
 const PORTFOLIO_STORAGE_KEY = 'portfolio-content-v1'
@@ -3113,6 +3119,10 @@ function App() {
       if (!response.ok) throw new Error(result.message || 'Homepage design could not be saved.')
 
       const savedSettings = result.settings || nextSettings
+      if (savedSettings.activeDesign !== nextSettings.activeDesign) {
+        throw new Error('The portfolio server does not support this homepage yet. Update the backend and try again.')
+      }
+
       setPortfolio((current) => {
         const nextPortfolio = { ...current, homepageSettings: savedSettings, homepageSettingsStorage: result.storage || 'database' }
         savePortfolioToStorage(nextPortfolio)
@@ -3123,6 +3133,20 @@ function App() {
         : 'Homepage settings saved.')
     } catch (error) {
       setHomepageSaveStatus(`${error.message || 'Homepage design could not be saved.'} Selection remains saved in this browser.`)
+    }
+  }
+
+  const selectHomepageDesign = (designId) => {
+    const nextDesignId = designId === 'interactive-experience'
+      && activeHomepageDesignId === 'interactive-experience'
+      ? DEFAULT_HOMEPAGE_SETTINGS.activeDesign
+      : designId
+
+    void saveHomepageSettings(nextDesignId)
+
+    if (window.location.pathname.replace(/\/+$/, '') === '/experience') {
+      window.history.replaceState({}, '', '/')
+      setIsExperienceRoute(false)
     }
   }
 
@@ -6120,9 +6144,11 @@ function App() {
                   <button
                     type="button"
                     className={activeHomepageDesignId === design.id ? 'primary-btn small-btn' : 'secondary-btn small-btn'}
-                    onClick={() => saveHomepageSettings(design.id)}
+                    onClick={() => selectHomepageDesign(design.id)}
                   >
-                    {activeHomepageDesignId === design.id ? 'Active' : 'Set Homepage'}
+                    {activeHomepageDesignId === design.id
+                      ? design.id === 'interactive-experience' ? 'Remove from Homepage' : 'Active'
+                      : 'Set Homepage'}
                   </button>
                 </article>
               ))}
@@ -7510,8 +7536,12 @@ function App() {
   const experienceProjectId = isExperienceRoute
     ? new URLSearchParams(window.location.search).get('project')
     : null
-  const showExperienceHome = isExperienceRoute
-    && (view !== 'project' || !experienceProjectId || selectedProject?.id !== experienceProjectId)
+  const showExperienceHome = (
+    view === 'home' && (isExperienceRoute || activeHomepageDesignId === 'interactive-experience')
+  ) || (
+    view === 'project' && isExperienceRoute
+      && (!experienceProjectId || selectedProject?.id !== experienceProjectId)
+  )
 
   return (
     <>
@@ -7528,6 +7558,7 @@ function App() {
                   onFormChange={handleFormChange}
                   onFormSubmit={handleSubmit}
                   onOpenProject={openProject}
+                  onOpenAdmin={() => setView(isAdminAuthenticated ? 'admin' : 'admin-login')}
                   onReturnToPortfolio={navigateToPortfolio}
                 />
               )

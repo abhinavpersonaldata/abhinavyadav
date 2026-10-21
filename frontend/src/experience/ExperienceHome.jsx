@@ -31,6 +31,7 @@ function ExperienceHome({
   onFormChange,
   onFormSubmit,
   onOpenProject,
+  onOpenAdmin,
   onReturnToPortfolio,
 }) {
   const profile = portfolio.profile || {}
@@ -74,16 +75,19 @@ function ExperienceHome({
           <a href="#experience-contact">Contact</a>
         </nav>
 
-        <a
-          className="experience-back-link"
-          href="/"
-          onClick={(event) => {
-            event.preventDefault()
-            onReturnToPortfolio()
-          }}
-        >
-          Original site <ArrowUpRight size={15} aria-hidden="true" />
-        </a>
+        <div className="experience-header-actions">
+          <button type="button" className="experience-back-link" onClick={onOpenAdmin}>Admin access</button>
+          <a
+            className="experience-back-link"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault()
+              onReturnToPortfolio()
+            }}
+          >
+            Portfolio home <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
+        </div>
       </header>
 
       <main className="experience-main">
