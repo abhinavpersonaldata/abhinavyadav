@@ -1,0 +1,319 @@
+.ask-abhi-launcher {
+  position: fixed;
+  z-index: 40;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 17px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: #d7f779;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  color: #151711;
+  cursor: pointer;
+  font: 700 12px 'Inter', sans-serif;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.ask-abhi-launcher:hover {
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+}
+
+.ask-abhi-panel {
+  position: fixed;
+  z-index: 41;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(82px, calc(env(safe-area-inset-bottom) + 76px));
+  display: grid;
+  width: min(400px, calc(100vw - 28px));
+  height: min(620px, calc(100dvh - 120px));
+  min-height: 420px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  border: 1px solid rgba(224, 226, 218, 0.18);
+  border-radius: 18px;
+  background: #171815;
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.48);
+  color: #f1f0e9;
+  font-family: 'Inter', sans-serif;
+}
+
+.ask-abhi-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 16px;
+  border-bottom: 1px solid rgba(224, 226, 218, 0.12);
+  background: #1d1e19;
+}
+
+.ask-abhi-avatar {
+  display: grid;
+  width: 38px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(215, 247, 121, 0.5);
+  border-radius: 50%;
+  color: #d7f779;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ask-abhi-header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.ask-abhi-header p {
+  margin: 4px 0 0;
+  color: #a8aa9f;
+  font-size: 10px;
+}
+
+.ask-abhi-header > button {
+  display: grid;
+  width: 34px;
+  aspect-ratio: 1;
+  place-items: center;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #c4c5bd;
+  cursor: pointer;
+}
+
+.ask-abhi-header > button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.ask-abhi-messages {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 13px;
+  overflow-y: auto;
+  padding: 17px 14px;
+  scrollbar-color: #46483f transparent;
+}
+
+.ask-abhi-message {
+  max-width: 92%;
+  align-self: flex-start;
+}
+
+.ask-abhi-message.user {
+  align-self: flex-end;
+}
+
+.ask-abhi-message-content {
+  padding: 11px 13px;
+  border: 1px solid rgba(224, 226, 218, 0.1);
+  border-radius: 13px 13px 13px 4px;
+  background: #24251f;
+  color: #e9e8e1;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.ask-abhi-message-content > p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.ask-abhi-message-content > p + p {
+  margin-top: 8px;
+}
+
+.ask-abhi-message-content > ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.ask-abhi-message-content > ul + p {
+  margin-top: 10px;
+}
+
+.ask-abhi-message-content > ul li::marker {
+  color: #c8e879;
+}
+
+.ask-abhi-message.user .ask-abhi-message-content {
+  border-color: rgba(215, 247, 121, 0.22);
+  border-radius: 13px 13px 4px 13px;
+  background: #29311c;
+  color: #f3f6e8;
+  white-space: pre-wrap;
+}
+
+.ask-abhi-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.ask-abhi-sources span {
+  padding: 4px 7px;
+  border: 1px solid rgba(215, 247, 121, 0.15);
+  border-radius: 999px;
+  color: #cbd99f;
+  font-size: 9px;
+}
+
+.ask-abhi-suggestions {
+  display: grid;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.ask-abhi-suggestions button {
+  padding: 9px 11px;
+  border: 1px solid rgba(224, 226, 218, 0.14);
+  border-radius: 8px;
+  background: #1d1e19;
+  color: #d8d9d1;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  text-align: left;
+}
+
+.ask-abhi-suggestions button:hover {
+  border-color: rgba(215, 247, 121, 0.45);
+}
+
+.ask-abhi-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #aaa;
+  font-size: 10px;
+}
+
+.ask-abhi-thinking > span {
+  width: 7px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #d7f779;
+  animation: askAbhiPulse 1s ease-in-out infinite alternate;
+}
+
+.ask-abhi-error {
+  margin: 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 125, 125, 0.32);
+  border-radius: 8px;
+  background: rgba(112, 31, 31, 0.2);
+  color: #ffb1a7;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ask-abhi-form {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin: 0 12px;
+  padding: 9px;
+  border: 1px solid rgba(224, 226, 218, 0.18);
+  border-radius: 12px;
+  background: #20211c;
+}
+
+.ask-abhi-form textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 100px;
+  padding: 5px 4px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f1f0e9;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ask-abhi-form textarea::placeholder {
+  color: #8c8e84;
+}
+
+.ask-abhi-form:focus-within {
+  border-color: rgba(215, 247, 121, 0.52);
+}
+
+.ask-abhi-form > button {
+  display: grid;
+  width: 38px;
+  flex: 0 0 38px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: #d7f779;
+  color: #171913;
+  cursor: pointer;
+}
+
+.ask-abhi-form > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ask-abhi-disclaimer {
+  margin: 0;
+  padding: 8px 12px 10px;
+  color: #87897f;
+  font-size: 9px;
+  text-align: center;
+}
+
+.ask-abhi-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@keyframes askAbhiPulse {
+  to { opacity: 0.35; transform: scale(0.72); }
+}
+
+@media (max-width: 520px) {
+  .ask-abhi-launcher {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .ask-abhi-panel {
+    left: 10px;
+    right: 10px;
+    bottom: max(72px, calc(env(safe-area-inset-bottom) + 68px));
+    width: auto;
+    height: min(600px, calc(100dvh - 96px));
+    min-height: min(400px, calc(100dvh - 100px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-abhi-launcher,
+  .ask-abhi-thinking > span {
+    animation: none;
+    transition-duration: 0.01ms;
+  }
+}

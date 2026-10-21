@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { createPortal } from 'react-dom'
 import heroGraphic from './assets/hero.png'
 import ExperienceHome from './experience/ExperienceHome.jsx'
+import AskAbhiAssistant from './experience/AskAbhiAssistant.jsx'
 import {
   ArrowLeft,
   ArrowRight,
@@ -1772,6 +1773,39 @@ async function waitForBootMedia() {
   window.clearTimeout(timeoutId)
 }
 
+function AdminUnlockOverlay({ visible, progress, onSelectPoint, onClose }) {
+  if (!visible) return null
+
+  return (
+    <div className="admin-guard-overlay" role="dialog" aria-modal="true" aria-label="Admin unlock screen">
+      <div className="admin-guard-card">
+        <p className="section-tag">ADMIN UNLOCK</p>
+        <h2>Restricted access</h2>
+        <p>Select three points in the correct order to continue.</p>
+
+        <div className="admin-guard-grid" aria-label="Nine unlock points">
+          {Array.from({ length: 9 }, (_, index) => (
+            <button
+              key={index}
+              type="button"
+              className="admin-hotspot"
+              aria-label={`Unlock point ${index + 1}`}
+              onClick={() => onSelectPoint(index)}
+            />
+          ))}
+        </div>
+
+        <div className="admin-guard-progress" aria-hidden="true">
+          <span style={{ width: `${(progress / 3) * 100}%` }} />
+        </div>
+        <button type="button" className="secondary-btn full-width admin-guard-cancel" onClick={onClose}>
+          Back to portfolio
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [isBootAnimationEnabledState, setIsBootAnimationEnabledState] = useState(isBootAnimationEnabled)
   const [isSiteBooting, setIsSiteBooting] = useState(isBootAnimationEnabled)
@@ -1782,6 +1816,7 @@ function App() {
   const imageViewerTriggerRef = useRef(null)
   const [theme, setTheme] = useState('dark')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [isExperienceRoute, setIsExperienceRoute] = useState(
     () => window.location.pathname.replace(/\/+$/, '') === '/experience',
   )
@@ -2058,8 +2093,10 @@ function App() {
   const [showSkillForm, setShowSkillForm] = useState(false)
   const [editingSkillIndex, setEditingSkillIndex] = useState(null)
   const [skillDraft, setSkillDraft] = useState({ label: '', skills: '' })
+  const [toolkitSaveStatus, setToolkitSaveStatus] = useState('')
   const [showJourneyForm, setShowJourneyForm] = useState(false)
   const [editingJourneyId, setEditingJourneyId] = useState(null)
+  const [journeySaveStatus, setJourneySaveStatus] = useState('')
   const [journeyDraft, setJourneyDraft] = useState({
     year: '',
     title: '',
@@ -2541,6 +2578,8 @@ function App() {
         const hasSavedServerAchievements = data.achievementsStorage === 'database'
         const hasSavedServerGallery = data.galleryStorage === 'database'
         const hasSavedServerResume = data.resumeStorage === 'database'
+        const hasSavedServerToolkitGroups = data.toolkitStorage === 'database'
+        const hasSavedServerJourneyEvents = data.journeyStorage === 'database'
         let localAnimationControls = {}
         let localSectionMotion = {}
         try {
@@ -2563,6 +2602,10 @@ function App() {
           ? {
               ...data,
               ...savedPortfolio,
+              toolkitGroups: hasSavedServerToolkitGroups ? data.toolkitGroups || [] : savedPortfolio.toolkitGroups || data.toolkitGroups || [],
+              toolkitStorage: hasSavedServerToolkitGroups ? data.toolkitStorage : savedPortfolio.toolkitStorage || data.toolkitStorage,
+              journeyEvents: hasSavedServerJourneyEvents ? data.journeyEvents || [] : savedPortfolio.journeyEvents || data.journeyEvents || [],
+              journeyStorage: hasSavedServerJourneyEvents ? data.journeyStorage : savedPortfolio.journeyStorage || data.journeyStorage,
               projects: hasSavedServerProjects ? data.projects || [] : savedPortfolio.projects || data.projects || [],
               educationEntries: hasSavedServerEducation
                 ? data.educationEntries || []
@@ -2922,13 +2965,6 @@ function App() {
     if (!isExperienceRoute) window.history.pushState({}, '', '/experience')
     setIsExperienceRoute(true)
     setIsMobileMenuOpen(false)
-    setView('home')
-    window.scrollTo({ top: 0, behavior: 'auto' })
-  }
-
-  const navigateToPortfolio = () => {
-    if (isExperienceRoute) window.history.pushState({}, '', '/')
-    setIsExperienceRoute(false)
     setView('home')
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
@@ -3567,7 +3603,7 @@ function App() {
     setEditingSkillIndex(null)
   }
 
-  const handleAddSkillGroup = (event) => {
+  const handleAddSkillGroup = async (event) => {
     event.preventDefault()
 
     const label = skillDraft.label.trim()
@@ -3582,30 +3618,19 @@ function App() {
 
     const skillGroup = { label, skills: parsedSkills }
 
-    setPortfolio((current) => {
-      const nextGroups = editingSkillIndex !== null
-        ? current.toolkitGroups.map((group, index) => (index === editingSkillIndex ? skillGroup : group))
-        : [skillGroup, ...current.toolkitGroups]
-
-      const nextPortfolio = { ...current, toolkitGroups: nextGroups }
-      savePortfolioToStorage(nextPortfolio)
-      return nextPortfolio
-    })
+    const nextGroups = editingSkillIndex !== null
+      ? portfolio.toolkitGroups.map((group, index) => (index === editingSkillIndex ? skillGroup : group))
+      : [skillGroup, ...portfolio.toolkitGroups]
+    await savePortfolioCollection('toolkitGroups', nextGroups, setToolkitSaveStatus)
 
     resetSkillDraft()
     setShowSkillForm(false)
     setAdminSection('skills')
   }
 
-  const handleDeleteSkillGroup = (index) => {
-    setPortfolio((current) => {
-      const nextPortfolio = {
-        ...current,
-        toolkitGroups: current.toolkitGroups.filter((_, itemIndex) => itemIndex !== index),
-      }
-      savePortfolioToStorage(nextPortfolio)
-      return nextPortfolio
-    })
+  const handleDeleteSkillGroup = async (index) => {
+    const nextGroups = portfolio.toolkitGroups.filter((_, itemIndex) => itemIndex !== index)
+    await savePortfolioCollection('toolkitGroups', nextGroups, setToolkitSaveStatus)
   }
 
   const beginEditSkillGroup = (group, index) => {
@@ -3659,7 +3684,7 @@ function App() {
       .filter((item) => /^https?:\/\//i.test(item) || item.startsWith('/'))
   }
 
-  const handleAddJourney = (event) => {
+  const handleAddJourney = async (event) => {
     event.preventDefault()
 
     if (!journeyDraft.year || !journeyDraft.title || !journeyDraft.description) {
@@ -3677,31 +3702,19 @@ function App() {
       links: parseJourneyLinks(journeyDraft.links),
     }
 
-    setPortfolio((current) => {
-      const nextPortfolio = {
-        ...current,
-        journeyEvents: editingJourneyId !== null
-          ? current.journeyEvents.map((entry, index) => (index === editingJourneyId ? journeyEntry : entry))
-          : [journeyEntry, ...current.journeyEvents],
-      }
-      savePortfolioToStorage(nextPortfolio)
-      return nextPortfolio
-    })
+    const entries = editingJourneyId !== null
+      ? portfolio.journeyEvents.map((entry, index) => (index === editingJourneyId ? journeyEntry : entry))
+      : [journeyEntry, ...portfolio.journeyEvents]
+    await savePortfolioCollection('journeyEvents', entries, setJourneySaveStatus)
 
     resetJourneyDraft()
     setShowJourneyForm(false)
     setAdminSection('journey')
   }
 
-  const handleDeleteJourney = (index) => {
-    setPortfolio((current) => {
-      const nextPortfolio = {
-        ...current,
-        journeyEvents: current.journeyEvents.filter((_, itemIndex) => itemIndex !== index),
-      }
-      savePortfolioToStorage(nextPortfolio)
-      return nextPortfolio
-    })
+  const handleDeleteJourney = async (index) => {
+    const entries = portfolio.journeyEvents.filter((_, itemIndex) => itemIndex !== index)
+    await savePortfolioCollection('journeyEvents', entries, setJourneySaveStatus)
   }
 
   const beginEditJourney = (entry, index) => {
@@ -3892,6 +3905,8 @@ function App() {
           ...(key === 'planetLinks' ? { planetLinksStorage: result.storage || 'database' } : {}),
           ...(key === 'educationEntries' ? { educationStorage: result.storage || 'database' } : {}),
           ...(key === 'resumeEntries' ? { resumeStorage: result.storage || 'database' } : {}),
+          ...(key === 'toolkitGroups' ? { toolkitStorage: result.storage || 'database' } : {}),
+          ...(key === 'journeyEvents' ? { journeyStorage: result.storage || 'database' } : {}),
         }
         savePortfolioToStorage(nextPortfolio)
         return nextPortfolio
@@ -4759,6 +4774,19 @@ function App() {
     </MotionSection>
   )
 
+  const renderHomepageAssistantCallout = () => (
+    <section className="homepage-ai-callout" aria-labelledby="homepage-ai-title">
+      <div>
+        <span className="section-tag">A QUESTION ON YOUR MIND?</span>
+        <h2 id="homepage-ai-title">Ask ABHI about my work.</h2>
+        <p>Open the Ask ABHI chat to explore projects, skills, and experience.</p>
+      </div>
+      <button type="button" className="homepage-ai-action" onClick={() => setIsAssistantOpen(true)}>
+        Open Ask ABHI AI <ArrowUpRight size={16} aria-hidden="true" />
+      </button>
+    </section>
+  )
+
   const renderProfessionalHomepageContent = () => {
     const allSkills = portfolio.toolkitGroups.flatMap((group) => group.skills).slice(0, 12)
     const educationItems = publicEducationItems
@@ -4899,6 +4927,7 @@ function App() {
         </MotionSection>
 
         {renderResumeSection(true)}
+        {renderHomepageAssistantCallout()}
 
         <MotionSection id="contact" className="pro-section pro-contact" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div>
@@ -4951,34 +4980,12 @@ function App() {
 
   const renderHome = () => (
     <>
-      {adminUnlockStage === 'active' ? (
-        <div className="admin-guard-overlay" role="dialog" aria-modal="true" aria-label="Admin unlock screen">
-          <div className="admin-guard-card">
-            <p className="section-tag">ADMIN UNLOCK</p>
-            <h2>Restricted access</h2>
-            <p>Select three points in the correct order to continue.</p>
-
-            <div className="admin-guard-grid" aria-label="Nine unlock points">
-              {Array.from({ length: 9 }, (_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  className="admin-hotspot"
-                  aria-label={`Unlock point ${index + 1}`}
-                  onClick={() => handleAdminHotspotClick(index)}
-                />
-              ))}
-            </div>
-
-            <div className="admin-guard-progress" aria-hidden="true">
-              <span style={{ width: `${(unlockProgress / 3) * 100}%` }} />
-            </div>
-            <button type="button" className="secondary-btn full-width admin-guard-cancel" onClick={() => setAdminUnlockStage('hidden')}>
-              Back to portfolio
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <AdminUnlockOverlay
+        visible={adminUnlockStage === 'active'}
+        progress={unlockProgress}
+        onSelectPoint={handleAdminHotspotClick}
+        onClose={() => setAdminUnlockStage('hidden')}
+      />
 
       <header id="top" className="topbar" data-motion-enabled={sectionMotion.hero ? 'true' : 'false'}>
         <button
@@ -5673,6 +5680,7 @@ function App() {
         </MotionSection>
 
         {renderResumeSection()}
+        {renderHomepageAssistantCallout()}
 
         <MotionSection id="contact" className="content-section contact-panel" motionEnabled={sectionMotion.contact} activeMotionScope={portfolio.visualScope || 'all'} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionSettings}>
           <div className="contact-graphic">
@@ -7400,6 +7408,7 @@ function App() {
               <h2>Skill stack</h2>
               <button type="button" className="primary-btn small-btn" onClick={() => { resetSkillDraft(); setShowSkillForm(true) }}>Add group</button>
             </div>
+            {toolkitSaveStatus ? <p className="form-status" role="status">{toolkitSaveStatus}</p> : null}
             <div className="list-stack">
               {portfolio.toolkitGroups.map((group, index) => (
                 <div key={`${group.label}-${index}`} className="skill-block">
@@ -7474,6 +7483,7 @@ function App() {
               <h2>Journey timeline</h2>
               <button type="button" className="primary-btn small-btn" onClick={() => { resetJourneyDraft(); setShowJourneyForm(true) }}>Add entry</button>
             </div>
+            {journeySaveStatus ? <p className="form-status" role="status">{journeySaveStatus}</p> : null}
             <div className="list-stack">
               {portfolio.journeyEvents.map((event, index) => (
                 <div key={`${event.year}-${event.title}-${index}`} className="mini-list-row timeline-row">
@@ -7551,16 +7561,24 @@ function App() {
           <div id="page-top" className="site-shell">
             {showExperienceHome
               ? (
-                <ExperienceHome
-                  portfolio={portfolio}
-                  formState={formState}
-                  formStatus={formStatus}
-                  onFormChange={handleFormChange}
-                  onFormSubmit={handleSubmit}
-                  onOpenProject={openProject}
-                  onOpenAdmin={() => setView(isAdminAuthenticated ? 'admin' : 'admin-login')}
-                  onReturnToPortfolio={navigateToPortfolio}
-                />
+                <>
+                  <ExperienceHome
+                    portfolio={portfolio}
+                    formState={formState}
+                    formStatus={formStatus}
+                    onFormChange={handleFormChange}
+                    onFormSubmit={handleSubmit}
+                    onOpenProject={openProject}
+                    onOpenAssistant={() => setIsAssistantOpen(true)}
+                    onAdminLogoClick={handleAdminLogoClick}
+                  />
+                  <AdminUnlockOverlay
+                    visible={adminUnlockStage === 'active'}
+                    progress={unlockProgress}
+                    onSelectPoint={handleAdminHotspotClick}
+                    onClose={() => setAdminUnlockStage('hidden')}
+                  />
+                </>
               )
               : view === 'home'
                 ? renderHome()
@@ -7569,6 +7587,13 @@ function App() {
                   : renderAdmin()}
           </div>
         </MotionScopeContext.Provider>
+        {view !== 'admin' && view !== 'admin-login' ? (
+          <AskAbhiAssistant
+            open={isAssistantOpen}
+            onOpen={() => setIsAssistantOpen(true)}
+            onClose={() => setIsAssistantOpen(false)}
+          />
+        ) : null}
         {imageViewer ? createPortal(
           <ImageViewerModal image={imageViewer} onClose={closeImageViewer} />,
           document.body,

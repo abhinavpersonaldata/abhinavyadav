@@ -22,6 +22,8 @@ The frontend is an independent service in `frontend/` and uses `VITE_API_URL` fo
 
 Admin credentials are checked by the backend at login time. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend service's environment (for example, Render), not as `VITE_*` variables on Vercel. Never expose the password in a frontend environment variable because Vite embeds `VITE_*` values in public browser assets.
 
+Ask ABHI is a portfolio-specific assistant that needs no third-party AI service or API key. It searches public portfolio records stored in MongoDB and builds answers from matching entries using local rules and response templates. It is not a general-purpose generative AI model. The assistant excludes uploaded image/video file URLs and does not read Admin credentials or contact-form messages.
+
 The `.env.local` file is ignored by git. Keep real credentials there and do not commit them.
 
 ## Deployment split

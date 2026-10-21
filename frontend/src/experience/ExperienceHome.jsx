@@ -8,8 +8,6 @@ import {
 } from 'lucide-react'
 import './experience-home.css'
 
-const LIVE_AI_URL = 'https://www.abhinavyadav.in/ai'
-
 const getProjectImage = (project) => {
   if (project.image) return project.image
   const galleryImage = project.gallery?.find((item) => (typeof item === 'string' ? item : item?.url))
@@ -31,8 +29,8 @@ function ExperienceHome({
   onFormChange,
   onFormSubmit,
   onOpenProject,
-  onOpenAdmin,
-  onReturnToPortfolio,
+  onOpenAssistant,
+  onAdminLogoClick,
 }) {
   const profile = portfolio.profile || {}
   const settings = portfolio.homepageSettings || {}
@@ -52,21 +50,13 @@ function ExperienceHome({
   return (
     <div className="experience-page" style={{ '--experience-accent': accentColor }}>
       <header className="experience-header" id="top">
-        <a
-          className="experience-wordmark"
-          href="/"
-          onClick={(event) => {
-            event.preventDefault()
-            onReturnToPortfolio()
-          }}
-          aria-label="Return to the original portfolio homepage"
-        >
-          <span>AY</span>
+        <div className="experience-wordmark">
+          <button type="button" onClick={onAdminLogoClick} aria-label="Abhinav Yadav logo">AY</button>
           <span className="experience-wordmark-copy">
             <strong>{name}</strong>
             <small>INDEPENDENT PORTFOLIO</small>
           </span>
-        </a>
+        </div>
 
         <nav className="experience-nav" aria-label="Experience page navigation">
           <a href="#experience-work">Work</a>
@@ -75,19 +65,6 @@ function ExperienceHome({
           <a href="#experience-contact">Contact</a>
         </nav>
 
-        <div className="experience-header-actions">
-          <button type="button" className="experience-back-link" onClick={onOpenAdmin}>Admin access</button>
-          <a
-            className="experience-back-link"
-            href="/"
-            onClick={(event) => {
-              event.preventDefault()
-              onReturnToPortfolio()
-            }}
-          >
-            Portfolio home <ArrowUpRight size={15} aria-hidden="true" />
-          </a>
-        </div>
       </header>
 
       <main className="experience-main">
@@ -266,11 +243,11 @@ function ExperienceHome({
           <div>
             <p className="experience-eyebrow">A QUESTION ON YOUR MIND?</p>
             <h2 id="experience-ai-title">Ask ABHI about my work.</h2>
-            <p>Open the existing Ask ABHI chat on the live portfolio to explore projects, skills, and experience.</p>
+            <p>Open the Ask ABHI chat to explore projects, skills, and experience.</p>
           </div>
-          <a href={LIVE_AI_URL} target="_blank" rel="noreferrer">
+          <button className="experience-ai-action" type="button" onClick={onOpenAssistant}>
             Open Ask ABHI AI <ArrowUpRight size={16} aria-hidden="true" />
-          </a>
+          </button>
         </section>
 
         <section className="experience-section experience-contact-section" id="experience-contact" aria-labelledby="experience-contact-title">

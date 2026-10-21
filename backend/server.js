@@ -105,6 +105,19 @@ const portfolioContentSchema = new mongoose.Schema({
   data: { type: mongoose.Schema.Types.Mixed, required: true },
 }, { timestamps: true })
 const PortfolioContent = mongoose.models.PortfolioContent || mongoose.model('PortfolioContent', portfolioContentSchema)
+const assistantCollectionKeys = [
+  'homepageSettings',
+  'toolkitGroups',
+  'journeyEvents',
+  'educationEntries',
+  'experienceEntries',
+  'achievements',
+  'galleryItems',
+  'contactLinks',
+  'planetLinks',
+  'resumeEntries',
+]
+const assistantRateLimit = new Map()
 let aboutStorage = 'default'
 let adminAccessSettingsStorage = 'default'
 let homepageSettingsStorage = 'default'
@@ -300,6 +313,319 @@ const portfolioData = {
     { label: 'CAMPUS ILLUSTRATION · DEMO', url: '/demo-assets/demo-education.svg', tone: 'normal' },
     { label: 'WORKFLOW MOCKUP · DEMO', url: '/demo-assets/demo-experience.svg', tone: 'normal' },
   ],
+}
+
+const omittedAssistantFields = new Set([
+  'image',
+  'images',
+  'photo',
+  'video',
+  'poster',
+  'previewUrl',
+  'publicId',
+  'thumbnail',
+])
+const assistantStopWords = new Set([
+  'a', 'about', 'all', 'an', 'and', 'are', 'can', 'did', 'do', 'does', 'for', 'from',
+  'has', 'have', 'he', 'her', 'his', 'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of',
+  'on', 'or', 'tell', 'the', 'there', 'they', 'this', 'to', 'was', 'what', 'when',
+  'where', 'which', 'who', 'with', 'you', 'your', 'kya', 'ka', 'ke', 'ki', 'ko',
+  'hai', 'hain', 'tha', 'the', 'ye', 'yeh', 'us', 'uske', 'iske', 'mujhe', 'batao',
+  'bata', 'about', 'kuch', 'sab', 'aur', 'mein', 'par', 'se', 'kaun', 'kab', 'kahan',
+])
+const assistantTopicAliases = {
+  certificate: ['certificate', 'certificates', 'certification', 'certifications', 'credential', 'credentials'],
+  project: ['project', 'projects', 'build', 'built', 'banaya', 'banaye'],
+  skill: ['skill', 'skills', 'tool', 'tools', 'technology', 'technologies', 'stack', 'tech', 'technology'],
+  experience: ['experience', 'employment', 'job', 'internship', 'role', 'career', 'tajurba', 'anubhav'],
+  education: ['education', 'college', 'study', 'studies', 'course', 'diploma', 'padhai'],
+  achievement: ['achievement', 'achievements', 'award', 'awards', 'milestone'],
+  contact: ['contact', 'email', 'github', 'linkedin'],
+}
+
+const loadAssistantPortfolioData = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    throw new Error('Portfolio database is unavailable.')
+  }
+
+  const [savedProjects, savedContent] = await Promise.all([
+    Project.find().sort({ createdAt: 1 }).lean(),
+    PortfolioContent.find({ key: { $in: ['about', ...assistantCollectionKeys] } }).lean(),
+  ])
+  const savedById = new Map(savedProjects.map((project) => [project.id, project.data]))
+  const defaultProjects = portfolioData.projects.map((project) => savedById.get(project.id) || project)
+  const defaultProjectIds = new Set(portfolioData.projects.map((project) => project.id))
+  const addedProjects = savedProjects
+    .filter((project) => !defaultProjectIds.has(project.id))
+    .map((project) => project.data)
+  const savedContentByKey = new Map(savedContent.map((entry) => [entry.key, entry.data]))
+
+  return {
+    profile: portfolioData.profile,
+    homepageSettings: savedContentByKey.get('homepageSettings') || portfolioData.homepageSettings,
+    about: savedContentByKey.get('about') || portfolioData.about,
+    projects: [...addedProjects, ...defaultProjects],
+    toolkitGroups: savedContentByKey.get('toolkitGroups') || portfolioData.toolkitGroups,
+    journeyEvents: savedContentByKey.get('journeyEvents') || portfolioData.journeyEvents,
+    educationEntries: savedContentByKey.get('educationEntries') || portfolioData.educationEntries,
+    experienceEntries: savedContentByKey.get('experienceEntries') || portfolioData.experienceEntries,
+    certificateEntries: savedContentByKey.get('about')?.certificates || portfolioData.about.certificates || [],
+    achievements: savedContentByKey.get('achievements') || portfolioData.achievements,
+    galleryItems: savedContentByKey.get('galleryItems') || portfolioData.galleryItems,
+    contactLinks: savedContentByKey.get('contactLinks') || portfolioData.contactLinks,
+    planetLinks: savedContentByKey.get('planetLinks') || portfolioData.planetLinks,
+    resumeEntries: savedContentByKey.get('resumeEntries') || portfolioData.resumeEntries,
+  }
+}
+
+const getAssistantDocuments = (portfolio) => {
+  const documents = []
+  const addDocument = (section, record, fallbackTitle) => {
+    const parts = []
+    const collectText = (value, key = '', depth = 0) => {
+      if (depth > 6 || omittedAssistantFields.has(key)) return
+      if (typeof value === 'string' || typeof value === 'number') {
+        const text = String(value).trim()
+        if (text) parts.push(text)
+        return
+      }
+      if (Array.isArray(value)) {
+        value.forEach((entry) => collectText(entry, key, depth + 1))
+        return
+      }
+      if (value && typeof value === 'object') {
+        Object.entries(value).forEach(([childKey, childValue]) => {
+          if (['id', 'number', 'tone'].includes(childKey)) return
+          parts.push(`${childKey}:`)
+          collectText(childValue, childKey, depth + 1)
+        })
+      }
+    }
+
+    collectText(record)
+    const text = [...new Set(parts)].join(' ').slice(0, 2400)
+    if (!text) return
+
+    const title = String(
+      record?.title
+      || record?.company
+      || record?.label
+      || record?.name
+      || record?.year
+      || fallbackTitle
+      || section,
+    ).slice(0, 140)
+    documents.push({
+      id: `S${documents.length + 1}`,
+      section,
+      title,
+      text: `${section}: ${title}. ${text}`,
+      record,
+    })
+  }
+  const addCollection = (section, entries) => {
+    if (!Array.isArray(entries)) return
+    entries.forEach((entry, index) => addDocument(section, entry, `${section} ${index + 1}`))
+  }
+
+  addDocument('Profile', portfolio.profile, 'Profile')
+  addDocument('Homepage introduction', {
+    name: portfolio.homepageSettings?.heroName,
+    role: portfolio.homepageSettings?.heroRole,
+    availability: portfolio.homepageSettings?.availabilityText,
+  }, 'Homepage introduction')
+  const about = portfolio.about || {}
+  const { colleges = [], webinars = [], certificates = [], images = [], links = [], ...aboutOverview } = about
+  addDocument('About', aboutOverview, 'About')
+  addCollection('Education and colleges', colleges)
+  addCollection('Webinars and events', webinars)
+  addCollection('Certificates', certificates)
+  addCollection('About gallery', images)
+  addCollection('About links', links)
+  addCollection('Projects', portfolio.projects)
+  addCollection('Skills and tools', portfolio.toolkitGroups)
+  addCollection('Journey', portfolio.journeyEvents)
+  addCollection('Education', portfolio.educationEntries)
+  addCollection('Experience', portfolio.experienceEntries)
+  addCollection('Achievements', portfolio.achievements)
+  addCollection('Gallery', portfolio.galleryItems)
+  addCollection('Resume', portfolio.resumeEntries)
+  addCollection('Contact', portfolio.contactLinks)
+  addCollection('Planet references', portfolio.planetLinks)
+  return documents
+}
+
+const rankAssistantDocuments = (question, documents) => {
+  const normalizedQuestion = question.toLocaleLowerCase()
+  const queryTokens = new Set(
+    (normalizedQuestion.match(/[\p{L}\p{N}]{2,}/gu) || [])
+      .filter((token) => !assistantStopWords.has(token)),
+  )
+
+  Object.entries(assistantTopicAliases).forEach(([topic, aliases]) => {
+    if (aliases.some((alias) => normalizedQuestion.includes(alias))) queryTokens.add(topic)
+  })
+
+  const ranked = documents.map((document) => {
+    const documentText = document.text.toLocaleLowerCase()
+    const titleText = document.title.toLocaleLowerCase()
+    let score = 0
+    queryTokens.forEach((token) => {
+      if (titleText.includes(token)) score += 5
+      if (documentText.includes(token)) score += 2
+    })
+    return { document, score }
+  }).sort((left, right) => right.score - left.score)
+
+  return ranked
+    .filter((entry) => entry.score > 0)
+    .slice(0, 18)
+    .map(({ document }) => document)
+}
+
+const assistantTopicSections = {
+  certificate: ['certificates', 'webinars and events'],
+  project: ['projects'],
+  skill: ['skills and tools'],
+  experience: ['experience', 'journey'],
+  education: ['education', 'education and colleges'],
+  achievement: ['achievements'],
+  contact: ['contact'],
+}
+
+const getAssistantRecordSummary = (document) => {
+  const { record = {}, section } = document
+  const describe = (...keys) => keys
+    .map((key) => record[key])
+    .find((value) => typeof value === 'string' && value.trim())
+    ?.trim()
+  const list = (...keys) => {
+    const value = keys.map((key) => record[key]).find(Array.isArray)
+    return value ? value.filter((item) => typeof item === 'string' && item.trim()) : []
+  }
+
+  if (section === 'Projects') {
+    const description = describe('description', 'summary', 'problem', 'approach')
+    const technologies = list('tech', 'technologies', 'stack')
+    const category = describe('category')
+    return [
+      category,
+      description,
+      technologies.length ? `Built with ${technologies.join(', ')}` : '',
+    ].filter(Boolean).join(' · ')
+  }
+  if (section === 'Skills and tools') {
+    const group = describe('label', 'title')
+      ?.replace(/^\d+\s*/, '')
+      .replace(/[_-]+/g, ' ')
+    return [group, list('skills', 'tools').join(', ')].filter(Boolean).join(': ')
+  }
+  if (section === 'Certificates' || section === 'Webinars and events') {
+    const details = [describe('issuer', 'organization'), describe('date', 'year'), describe('credential')]
+      .filter(Boolean)
+    return details.join(' · ')
+  }
+  if (section === 'Experience' || section === 'Journey') {
+    const role = describe('role', 'type')
+    const organization = describe('company', 'organization')
+    const dates = describe('dates', 'year', 'date')
+    const description = describe('description', 'summary')
+    return [
+      [role, organization, dates].filter(Boolean).join(' · '),
+      description,
+      list('achievements', 'highlights').join('; '),
+    ].filter(Boolean).join(' — ')
+  }
+  if (section === 'Education' || section === 'Education and colleges') {
+    return [
+      [describe('program', 'degree', 'course'), describe('institution', 'college'), describe('dates', 'year')]
+        .filter(Boolean).join(' · '),
+      describe('description', 'summary'),
+    ].filter(Boolean).join(' — ')
+  }
+  if (section === 'Achievements') {
+    return [
+      [describe('organization'), describe('date', 'year')].filter(Boolean).join(' · '),
+      describe('description', 'summary'),
+    ].filter(Boolean).join(' — ')
+  }
+  if (section === 'Contact') {
+    return [describe('label', 'type'), describe('value', 'url')].filter(Boolean).join(': ')
+  }
+  return [describe('description', 'biography', 'summary', 'value'), list('skills', 'tech').join(', ')]
+    .filter(Boolean)
+    .join(' — ')
+}
+
+const isHindiAssistantQuestion = (question) => (
+  /[\u0900-\u097f]/u.test(question)
+  || /\b(kya|kaun|kaunsi|kaise|batao|bataiye|hai|hain|ke|ki|ka|ko|mein|mujhe|uske|padhai|tajurba)\b/i.test(question)
+)
+
+const getAssistantTopic = (question) => {
+  const normalizedQuestion = question.toLocaleLowerCase()
+  return Object.entries(assistantTopicAliases).find(([, aliases]) => (
+    aliases.some((alias) => normalizedQuestion.includes(alias))
+  ))?.[0]
+}
+
+const createAssistantAnswer = (question, documents, history = []) => {
+  const normalizedQuestion = question.toLocaleLowerCase().trim()
+  const isHindi = isHindiAssistantQuestion(question)
+  const followUpPattern = /^(and|also|more|why|how so|tell me more|more details|what else|examples|aur|aur batao|thoda aur|kyun|kaise|details|more about it|uske baare mein)\b/i
+  const isFollowUp = followUpPattern.test(normalizedQuestion)
+  const previousQuestion = history
+    .filter((message) => message?.role === 'user' && typeof message.content === 'string')
+    .slice(-3)
+    .reverse()
+    .find((message) => getAssistantTopic(message.content))
+  const topic = getAssistantTopic(normalizedQuestion)
+    || (isFollowUp && previousQuestion ? getAssistantTopic(previousQuestion.content) : undefined)
+  const greetingPattern = /^(hi|hello|hey|namaste|नमस्ते|salaam)[!. ]*$/iu
+  if (greetingPattern.test(normalizedQuestion)) {
+    return {
+      answer: isHindi
+        ? 'Namaste! Main ABHI hoon, Abhinav ka portfolio assistant. Main unke projects, skills, certificates, education aur public portfolio details dhoondh sakta hoon.'
+        : 'Hi! I’m ABHI, Abhinav’s portfolio assistant. I can search his projects, skills, certificates, education, and other public portfolio details.',
+      sources: [],
+    }
+  }
+
+  const topicSections = assistantTopicSections[topic]
+  const topicDocuments = topicSections
+    ? documents.filter((document) => topicSections.includes(document.section.toLocaleLowerCase()))
+    : documents
+  const queryForRanking = isFollowUp && !getAssistantTopic(normalizedQuestion) && previousQuestion
+    ? previousQuestion.content
+    : question
+  const rankedMatches = rankAssistantDocuments(queryForRanking, topicDocuments.length ? topicDocuments : documents)
+  const selectedDocuments = rankedMatches.slice(0, topic === 'skill' ? 5 : topic === 'certificate' ? 5 : topic ? 3 : 3)
+
+  if (!selectedDocuments.length) {
+    return {
+      answer: isHindi
+        ? 'Mujhe public portfolio details mein iska relevant jawab nahi mila. Aap projects, skills, certificates, education ya experience ke baare mein pooch sakte hain.'
+        : 'I couldn’t find a matching answer in the public portfolio details. Try asking about projects, skills, certificates, education, or experience.',
+      sources: [],
+    }
+  }
+
+  const answerLines = selectedDocuments.map((document) => {
+    const summary = getAssistantRecordSummary(document)
+    const isSample = /\b(demo|sample|fictional|simulated|not a real|not employment|not a qualification|not an award|not issued)\b/i
+      .test(`${document.title} ${document.text}`)
+    const label = isSample ? `${isHindi ? 'Sample entry' : 'Sample entry'} — ${document.title}` : document.title
+    return `• ${label}${summary ? ` — ${summary}` : ''}`
+  })
+  const hasMore = Boolean(topicSections && topicDocuments.length > selectedDocuments.length)
+  const closing = hasMore
+    ? (isHindi ? '\n\nAap kisi ek entry ka naam lekar uske baare mein aur pooch sakte hain.' : '\n\nAsk about a specific entry if you’d like more detail.')
+    : ''
+
+  return {
+    answer: `${isHindi ? 'Portfolio ke mutabik:' : 'Based on the portfolio:'}\n\n${answerLines.join('\n')}${closing}`,
+    sources: selectedDocuments.map(({ id, section, title }) => ({ id, section, title })),
+  }
 }
 
 const isPublicAddress = (address) => {
@@ -535,7 +861,7 @@ app.get('/api/portfolio', async (req, res) => {
       ? await PortfolioContent.findOne({ key: 'animationControls' }).lean()
       : null
     const savedCollections = mongoose.connection.readyState === 1
-      ? await PortfolioContent.find({ key: { $in: ['educationEntries', 'experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries'] } }).lean()
+      ? await PortfolioContent.find({ key: { $in: ['toolkitGroups', 'journeyEvents', 'educationEntries', 'experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries'] } }).lean()
       : []
     const savedCollectionData = new Map(savedCollections.map((collection) => [collection.key, collection.data]))
     const savedById = new Map(savedProjects.map((project) => [project.id, project.data]))
@@ -573,6 +899,10 @@ app.get('/api/portfolio', async (req, res) => {
       planetLinksStorage: savedCollectionData.has('planetLinks') ? 'database' : 'default',
       resumeEntries: savedCollectionData.get('resumeEntries') || portfolioData.resumeEntries,
       resumeStorage: savedCollectionData.has('resumeEntries') ? 'database' : 'default',
+      toolkitGroups: savedCollectionData.get('toolkitGroups') || portfolioData.toolkitGroups,
+      toolkitStorage: savedCollectionData.has('toolkitGroups') ? 'database' : 'default',
+      journeyEvents: savedCollectionData.get('journeyEvents') || portfolioData.journeyEvents,
+      journeyStorage: savedCollectionData.has('journeyEvents') ? 'database' : 'default',
       projects,
     })
   } catch (error) {
@@ -848,10 +1178,41 @@ app.put('/api/portfolio/about', async (req, res) => {
 
 app.put('/api/portfolio/content/:key', async (req, res) => {
   const { key } = req.params
-  const allowedKeys = ['educationEntries', 'experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries']
+  const allowedKeys = ['toolkitGroups', 'journeyEvents', 'educationEntries', 'experienceEntries', 'achievements', 'galleryItems', 'contactLinks', 'planetLinks', 'resumeEntries']
 
   if (!allowedKeys.includes(key) || !Array.isArray(req.body?.entries)) {
     return res.status(400).json({ success: false, message: 'A valid portfolio collection is required.' })
+  }
+
+  if (key === 'toolkitGroups' && (
+    req.body.entries.length > 50
+    || !req.body.entries.every((group) => typeof group?.label === 'string'
+      && group.label.length <= 120
+      && Array.isArray(group.skills)
+      && group.skills.length <= 100
+      && group.skills.every((skill) => typeof skill === 'string' && skill.length <= 120))
+  )) {
+    return res.status(400).json({ success: false, message: 'Skill groups must contain valid labels and skills.' })
+  }
+
+  if (key === 'journeyEvents' && (
+    req.body.entries.length > 200
+    || !req.body.entries.every((entry) => typeof entry?.year === 'string'
+      && entry.year.length <= 40
+      && typeof entry?.title === 'string'
+      && entry.title.length <= 200
+      && typeof entry?.description === 'string'
+      && entry.description.length <= 5000
+      && typeof (entry?.detail || '') === 'string'
+      && (entry.detail || '').length <= 8000
+      && typeof (entry?.location || '') === 'string'
+      && (entry.location || '').length <= 250
+      && Array.isArray(entry?.images || [])
+      && (entry.images || []).length <= 20
+      && Array.isArray(entry?.links || [])
+      && (entry.links || []).length <= 20)
+  )) {
+    return res.status(400).json({ success: false, message: 'Journey entries contain invalid or oversized fields.' })
   }
 
   if (key === 'resumeEntries') {
@@ -980,6 +1341,49 @@ app.put('/api/portfolio/content/:key', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'portfolio-api' })
+})
+
+app.post('/api/assistant/ask', async (req, res) => {
+  const question = typeof req.body?.question === 'string' ? req.body.question.trim() : ''
+  if (question.length < 2 || question.length > 1200) {
+    return res.status(400).json({ message: 'Enter a question between 2 and 1,200 characters.' })
+  }
+
+  const now = Date.now()
+  const clientKey = req.ip || req.socket.remoteAddress || 'unknown'
+  const requestTimes = (assistantRateLimit.get(clientKey) || []).filter((time) => now - time < 60_000)
+  if (requestTimes.length >= 12) {
+    assistantRateLimit.set(clientKey, requestTimes)
+    return res.status(429).json({ message: 'Too many questions. Please wait a minute and try again.' })
+  }
+  requestTimes.push(now)
+  assistantRateLimit.set(clientKey, requestTimes)
+  if (assistantRateLimit.size > 1000) {
+    for (const [key, times] of assistantRateLimit) {
+      if (!times.some((time) => now - time < 60_000)) assistantRateLimit.delete(key)
+    }
+  }
+
+  const history = Array.isArray(req.body?.history)
+    ? req.body.history.slice(-6).filter((message) => (
+      message?.role === 'user'
+      && typeof message.content === 'string'
+      && message.content.trim().length > 0
+      && message.content.length <= 1200
+    )).map((message) => ({ role: 'user', content: message.content.trim() }))
+    : []
+
+  try {
+    const portfolio = await loadAssistantPortfolioData()
+    const documents = getAssistantDocuments(portfolio)
+    return res.json(createAssistantAnswer(question, documents, history))
+  } catch (error) {
+    console.error('[ask-abhi] Request failed:', error.message)
+    if (error.message === 'Portfolio database is unavailable.') {
+      return res.status(503).json({ message: 'Portfolio data is temporarily unavailable. Please try again shortly.' })
+    }
+    return res.status(502).json({ message: 'Ask ABHI is temporarily unavailable. Please try again shortly.' })
+  }
 })
 
 app.post('/api/admin/login', (req, res) => {
