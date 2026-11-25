@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { FileSearch, History, MessageSquare, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { Check, FileSearch, History, MessageSquare, RefreshCw, Send, Sparkles, Trash2, X } from 'lucide-react'
 import './admin-ai-workspace.css'
+import { applyAdminPortfolioChanges } from './adminPortfolioChanges.js'
+import { ADMIN_AI_EDITABLE_ROOTS } from '../../../backend/adminAiPortfolio.js'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-token-v1'
@@ -28,7 +30,7 @@ const adminFetch = (path, options = {}) => {
   return fetch(`${API_BASE_URL}${path}`, { ...options, headers })
 }
 
-function AdminAiWorkspace({ onPublish }) {
+function AdminAiWorkspace({ onPublish, portfolio, onApplyChanges }) {
   const [activeTab, setActiveTab] = useState('scanner')
   const [recordType, setRecordType] = useState('certificate')
   const [file, setFile] = useState(null)
@@ -43,8 +45,16 @@ function AdminAiWorkspace({ onPublish }) {
   const [historyStatus, setHistoryStatus] = useState('')
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
+  const [adminChatMessages, setAdminChatMessages] = useState([])
+  const [adminChatInput, setAdminChatInput] = useState('')
+  const [adminChatStatus, setAdminChatStatus] = useState('')
+  const [isAdminChatBusy, setIsAdminChatBusy] = useState(false)
+  const [applyingProposalId, setApplyingProposalId] = useState('')
 
   const activeConversation = conversations.find((item) => item.conversationId === activeConversationId)
+  const hasPendingProposal = adminChatMessages.some((item) => (
+    item.changes?.length && !item.applied && !item.discarded
+  ))
 
   const loadConversations = async (keepSelection = true) => {
     setIsLoadingHistory(true)
@@ -185,6 +195,79 @@ function AdminAiWorkspace({ onPublish }) {
     }
   }
 
+  const sendAdminMessage = async (event) => {
+    event.preventDefault()
+    const message = adminChatInput.trim()
+    if (message.length < 2 || isAdminChatBusy) return
+    if (hasPendingProposal) {
+      setAdminChatStatus('Review, apply, or discard the pending website update before sending another instruction.')
+      return
+    }
+
+    const editablePortfolio = Object.fromEntries(ADMIN_AI_EDITABLE_ROOTS
+      .filter((key) => Object.hasOwn(portfolio || {}, key))
+      .map((key) => [key, portfolio[key]]))
+    const history = adminChatMessages.flatMap((item) => [
+      { role: 'user', content: item.question.slice(0, 1000) },
+      { role: 'assistant', content: item.reply.slice(0, 1000) },
+    ]).slice(-6)
+    setIsAdminChatBusy(true)
+    setAdminChatStatus('')
+    try {
+      const response = await adminFetch('/api/admin/assistant/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history, portfolio: editablePortfolio }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'The admin assistant could not answer.')
+      const changes = Array.isArray(result.changes) ? result.changes : []
+      const changeRoot = changes[0]?.path.split('/')[1]
+      setAdminChatMessages((current) => [...current, {
+        id: `${Date.now()}-${current.length}`,
+        question: message,
+        reply: result.reply,
+        changes,
+        baseValue: changeRoot ? editablePortfolio[changeRoot] : undefined,
+        applied: false,
+        discarded: false,
+      }])
+      setAdminChatInput('')
+    } catch (error) {
+      setAdminChatStatus(error.message || 'The admin assistant could not answer.')
+    } finally {
+      setIsAdminChatBusy(false)
+    }
+  }
+
+  const applyAdminProposal = async (proposal) => {
+    setApplyingProposalId(proposal.id)
+    setAdminChatStatus('')
+    try {
+      const changeRoot = proposal.changes[0]?.path.split('/')[1]
+      if (JSON.stringify(portfolio?.[changeRoot]) !== JSON.stringify(proposal.baseValue)) {
+        throw new Error('This portfolio section changed after the proposal was created. Send the instruction again to review an updated proposal.')
+      }
+      const updatedPortfolio = applyAdminPortfolioChanges(portfolio, proposal.changes)
+      await onApplyChanges(updatedPortfolio, proposal.changes)
+      setAdminChatMessages((current) => current.map((item) => (
+        item.id === proposal.id ? { ...item, applied: true } : item
+      )))
+      setAdminChatStatus('Approved changes were saved to the portfolio.')
+    } catch (error) {
+      setAdminChatStatus(error.message || 'The approved changes could not be saved.')
+    } finally {
+      setApplyingProposalId('')
+    }
+  }
+
+  const discardAdminProposal = (proposalId) => {
+    setAdminChatMessages((current) => current.map((item) => (
+      item.id === proposalId ? { ...item, discarded: true } : item
+    )))
+    setAdminChatStatus('The proposed changes were discarded.')
+  }
+
   return (
     <section className="panel-card admin-list-panel admin-ai-workspace">
       <div className="panel-header">
@@ -218,6 +301,15 @@ function AdminAiWorkspace({ onPublish }) {
           }}
         >
           <History size={16} aria-hidden="true" /> Conversation history
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'chat'}
+          className={activeTab === 'chat' ? 'active' : ''}
+          onClick={() => setActiveTab('chat')}
+        >
+          <Sparkles size={16} aria-hidden="true" /> Admin AI chat
         </button>
       </div>
 
@@ -293,7 +385,7 @@ function AdminAiWorkspace({ onPublish }) {
           ) : null}
           {scannerStatus ? <p className="admin-ai-status" role="status">{scannerStatus}</p> : null}
         </div>
-      ) : (
+      ) : activeTab === 'history' ? (
         <div className="admin-ai-history">
           <div className="admin-ai-conversation-list">
             <div className="admin-ai-history-heading">
@@ -342,6 +434,87 @@ function AdminAiWorkspace({ onPublish }) {
             ) : <p className="admin-ai-empty">Select a conversation to review or continue it.</p>}
             {historyStatus ? <p className="admin-ai-status" role="status">{historyStatus}</p> : null}
           </div>
+        </div>
+      ) : (
+        <div className="admin-ai-chat">
+          <p className="admin-ai-chat-intro">
+            Chat normally with AI or ask it to update portfolio content. Website edits appear as a proposal; review and apply them before they are published.
+          </p>
+          <div className="admin-ai-chat-messages" aria-live="polite" aria-relevant="additions text">
+            {!adminChatMessages.length && !isAdminChatBusy ? (
+              <p className="admin-ai-empty">Ask a question or give an instruction, such as “Update my homepage introduction to …”.</p>
+            ) : null}
+            {adminChatMessages.map((item) => (
+              <div className="admin-ai-chat-exchange" key={item.id}>
+                <article className="admin-ai-thread-message user">
+                  <strong>You</strong>
+                  <p>{item.question}</p>
+                </article>
+                <article className="admin-ai-thread-message assistant">
+                  <strong>ABHI</strong>
+                  <p>{item.reply}</p>
+                  {item.changes.length ? (
+                    <div className="admin-ai-proposal">
+                      <h3>Proposed website changes</h3>
+                      <ul>
+                        {item.changes.map((change, index) => (
+                          <li key={`${change.path}-${index}`}>
+                            <code>{change.path.split('/').slice(1).join(' → ')}</code>
+                            <pre>{change.op === 'remove' ? 'Remove this entry' : JSON.stringify(change.value, null, 2)}</pre>
+                          </li>
+                        ))}
+                      </ul>
+                      {item.applied ? (
+                        <p className="admin-ai-status"><Check size={15} aria-hidden="true" /> Changes applied.</p>
+                      ) : item.discarded ? (
+                        <p className="admin-ai-status">Proposal discarded.</p>
+                      ) : (
+                        <div className="admin-ai-proposal-actions">
+                          <button
+                            type="button"
+                            className="primary-btn"
+                            onClick={() => void applyAdminProposal(item)}
+                            disabled={Boolean(applyingProposalId)}
+                          >
+                            <Check size={16} aria-hidden="true" />
+                            {applyingProposalId === item.id ? 'Saving…' : 'Apply changes'}
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost-btn"
+                            onClick={() => discardAdminProposal(item.id)}
+                            disabled={Boolean(applyingProposalId)}
+                          >
+                            <X size={16} aria-hidden="true" /> Discard
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </article>
+              </div>
+            ))}
+            {isAdminChatBusy ? <p className="admin-ai-status" role="status">Thinking…</p> : null}
+          </div>
+          <form className="admin-ai-chat-form" onSubmit={sendAdminMessage}>
+            <textarea
+              rows="3"
+              maxLength={1600}
+              value={adminChatInput}
+              onChange={(event) => setAdminChatInput(event.target.value)}
+              placeholder="Ask a question or describe a website update…"
+              aria-label="Message the admin AI assistant"
+            />
+            <button
+              type="submit"
+              className="primary-btn"
+              disabled={isAdminChatBusy || hasPendingProposal || adminChatInput.trim().length < 2}
+            >
+              <Send size={16} aria-hidden="true" /> {isAdminChatBusy ? 'Sending…' : 'Send'}
+            </button>
+          </form>
+          {hasPendingProposal ? <p className="admin-ai-status" role="status">Apply or discard the proposed update before continuing the chat.</p> : null}
+          {adminChatStatus ? <p className="admin-ai-status" role="status">{adminChatStatus}</p> : null}
         </div>
       )}
     </section>

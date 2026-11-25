@@ -2573,6 +2573,8 @@ function App() {
       try {
         const response = await apiFetch('/api/portfolio')
         const data = await response.json()
+        const hasSavedServerProfile = ['database', 'memory'].includes(data.profileStorage)
+        const hasSavedServerNavItems = ['database', 'memory'].includes(data.navItemsStorage)
         const hasSavedServerAbout = ['database', 'memory'].includes(data.aboutStorage)
         const hasSavedServerAccessSettings = ['database', 'memory'].includes(data.adminAccessSettingsStorage)
         const hasSavedServerHomepageSettings = ['database', 'memory'].includes(data.homepageSettingsStorage)
@@ -2610,6 +2612,10 @@ function App() {
           ? {
               ...data,
               ...savedPortfolio,
+              profile: hasSavedServerProfile ? data.profile : savedPortfolio.profile || data.profile,
+              profileStorage: hasSavedServerProfile ? data.profileStorage : savedPortfolio.profileStorage || data.profileStorage,
+              navItems: hasSavedServerNavItems ? data.navItems : savedPortfolio.navItems || data.navItems,
+              navItemsStorage: hasSavedServerNavItems ? data.navItemsStorage : savedPortfolio.navItemsStorage || data.navItemsStorage,
               toolkitGroups: hasSavedServerToolkitGroups ? data.toolkitGroups || [] : savedPortfolio.toolkitGroups || data.toolkitGroups || [],
               toolkitStorage: hasSavedServerToolkitGroups ? data.toolkitStorage : savedPortfolio.toolkitStorage || data.toolkitStorage,
               journeyEvents: hasSavedServerJourneyEvents ? data.journeyEvents || [] : savedPortfolio.journeyEvents || data.journeyEvents || [],
@@ -3930,6 +3936,108 @@ function App() {
       setStatus(`${error.message || 'Changes could not be saved.'} Changes remain saved in this browser.`)
       return false
     }
+  }
+
+  const applyAdminAssistantChanges = async (updatedPortfolio, changes) => {
+    const roots = [...new Set(changes.map((change) => change.path.split('/')[1]))]
+    if (roots.length !== 1) throw new Error('Apply one portfolio section per instruction.')
+    const root = roots[0]
+    const saveJson = async (path, method, body) => {
+      const response = await apiFetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'The approved portfolio update could not be saved.')
+      return result
+    }
+
+    let result
+    let savedValue = updatedPortfolio[root]
+    const settingsRoutes = {
+      homepageSettings: '/api/portfolio/homepage-settings',
+      edgeAnimationSettings: '/api/portfolio/edge-animation',
+      motionSettings: '/api/portfolio/motion-settings',
+      animationControls: '/api/portfolio/animation-controls',
+    }
+
+    if (root === 'about') {
+      result = await saveJson('/api/portfolio/about', 'PUT', updatedPortfolio.about)
+      savedValue = result.about || updatedPortfolio.about
+    } else if (root === 'profile') {
+      result = await saveJson('/api/portfolio/profile', 'PUT', updatedPortfolio.profile)
+      savedValue = result.profile || updatedPortfolio.profile
+    } else if (root === 'navItems') {
+      result = await saveJson('/api/portfolio/nav-items', 'PUT', { items: updatedPortfolio.navItems })
+      savedValue = result.items || updatedPortfolio.navItems
+    } else if (settingsRoutes[root]) {
+      result = await saveJson(settingsRoutes[root], 'PUT', { settings: updatedPortfolio[root] })
+      savedValue = result.settings || updatedPortfolio[root]
+    } else if (root === 'projects') {
+      if (!Array.isArray(updatedPortfolio.projects)) throw new Error('The project list is invalid.')
+      const projectIndices = [...new Set(changes.map((change) => {
+        const index = change.path.split('/')[2]
+        return index === '-' ? updatedPortfolio.projects.length - 1 : Number(index)
+      }))]
+      const savedProjects = updatedPortfolio.projects.slice()
+      for (const index of projectIndices) {
+        const project = savedProjects[index]
+        if (!project?.id || !project.title || !project.description) {
+          throw new Error('A project needs an ID, title, and description before saving.')
+        }
+        const projectResult = await saveJson('/api/projects', 'POST', project)
+        savedProjects[index] = projectResult.project || project
+      }
+      savedValue = savedProjects
+    } else {
+      const collectionKeys = new Set([
+        'toolkitGroups',
+        'journeyEvents',
+        'educationEntries',
+        'experienceEntries',
+        'achievements',
+        'galleryItems',
+        'contactLinks',
+        'planetLinks',
+        'resumeEntries',
+      ])
+      if (!collectionKeys.has(root) || !Array.isArray(updatedPortfolio[root])) {
+        throw new Error('That portfolio section cannot be updated through the AI workspace.')
+      }
+      result = await saveJson(`/api/portfolio/content/${root}`, 'PUT', { entries: updatedPortfolio[root] })
+      savedValue = result.entries || updatedPortfolio[root]
+    }
+
+    const storageKeyByRoot = {
+      profile: 'profileStorage',
+      navItems: 'navItemsStorage',
+      about: 'aboutStorage',
+      homepageSettings: 'homepageSettingsStorage',
+      edgeAnimationSettings: 'edgeAnimationSettingsStorage',
+      motionSettings: 'motionSettingsStorage',
+      animationControls: 'animationControlsStorage',
+      toolkitGroups: 'toolkitStorage',
+      journeyEvents: 'journeyStorage',
+      educationEntries: 'educationStorage',
+      experienceEntries: 'experienceStorage',
+      achievements: 'achievementsStorage',
+      galleryItems: 'galleryStorage',
+      planetLinks: 'planetLinksStorage',
+      resumeEntries: 'resumeStorage',
+    }
+    setPortfolio((current) => {
+      const nextPortfolio = {
+        ...current,
+        [root]: savedValue,
+        ...(storageKeyByRoot[root] && result?.storage
+          ? { [storageKeyByRoot[root]]: result.storage }
+          : {}),
+      }
+      savePortfolioToStorage(nextPortfolio)
+      return nextPortfolio
+    })
+    if (root === 'about') setAboutDraft(savedValue)
   }
 
   const publishExtractedRecord = async (type, fields) => {
@@ -7630,7 +7738,13 @@ function App() {
           </section>
         ) : null}
 
-        {adminSection === 'ai' ? <AdminAiWorkspace onPublish={publishExtractedRecord} /> : null}
+        {adminSection === 'ai' ? (
+          <AdminAiWorkspace
+            onPublish={publishExtractedRecord}
+            portfolio={portfolio}
+            onApplyChanges={applyAdminAssistantChanges}
+          />
+        ) : null}
 
         <div className="admin-status-bar">
           {resumeSaveStatus || (activeResume.url ? 'Resume is published and available on the public page.' : 'Upload or link a resume from the Resume section to publish it.')}

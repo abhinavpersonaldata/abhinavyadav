@@ -67,7 +67,8 @@
 .admin-ai-scanner input,
 .admin-ai-scanner select,
 .admin-ai-review textarea,
-.admin-ai-reply textarea {
+.admin-ai-reply textarea,
+.admin-ai-chat-form textarea {
   width: 100%;
   min-height: 44px;
   padding: 11px 12px;
@@ -79,7 +80,8 @@
 }
 
 .admin-ai-review textarea,
-.admin-ai-reply textarea {
+.admin-ai-reply textarea,
+.admin-ai-chat-form textarea {
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
@@ -229,6 +231,120 @@
   text-align: center;
 }
 
+.admin-ai-chat {
+  display: grid;
+  min-height: 420px;
+  gap: 14px;
+}
+
+.admin-ai-chat-intro {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.admin-ai-chat-messages {
+  display: flex;
+  min-height: 220px;
+  max-height: 560px;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+}
+
+.admin-ai-chat-exchange {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-ai-chat-exchange .admin-ai-thread-message {
+  width: fit-content;
+  max-width: min(90%, 850px);
+}
+
+.admin-ai-chat-exchange .admin-ai-thread-message.assistant {
+  max-width: 100%;
+}
+
+.admin-ai-proposal {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+}
+
+.admin-ai-proposal h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.admin-ai-proposal ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-ai-proposal li {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.admin-ai-proposal code {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-ai-proposal pre {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.admin-ai-proposal .admin-ai-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+}
+
+.admin-ai-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-ai-chat-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.admin-ai-chat-form textarea {
+  min-width: 0;
+  resize: vertical;
+}
+
+.admin-ai-chat-form .primary-btn {
+  flex-shrink: 0;
+}
+
 @media (max-width: 720px) {
   .admin-ai-history {
     grid-template-columns: minmax(0, 1fr);
@@ -249,6 +365,11 @@
   }
 
   .admin-ai-reply {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-ai-chat-form {
     align-items: stretch;
     flex-direction: column;
   }

@@ -29,6 +29,8 @@ Ask ABHI uses the configured OpenAI-compatible chat-completions API. The backend
 
 The Admin AI Workspace can extract certificate, education, experience, achievement, project, and journey fields from JPEG, PNG, or WebP images up to 10 MB. The image is sent to the configured AI provider for extraction. Review and correct every field before saving it to the portfolio. Saved conversations are stored in MongoDB so the visitor's browser can resume its own chats and the authenticated admin can review, continue, or delete conversations. Chat history remains until deleted by the admin.
 
+The Admin AI chat also supports normal questions and natural-language instructions to update editable portfolio sections, including profile details, projects, About content, navigation, and design settings. It previews a structured proposal and only saves after the admin applies it. One section is updated per instruction; admin access settings are never editable through AI. Admin chat turns stay in the current page session.
+
 The `.env.local` file is ignored by git. Keep real credentials there and do not commit them.
 
 ## Deployment split

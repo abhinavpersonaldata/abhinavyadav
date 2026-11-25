@@ -5,7 +5,7 @@ WORKDIR /app
 COPY backend/package*.json ./backend/
 RUN cd backend && npm ci --omit=dev
 
-COPY backend/server.js backend/ai-provider.js ./backend/
+COPY backend/server.js backend/ai-provider.js backend/admin-assistant.js backend/adminAiPortfolio.js ./backend/
 
 WORKDIR /app/backend
 ENV NODE_ENV=production
