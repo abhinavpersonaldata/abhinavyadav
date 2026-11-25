@@ -93,6 +93,46 @@
   color: white;
 }
 
+.ask-abhi-header > .ask-abhi-new {
+  width: 30px;
+  margin-left: 0;
+  color: #d7f779;
+}
+
+.ask-abhi-history {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: #b6b9ad;
+}
+
+.ask-abhi-history select {
+  width: 92px;
+  max-width: 18vw;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: #e9e8e1;
+  font: 500 10px 'Inter', sans-serif;
+  text-overflow: ellipsis;
+}
+
+.ask-abhi-history option {
+  background: #1d1e19;
+  color: #f1f0e9;
+}
+
+.ask-abhi-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 .ask-abhi-messages {
   display: flex;
   min-height: 0;

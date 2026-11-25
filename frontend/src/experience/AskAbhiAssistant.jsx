@@ -1,13 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageCircle, Send, X } from 'lucide-react'
+import { History, MessageCircle, Plus, Send, X } from 'lucide-react'
 import './ask-abhi-assistant.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+const HISTORY_STORAGE_KEY = 'ask-abhi-conversations-v1'
+const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-token-v1'
 const SUGGESTED_QUESTIONS = [
   'What are Abhinav’s strongest projects?',
   'Which technologies does he work with?',
   'What is listed about his education?',
 ]
+
+const readConversations = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]')
+    return Array.isArray(saved)
+      ? saved.filter((item) => typeof item?.conversationId === 'string' && typeof item?.ownerToken === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
 
 const renderMessageContent = (content) => content
   .split(/\n{2,}/)
@@ -25,6 +38,8 @@ const renderMessageContent = (content) => content
   })
 
 function AskAbhiAssistant({ open, onOpen, onClose }) {
+  const [conversations, setConversations] = useState(readConversations)
+  const [activeConversationId, setActiveConversationId] = useState(() => readConversations()[0]?.conversationId || '')
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -50,6 +65,32 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
   }, [isLoading, onClose, open])
 
   useEffect(() => {
+    if (!open || !activeConversationId) return undefined
+    const activeConversation = conversations.find((item) => item.conversationId === activeConversationId)
+    if (!activeConversation) return undefined
+    const controller = new AbortController()
+
+    const loadConversation = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/assistant/conversations/${encodeURIComponent(activeConversationId)}`, {
+          headers: { 'X-Conversation-Token': activeConversation.ownerToken },
+          signal: controller.signal,
+        })
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(result.message || 'Conversation history could not be loaded.')
+        if (!controller.signal.aborted && Array.isArray(result.conversation?.messages)) {
+          setMessages(result.conversation.messages)
+        }
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') setError(requestError.message || 'Conversation history could not be loaded.')
+      }
+    }
+
+    void loadConversation()
+    return () => controller.abort()
+  }, [activeConversationId, conversations, open])
+
+  useEffect(() => {
     messageListRef.current?.scrollTo({
       top: messageListRef.current.scrollHeight,
       behavior: 'smooth',
@@ -60,10 +101,6 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
     const text = submittedQuestion.trim()
     if (text.length < 2 || isLoading) return
 
-    const history = messages
-      .filter((message) => message.role === 'user')
-      .slice(-6)
-      .map(({ role, content }) => ({ role, content }))
     setMessages((current) => [...current, { role: 'user', content: text, sources: [] }])
     setQuestion('')
     setError('')
@@ -73,7 +110,13 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
       const response = await fetch(`${API_BASE_URL}/api/assistant/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, history }),
+        body: JSON.stringify({
+          question: text,
+          ...(activeConversationId ? { conversationId: activeConversationId } : {}),
+          ...(conversations.find((item) => item.conversationId === activeConversationId)?.ownerToken
+            ? { ownerToken: conversations.find((item) => item.conversationId === activeConversationId).ownerToken }
+            : {}),
+        }),
       })
       const result = await response.json().catch(() => ({}))
 
@@ -84,6 +127,31 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
         throw new Error('I couldn’t find an answer just now. Please try rephrasing your question.')
       }
 
+      const conversationId = result.conversationId || activeConversationId
+      if (conversationId && result.ownerToken) {
+        setConversations((current) => {
+          const next = [
+            {
+              conversationId,
+              ownerToken: result.ownerToken,
+              title: text.slice(0, 100),
+              updatedAt: new Date().toISOString(),
+            },
+            ...current.filter((item) => item.conversationId !== conversationId),
+          ].slice(0, 30)
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(next))
+          return next
+        })
+      } else if (conversationId) {
+        setConversations((current) => {
+          const next = current.map((item) => item.conversationId === conversationId
+            ? { ...item, updatedAt: new Date().toISOString() }
+            : item)
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(next))
+          return next
+        })
+      }
+      if (conversationId) setActiveConversationId(conversationId)
       setMessages((current) => [...current, {
         role: 'assistant',
         content: result.answer.trim(),
@@ -100,6 +168,34 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
     event.preventDefault()
     void askQuestion(question)
   }
+
+  const startNewConversation = () => {
+    if (isLoading) return
+    setActiveConversationId('')
+    setMessages([{
+      role: 'assistant',
+      content: 'Hi, I’m ABHI. I can help you explore Abhinav’s public portfolio—projects, skills, education, and more.',
+      sources: [],
+    }])
+    setQuestion('')
+    setError('')
+  }
+
+  const selectConversation = async (event) => {
+    const nextId = event.target.value
+    if (!nextId) return
+    setMessages([])
+    setError('')
+    setActiveConversationId(nextId)
+  }
+
+  const isAdminSignedIn = (() => {
+    try {
+      return Boolean(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY))
+    } catch {
+      return false
+    }
+  })()
 
   return (
     <>
@@ -123,6 +219,23 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
               <h2 id="ask-abhi-title">Ask ABHI</h2>
               <p>Answers from portfolio content</p>
             </div>
+            {conversations.length ? (
+              <label className="ask-abhi-history">
+                <History size={14} aria-hidden="true" />
+                <span className="ask-abhi-sr-only">Previous conversations</span>
+                <select value={activeConversationId} onChange={selectConversation} aria-label="Previous conversations" disabled={isLoading}>
+                  <option value="">New conversation</option>
+                  {conversations.map((conversation) => (
+                    <option key={conversation.conversationId} value={conversation.conversationId}>
+                      {conversation.title || 'Previous conversation'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <button type="button" className="ask-abhi-new" onClick={startNewConversation} aria-label="Start a new conversation" disabled={isLoading}>
+              <Plus size={16} aria-hidden="true" />
+            </button>
             <button type="button" onClick={onClose} aria-label="Close Ask ABHI" disabled={isLoading}>
               <X size={18} aria-hidden="true" />
             </button>
@@ -142,7 +255,7 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
               </article>
             ))}
 
-            {messages.length === 1 ? (
+            {messages.length <= 1 && !activeConversationId ? (
               <div className="ask-abhi-suggestions" aria-label="Suggested questions">
                 {SUGGESTED_QUESTIONS.map((suggestion) => (
                   <button type="button" key={suggestion} onClick={() => void askQuestion(suggestion)}>
@@ -174,7 +287,11 @@ function AskAbhiAssistant({ open, onOpen, onClose }) {
               <Send size={17} aria-hidden="true" />
             </button>
           </form>
-          <p className="ask-abhi-disclaimer">Answers are based on public portfolio content.</p>
+          <p className="ask-abhi-disclaimer">
+            {isAdminSignedIn
+              ? 'Admin session active. Chats are saved and visible to the admin.'
+              : 'Chats are saved so you can resume them and are visible to the portfolio admin.'}
+          </p>
         </section>
       ) : null}
     </>

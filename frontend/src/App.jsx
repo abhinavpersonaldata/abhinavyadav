@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import heroGraphic from './assets/hero.png'
 import ExperienceHome from './experience/ExperienceHome.jsx'
 import AskAbhiAssistant from './experience/AskAbhiAssistant.jsx'
+import AdminAiWorkspace from './experience/AdminAiWorkspace.jsx'
 import {
   ArrowLeft,
   ArrowRight,
@@ -299,7 +300,11 @@ const AnimatedPresence = ({ children, ...props }) => {
   return <Component {...props}>{children}</Component>
 }
 
-const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-auth-v2'
+const ADMIN_AUTH_STORAGE_KEY = 'portfolio-admin-token-v1'
+const createAiProjectId = (title) => {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
+  return `${slug}-${Date.now()}`
+}
 const DEFAULT_ADMIN_ACCESS_SETTINGS = {
   logoClickCount: 5,
   logoClickWindowSeconds: 5,
@@ -640,10 +645,17 @@ const apiUrl = (path) => `${API_BASE_URL}${path}`
 const wait = (duration) => new Promise((resolve) => setTimeout(resolve, duration))
 const apiFetch = async (path, options) => {
   let lastError
+  const headers = new Headers(options?.headers || {})
+  try {
+    const adminToken = sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)
+    if (adminToken && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${adminToken}`)
+  } catch {
+    // Admin API requests will return an explicit authentication error if storage is unavailable.
+  }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await fetch(apiUrl(path), options)
+      return await fetch(apiUrl(path), { ...options, headers })
     } catch (error) {
       lastError = error
       if (attempt < 2) {
@@ -1826,7 +1838,7 @@ function App() {
   })
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     try {
-      return localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
+      return Boolean(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY))
     } catch {
       return false
     }
@@ -2202,14 +2214,6 @@ function App() {
   const fadeInUp = useMemo(() => createFadeInUp(motionSpeed), [motionSpeed])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, String(isAdminAuthenticated))
-    } catch {
-      // noop
-    }
-  }, [isAdminAuthenticated])
-
-  useEffect(() => {
     const isCopyAllowedTarget = (target) => (
       target instanceof Element
       && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [data-allow-copy="true"]'))
@@ -2245,10 +2249,13 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!isAdminAuthenticated) return undefined
+
     const loadMessages = async () => {
       try {
         const response = await apiFetch('/api/messages')
         const result = await response.json()
+        if (!response.ok) throw new Error(result.message || 'Messages could not be loaded.')
         if (result.messages?.length) {
           setMessages(result.messages)
         }
@@ -2258,7 +2265,8 @@ function App() {
     }
 
     loadMessages()
-  }, [])
+    return undefined
+  }, [isAdminAuthenticated])
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -3245,6 +3253,10 @@ function App() {
       if (!response.ok) {
         throw new Error(result.message || 'Admin login could not be verified.')
       }
+      if (typeof result.token !== 'string' || !result.token) {
+        throw new Error('The admin login service did not return a valid session.')
+      }
+      sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, result.token)
       setIsAdminAuthenticated(true)
       setLoginError('')
       setView('admin')
@@ -3256,6 +3268,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    sessionStorage.removeItem(ADMIN_AUTH_STORAGE_KEY)
     setIsAdminAuthenticated(false)
     setLoginForm({ username: '', password: '' })
     setView('home')
@@ -3912,9 +3925,90 @@ function App() {
         return nextPortfolio
       })
       setStatus('Changes saved.')
+      return true
     } catch (error) {
       setStatus(`${error.message || 'Changes could not be saved.'} Changes remain saved in this browser.`)
+      return false
     }
+  }
+
+  const publishExtractedRecord = async (type, fields) => {
+    const text = (value) => (typeof value === 'string' ? value.trim() : '')
+    const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean) : [])
+
+    if (type === 'certificate') {
+      const certificate = {
+        title: text(fields.title),
+        issuer: text(fields.issuer),
+        date: text(fields.date),
+        credential: text(fields.credential),
+        description: text(fields.description),
+        url: text(fields.url),
+        image: '',
+      }
+      const about = {
+        ...DEFAULT_ABOUT,
+        ...portfolio.about,
+        certificates: [...(portfolio.about?.certificates || []), certificate],
+      }
+      const response = await apiFetch('/api/portfolio/about', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(about),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Certificate details could not be saved.')
+      setPortfolio((current) => ({ ...current, about: result.about || about }))
+      setAboutDraft((current) => ({
+        ...current,
+        certificates: [...(Array.isArray(current.certificates) ? current.certificates : []), certificate],
+      }))
+      return
+    }
+
+    if (type === 'project') {
+      const title = text(fields.title)
+      const description = text(fields.description)
+      if (!title || !description) throw new Error('A project title and description are required before saving.')
+      const project = {
+        ...fields,
+        id: createAiProjectId(title),
+        number: String(portfolio.projects.length + 1).padStart(2, '0'),
+        title,
+        description,
+        category: text(fields.category) || 'Personal project',
+        status: text(fields.status) || 'Personal project',
+        date: text(fields.date),
+        tech: list(fields.tech),
+        features: list(fields.features),
+        challenges: list(fields.challenges),
+        results: list(fields.results),
+      }
+      const response = await apiFetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(project),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Project details could not be saved.')
+      setPortfolio((current) => ({ ...current, projects: [result.project || project, ...current.projects] }))
+      return
+    }
+
+    const keyByType = {
+      education: 'educationEntries',
+      experience: 'experienceEntries',
+      achievement: 'achievements',
+      journey: 'journeyEvents',
+    }
+    const key = keyByType[type]
+    if (!key) throw new Error('That portfolio section is not supported.')
+    const entry = Object.fromEntries(Object.entries(fields).map(([field, value]) => [
+      field,
+      Array.isArray(value) ? list(value) : text(value),
+    ]))
+    const saved = await savePortfolioCollection(key, [...(portfolio[key] || []), entry], () => {})
+    if (!saved) throw new Error('The details could not be saved. Check the Admin status message and try again.')
   }
 
   const handleEducationDraftChange = (event) => {
@@ -6016,6 +6110,7 @@ function App() {
           <button type="button" className={`nav-button ${adminSection === 'skills' ? 'active' : ''}`} onClick={() => handleAdminAction('skills')}>Skills</button>
           <button type="button" className={`nav-button ${adminSection === 'journey' ? 'active' : ''}`} onClick={() => handleAdminAction('journey')}>Journey</button>
           <button type="button" className={`nav-button ${adminSection === 'messages' ? 'active' : ''}`} onClick={() => handleAdminAction('messages')}>Messages</button>
+          <button type="button" className={`nav-button ${adminSection === 'ai' ? 'active' : ''}`} onClick={() => handleAdminAction('ai')}>AI Workspace</button>
         </nav>
         <button type="button" className="secondary-btn admin-back" onClick={handleLogout}>
           <span>Logout</span>
@@ -7534,6 +7629,8 @@ function App() {
             </div>
           </section>
         ) : null}
+
+        {adminSection === 'ai' ? <AdminAiWorkspace onPublish={publishExtractedRecord} /> : null}
 
         <div className="admin-status-bar">
           {resumeSaveStatus || (activeResume.url ? 'Resume is published and available on the public page.' : 'Upload or link a resume from the Resume section to publish it.')}

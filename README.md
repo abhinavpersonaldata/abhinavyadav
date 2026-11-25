@@ -19,10 +19,16 @@ The frontend is an independent service in `frontend/` and uses `VITE_API_URL` fo
 | `MONGODB_URI` | Backend MongoDB connection string | backend only |
 | `CLOUDINARY_*` | Backend Cloudinary credentials | backend only |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Admin login credentials | backend only (Render/API service) |
+| `ADMIN_SESSION_SECRET` | Optional signing secret for 12-hour admin sessions | backend only |
+| `AI_API_KEY` | API key for an OpenAI-compatible chat-completions provider | backend only |
+| `AI_BASE_URL` | Provider HTTPS base URL (for example, ending in `/v1`) | backend only |
+| `AI_MODEL` | Chat/vision model name supported by the provider | backend only |
 
 Admin credentials are checked by the backend at login time. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend service's environment (for example, Render), not as `VITE_*` variables on Vercel. Never expose the password in a frontend environment variable because Vite embeds `VITE_*` values in public browser assets.
 
-Ask ABHI is a portfolio-specific assistant that needs no third-party AI service or API key. It searches public portfolio records stored in MongoDB and builds answers from matching entries using local rules and response templates. It is not a general-purpose generative AI model. The assistant excludes uploaded image/video file URLs and does not read Admin credentials or contact-form messages.
+Ask ABHI uses the configured OpenAI-compatible chat-completions API. The backend retrieves matching portfolio records from MongoDB and instructs the model to answer only from those records; it should say when a detail cannot be verified instead of inventing personal information. The API key is never sent to the browser. Configure `AI_API_KEY`, `AI_BASE_URL`, and `AI_MODEL` in the backend environment (or root `.env.local` for local development). Use an HTTPS provider URL; HTTP is accepted only for loopback development.
+
+The Admin AI Workspace can extract certificate, education, experience, achievement, project, and journey fields from JPEG, PNG, or WebP images up to 10 MB. The image is sent to the configured AI provider for extraction. Review and correct every field before saving it to the portfolio. Saved conversations are stored in MongoDB so the visitor's browser can resume its own chats and the authenticated admin can review, continue, or delete conversations. Chat history remains until deleted by the admin.
 
 The `.env.local` file is ignored by git. Keep real credentials there and do not commit them.
 

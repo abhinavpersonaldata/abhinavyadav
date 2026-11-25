@@ -1,0 +1,255 @@
+.admin-ai-workspace {
+  display: grid;
+  gap: 20px;
+}
+
+.admin-ai-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-ai-tabs button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.admin-ai-tabs button.active {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.admin-ai-scanner {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-ai-scanner > p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.admin-ai-notice,
+.admin-ai-status {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.admin-ai-scanner form,
+.admin-ai-review {
+  display: grid;
+  max-width: 760px;
+  gap: 14px;
+}
+
+.admin-ai-scanner label,
+.admin-ai-review label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-ai-scanner input,
+.admin-ai-scanner select,
+.admin-ai-review textarea,
+.admin-ai-reply textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.admin-ai-review textarea,
+.admin-ai-reply textarea {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+
+.admin-ai-review {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-ai-review h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.admin-ai-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-ai-history {
+  display: grid;
+  min-height: 420px;
+  grid-template-columns: minmax(200px, 0.75fr) minmax(0, 1.5fr);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.admin-ai-conversation-list {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 5px;
+  overflow: auto;
+  padding: 12px;
+  border-right: 1px solid var(--color-border);
+}
+
+.admin-ai-history-heading,
+.admin-ai-thread-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-ai-history-heading {
+  padding: 4px 3px 10px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.admin-ai-conversation-option {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-ai-conversation-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-ai-conversation-option:hover,
+.admin-ai-conversation-option.active {
+  border-color: var(--color-border);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.admin-ai-thread {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(160px, 1fr) auto auto;
+  gap: 12px;
+  padding: 14px;
+}
+
+.admin-ai-thread-heading h3 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-ai-thread-messages {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  padding: 4px;
+}
+
+.admin-ai-thread-message {
+  max-width: 90%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+}
+
+.admin-ai-thread-message.user {
+  align-self: flex-end;
+  background: var(--color-surface-hover);
+}
+
+.admin-ai-thread-message strong {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.admin-ai-thread-message p {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.admin-ai-reply {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.admin-ai-reply textarea {
+  min-width: 0;
+}
+
+.admin-ai-empty {
+  margin: auto;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .admin-ai-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-ai-conversation-list {
+    max-height: 180px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .admin-ai-thread {
+    min-height: 340px;
+  }
+
+  .admin-ai-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-ai-reply {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
