@@ -1636,7 +1636,7 @@ app.post('/api/admin/assistant/chat', async (req, res) => {
         role: 'user',
         content: `Current editable portfolio JSON:\n${serializedPortfolio}\n\nAdmin message:\n${message}`,
       },
-    ], { maxTokens: 1800, task: 'chat' })
+    ], { maxTokens: 1800, task: 'chat', jsonMode: true })
     const proposal = parseAdminAssistantResponse(responseText)
     return res.json({ success: true, ...proposal })
   } catch (error) {

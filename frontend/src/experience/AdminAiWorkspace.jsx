@@ -232,6 +232,7 @@ function AdminAiWorkspace({ onPublish, portfolio, onApplyChanges }) {
         applied: false,
         discarded: false,
       }])
+      setAdminChatStatus(result.notice || '')
       setAdminChatInput('')
     } catch (error) {
       setAdminChatStatus(error.message || 'The admin assistant could not answer.')

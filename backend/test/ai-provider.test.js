@@ -115,6 +115,45 @@ test('selects a vision-capable model for document extraction', async () => {
   assert.equal(requestBody.model, visionModel.id)
 })
 
+test('requests JSON output for structured chat responses', async () => {
+  process.env.AI_API_KEY = 'test-key-json-mode'
+  process.env.AI_BASE_URL = 'https://velona.in/gateway/v1'
+  let requestBody
+
+  await requestChatCompletion(
+    [{ role: 'user', content: 'Return a structured response.' }],
+    { maxTokens: 20, jsonMode: true },
+    async (url, options) => {
+      if (url.endsWith('/models')) return Response.json({ data: { models: [textModel] } })
+      requestBody = JSON.parse(options.body)
+      return Response.json({ choices: [{ message: { content: '{"reply":"ok","changes":[]}' } }] })
+    },
+  )
+
+  assert.deepEqual(requestBody.response_format, { type: 'json_object' })
+})
+
+test('retries without JSON mode when all candidate models reject it', async () => {
+  process.env.AI_API_KEY = 'test-key-json-fallback'
+  process.env.AI_BASE_URL = 'https://velona.in/gateway/v1'
+  const requestBodies = []
+
+  const answer = await requestChatCompletion(
+    [{ role: 'user', content: 'Hello' }],
+    { maxTokens: 20, jsonMode: true },
+    async (url, options) => {
+      if (url.endsWith('/models')) return Response.json({ data: { models: [textModel] } })
+      const requestBody = JSON.parse(options.body)
+      requestBodies.push(requestBody)
+      if (requestBody.response_format) return new Response(null, { status: 400 })
+      return Response.json({ choices: [{ message: { content: 'Hello back' } }] })
+    },
+  )
+
+  assert.equal(answer, 'Hello back')
+  assert.deepEqual(requestBodies.map((body) => Boolean(body.response_format)), [true, false])
+})
+
 test('reports provider endpoint errors without referring to a fixed model setting', async () => {
   process.env.AI_API_KEY = 'test-key-404'
   process.env.AI_BASE_URL = 'https://ai.example/v1'

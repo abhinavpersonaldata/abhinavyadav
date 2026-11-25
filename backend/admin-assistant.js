@@ -128,7 +128,13 @@ export const parseAdminAssistantResponse = (responseText) => {
   } catch {
     result = findAssistantResponse(jsonText)
     if (!result) {
-      throw new Error('The assistant returned an unstructured response. Please try again.')
+      const reply = jsonText.trim()
+      if (!reply) throw new Error('The assistant returned an empty response. Please try again.')
+      return {
+        reply: reply.slice(0, 3000),
+        changes: [],
+        notice: 'No website changes were applied because the assistant did not return a reviewable proposal.',
+      }
     }
   }
 

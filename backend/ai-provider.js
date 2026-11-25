@@ -160,9 +160,11 @@ const selectModels = (models, task, messages, maxTokens) => {
 export const requestChatCompletion = async (messages, options = {}, fetchImpl = fetch) => {
   const config = getProviderConfig()
   const task = options.task === 'vision' ? 'vision' : 'chat'
+  const jsonMode = options.jsonMode === true
   const maxTokens = options.maxTokens ?? 700
   const models = await getModelCatalog(config, fetchImpl)
   const selectedModels = selectModels(models, task, messages, maxTokens)
+  let jsonModeUnsupported = false
 
   for (const model of selectedModels) {
     let response
@@ -178,6 +180,7 @@ export const requestChatCompletion = async (messages, options = {}, fetchImpl = 
           messages,
           temperature: options.temperature ?? 0.2,
           max_tokens: maxTokens,
+          ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
         }),
         signal: AbortSignal.timeout(60_000),
       })
@@ -189,6 +192,10 @@ export const requestChatCompletion = async (messages, options = {}, fetchImpl = 
     }
 
     if (response.status === 429) continue
+    if (jsonMode && [400, 422].includes(response.status)) {
+      jsonModeUnsupported = true
+      continue
+    }
     if (!response.ok) throw providerErrorForStatus(response.status, 'generating a response')
 
     const result = await response.json().catch(() => null)
@@ -202,6 +209,10 @@ export const requestChatCompletion = async (messages, options = {}, fetchImpl = 
     }
 
     return text.trim()
+  }
+
+  if (jsonMode && jsonModeUnsupported) {
+    return requestChatCompletion(messages, { ...options, jsonMode: false }, fetchImpl)
   }
 
   throw providerErrorForStatus(429, 'generating a response')

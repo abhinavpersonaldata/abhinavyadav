@@ -64,8 +64,15 @@ test('rejects unsafe keys inside proposed values', () => {
   )
 })
 
-test('rejects malformed or incomplete model output', () => {
-  assert.throws(() => parseAdminAssistantResponse('not JSON'), /unstructured response/)
+test('keeps plain-text replies as chat without applying changes', () => {
+  assert.deepEqual(parseAdminAssistantResponse('Hello! How can I help?'), {
+    reply: 'Hello! How can I help?',
+    changes: [],
+    notice: 'No website changes were applied because the assistant did not return a reviewable proposal.',
+  })
+})
+
+test('rejects incomplete structured model output', () => {
   assert.throws(
     () => parseAdminAssistantResponse('{"reply":"","changes":[]}'),
     /invalid response/,
