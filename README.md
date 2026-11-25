@@ -34,7 +34,7 @@ The `.env.local` file is ignored by git. Keep real credentials there and do not 
 
 ## Deployment split
 
-- **Render:** deploy the `backend` directory as a Node web service with build command `npm install`, start command `npm start`, and health check `/api/health`. Add the backend variables from `.env.example`; set `CLIENT_URL` to the Vercel URL.
+- **Render:** deploy the repository using the root `render.yaml` blueprint (Docker context `.` and the root `Dockerfile`) or configure the backend service with the matching Dockerfile. The image copies both `backend/server.js` and `backend/ai-provider.js`. Set the backend variables from `.env.example`, including the AI provider settings, and set `CLIENT_URL` to the Vercel URL.
 - **Vercel:** set the project root directory to `frontend`, use build command `npm run build` and output directory `dist`. Set `VITE_API_URL` to the Render backend URL and add only the `VITE_*` variables needed by the frontend.
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.

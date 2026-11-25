@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY server.js ./
+COPY server.js ai-provider.js ./
 
 ENV NODE_ENV=production
 EXPOSE 10000
