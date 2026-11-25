@@ -1,15 +1,20 @@
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '..', '')
+  const workspaceRoot = fileURLToPath(new URL('..', import.meta.url))
 
   return {
     envDir: '..',
     plugins: [react(), tailwindcss()],
     server: {
       port: Number(env.VITE_PORT || 5173),
+      fs: {
+        allow: [workspaceRoot],
+      },
       proxy: {
         '/api': {
           target: env.VITE_API_URL || `http://localhost:${env.PORT || env.API_PORT || 5001}`,

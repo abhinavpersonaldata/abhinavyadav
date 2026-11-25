@@ -1625,6 +1625,7 @@ app.post('/api/admin/assistant/chat', async (req, res) => {
           'Do not invent personal facts. For portfolio edits, use only details supplied by the admin or already in the portfolio.',
           'Only propose edits when the admin explicitly asks to change the website. Otherwise return an empty changes array.',
           'Return only valid JSON with exactly these fields: {"reply":"...","changes":[{"op":"add|replace|remove","path":"/root/property","value":"..."}]}. Omit value for remove.',
+          'Do not wrap the JSON in markdown or add any text before or after it.',
           `Changes must use JSON Pointer paths and target only these roots: ${ADMIN_AI_EDITABLE_ROOTS.join(', ')}.`,
           'Only change one root section and one project per instruction. Use zero-based array positions from the supplied JSON. Do not delete projects or change their IDs; add a new project with one complete object at /projects/-. Certificates live at /about/certificates.',
           'Never modify adminAccessSettings or authentication/security data. If a change is ambiguous or needs missing facts, ask a follow-up question and return no changes.',

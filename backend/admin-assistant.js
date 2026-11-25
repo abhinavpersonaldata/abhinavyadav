@@ -16,6 +16,48 @@ const hasUnsafeDataKey = (value) => {
   ))
 }
 
+const isAssistantResponse = (value) => (
+  value
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && typeof value.reply === 'string'
+  && Array.isArray(value.changes)
+)
+
+const findAssistantResponse = (text) => {
+  for (let start = 0; start < text.length; start += 1) {
+    if (text[start] !== '{') continue
+
+    let depth = 0
+    let inString = false
+    let isEscaped = false
+    for (let end = start; end < text.length; end += 1) {
+      const character = text[end]
+      if (inString) {
+        if (isEscaped) isEscaped = false
+        else if (character === '\\') isEscaped = true
+        else if (character === '"') inString = false
+        continue
+      }
+      if (character === '"') inString = true
+      else if (character === '{') depth += 1
+      else if (character === '}') {
+        depth -= 1
+        if (depth === 0) {
+          try {
+            const parsed = JSON.parse(text.slice(start, end + 1))
+            if (isAssistantResponse(parsed)) return parsed
+          } catch {
+            break
+          }
+          break
+        }
+      }
+    }
+  }
+  return null
+}
+
 export const validateAdminAssistantChanges = (changes) => {
   if (!Array.isArray(changes) || changes.length > 8) {
     throw new Error('The assistant returned too many proposed changes.')
@@ -70,7 +112,12 @@ export const validateAdminAssistantChanges = (changes) => {
 }
 
 export const parseAdminAssistantResponse = (responseText) => {
+  if (typeof responseText !== 'string') {
+    throw new Error('The assistant returned an unstructured response. Please try again.')
+  }
+
   const jsonText = responseText
+    .replace(/^\uFEFF/, '')
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '')
     .trim()
@@ -79,12 +126,13 @@ export const parseAdminAssistantResponse = (responseText) => {
   try {
     result = JSON.parse(jsonText)
   } catch {
-    throw new Error('The assistant did not return a readable response. Please try again.')
+    result = findAssistantResponse(jsonText)
+    if (!result) {
+      throw new Error('The assistant returned an unstructured response. Please try again.')
+    }
   }
 
-  if (!result || typeof result !== 'object' || Array.isArray(result)
-    || typeof result.reply !== 'string' || !result.reply.trim()
-    || !Array.isArray(result.changes)) {
+  if (!isAssistantResponse(result) || !result.reply.trim()) {
     throw new Error('The assistant returned an invalid response. Please try again.')
   }
 

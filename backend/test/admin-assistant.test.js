@@ -20,6 +20,17 @@ test('allows normal chat responses without portfolio changes', () => {
   })
 })
 
+test('parses structured replies surrounded by provider commentary', () => {
+  const result = parseAdminAssistantResponse(
+    'Here is the result:\n```json\n{"reply":"The intro can include {curly braces}.","changes":[]}\n```\nDone.',
+  )
+
+  assert.deepEqual(result, {
+    reply: 'The intro can include {curly braces}.',
+    changes: [],
+  })
+})
+
 test('rejects private, unsafe, multi-section, and project-delete proposals', () => {
   assert.throws(
     () => validateAdminAssistantChanges([{ op: 'replace', path: '/adminAccessSettings/unlockPattern', value: [1, 2, 3] }]),
@@ -54,7 +65,7 @@ test('rejects unsafe keys inside proposed values', () => {
 })
 
 test('rejects malformed or incomplete model output', () => {
-  assert.throws(() => parseAdminAssistantResponse('not JSON'), /readable response/)
+  assert.throws(() => parseAdminAssistantResponse('not JSON'), /unstructured response/)
   assert.throws(
     () => parseAdminAssistantResponse('{"reply":"","changes":[]}'),
     /invalid response/,
