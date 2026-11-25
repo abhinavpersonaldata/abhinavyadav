@@ -738,7 +738,7 @@ const createGroundedAssistantAnswer = async (question, documents, history = []) 
       role: 'user',
       content: `Portfolio records (the only source of personal facts):\n${JSON.stringify(sourceContext)}\n\nQuestion: ${question}`,
     },
-  ], { maxTokens: 700 })
+  ], { maxTokens: 700, task: 'chat' })
 
   return {
     answer,
@@ -1532,7 +1532,7 @@ app.post('/api/admin/assistant/extract', documentImageUpload.single('file'), asy
           { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } },
         ],
       },
-    ], { maxTokens: 700 })
+    ], { maxTokens: 700, task: 'vision' })
 
     return res.json({ success: true, type, fields: parseAssistantExtract(extractedText, type) })
   } catch (error) {
