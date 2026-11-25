@@ -225,7 +225,7 @@ function AdminAiWorkspace({ onPublish }) {
         <div className="admin-ai-scanner">
           <p>Upload a clear certificate or document image. The image is sent to your configured AI provider. Check every field—the AI may misread text. Nothing is published until you review it.</p>
           {aiConfigured === false ? (
-            <p className="admin-ai-notice" role="status">Configure AI_API_KEY, AI_BASE_URL, and AI_MODEL on the backend to enable extraction and AI answers.</p>
+            <p className="admin-ai-notice" role="status">Configure AI_API_KEY and AI_BASE_URL on the backend to enable extraction and AI answers.</p>
           ) : null}
           <form onSubmit={handleExtract}>
             <label>

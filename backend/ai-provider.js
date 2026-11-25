@@ -1,10 +1,9 @@
 const getProviderConfig = () => {
   const apiKey = process.env.AI_API_KEY?.trim()
   const baseUrl = process.env.AI_BASE_URL?.trim()
-  const model = process.env.AI_MODEL?.trim()
 
-  if (!apiKey || !baseUrl || !model) {
-    throw new Error('AI_API_KEY, AI_BASE_URL, and AI_MODEL must be configured on the backend.')
+  if (!apiKey || !baseUrl) {
+    throw new Error('AI_API_KEY and AI_BASE_URL must be configured on the backend.')
   }
 
   let parsedBaseUrl
@@ -26,11 +25,11 @@ const getProviderConfig = () => {
     ? normalizedBaseUrl
     : `${normalizedBaseUrl}/chat/completions`
 
-  return { apiKey, endpoint, model }
+  return { apiKey, endpoint }
 }
 
 export const requestChatCompletion = async (messages, options = {}, fetchImpl = fetch) => {
-  const { apiKey, endpoint, model } = getProviderConfig()
+  const { apiKey, endpoint } = getProviderConfig()
   let response
   try {
     response = await fetchImpl(endpoint, {
@@ -40,7 +39,6 @@ export const requestChatCompletion = async (messages, options = {}, fetchImpl = 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
         messages,
         temperature: options.temperature ?? 0.2,
         max_tokens: options.maxTokens ?? 700,
@@ -81,6 +79,5 @@ export const getProviderConfigStatus = () => ({
   configured: Boolean(
     process.env.AI_API_KEY?.trim()
     && process.env.AI_BASE_URL?.trim()
-    && process.env.AI_MODEL?.trim(),
   ),
 })
